@@ -1,0 +1,10 @@
+{
+  "name": "Remix Sitakunda Municipality Land Demarcation Portal",
+  "description": "সীতাকুণ্ড পৌরসভা কার্যালয় (প্রকৌশল বিভাগ) ভূমির ডিমার্কেশন ও মালিকানা সঠিকতা যাচাই পোর্টাল",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

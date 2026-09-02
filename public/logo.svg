@@ -1,0 +1,158 @@
+<svg viewBox="0 0 600 600" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="সীতাকুণ্ড পৌরসভা লোগো">
+  <defs>
+    <!-- Top Arc for curved text: সীতাকুণ্ড পৌরসভা -->
+    <path id="topSealArc" d="M 82,300 A 218,218 0 1,1 518,300" fill="none" />
+    
+    <!-- Bottom Arc for curved text: স্থাপিত ঃ ১৯৯৮ ইং -->
+    <path id="bottomSealArc" d="M 112,328 A 212,212 0 0,0 488,328" fill="none" />
+
+    <!-- Sun Flare Radial Glow -->
+    <radialGradient id="sealSunGlow" cx="28%" cy="47%" r="42%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="18%" stop-color="#ffea60" />
+      <stop offset="42%" stop-color="#f59e0b" stop-opacity="0.95" />
+      <stop offset="68%" stop-color="#ea580c" stop-opacity="0.38" />
+      <stop offset="100%" stop-color="#e24941" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Coral Sunset Sky Color -->
+    <linearGradient id="sealCoralSky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ec5951" />
+      <stop offset="45%" stop-color="#e24c44" />
+      <stop offset="100%" stop-color="#cc3b35" />
+    </linearGradient>
+
+    <!-- Royal Municipal Blue Band -->
+    <linearGradient id="sealRoyalBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#026cb6" />
+      <stop offset="50%" stop-color="#005ea8" />
+      <stop offset="100%" stop-color="#004d92" />
+    </linearGradient>
+
+    <!-- Mountain Navy Solid Fill -->
+    <linearGradient id="sealNavyMountain" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#072352" />
+      <stop offset="100%" stop-color="#051a3d" />
+    </linearGradient>
+
+    <!-- Clip Path for Inner Circular Artwork Disc -->
+    <clipPath id="sealInnerDiscClip">
+      <circle cx="300" cy="300" r="186" />
+    </clipPath>
+  </defs>
+
+  <!-- Outer Royal Blue Band -->
+  <circle cx="300" cy="300" r="294" fill="url(#sealRoyalBlue)" stroke="#ffffff" stroke-width="4" />
+
+  <!-- Inner Separating White Ring -->
+  <circle cx="300" cy="300" r="193" fill="none" stroke="#ffffff" stroke-width="9" />
+
+  <!-- Left 5-Point White Star -->
+  <polygon
+    points="65,300 73,279 94,279 77,293 83,314 65,301 47,314 53,293 36,279 57,279"
+    fill="#ffffff"
+  />
+
+  <!-- Right 5-Point White Star -->
+  <polygon
+    points="535,300 543,279 564,279 547,293 553,314 535,301 517,314 523,293 506,279 527,279"
+    fill="#ffffff"
+  />
+
+  <!-- Top Curved Text: সীতাকুণ্ড পৌরসভা -->
+  <text
+    fill="#ffffff"
+    font-family="'Hind Siliguri', 'Kalpurush', 'SolaimanLipi', 'Noto Serif Bengali', sans-serif"
+    font-size="53"
+    font-weight="700"
+    letter-spacing="2px"
+  >
+    <textPath href="#topSealArc" startOffset="50%" text-anchor="middle">
+      সীতাকুণ্ড পৌরসভা
+    </textPath>
+  </text>
+
+  <!-- Bottom Curved Text: স্থাপিত ঃ ১৯৯৮ ইং -->
+  <text
+    fill="#ffffff"
+    font-family="'Hind Siliguri', 'Kalpurush', 'SolaimanLipi', 'Noto Serif Bengali', sans-serif"
+    font-size="45"
+    font-weight="700"
+    letter-spacing="2.5px"
+  >
+    <textPath href="#bottomSealArc" startOffset="50%" text-anchor="middle">
+      স্থাপিত ঃ ১৯৯৮ ইং
+    </textPath>
+  </text>
+
+  <!-- Inner Circular Graphic Artwork -->
+  <g clip-path="url(#sealInnerDiscClip)">
+    <!-- Coral Red Sunset Sky Disc -->
+    <circle cx="300" cy="300" r="186" fill="url(#sealCoralSky)" />
+
+    <!-- Radiant Glowing Sun on Left -->
+    <circle cx="165" cy="285" r="70" fill="url(#sealSunGlow)" />
+    <circle cx="165" cy="285" r="18" fill="#fffbe6" />
+
+    <!-- Chandranath Mountain Ridge Silhouette (Navy Blue) -->
+    <path
+      d="M 110,375 
+         Q 160,332 215,285 
+         Q 248,290 270,320 
+         Q 302,295 332,298 
+         Q 380,335 440,375 
+         L 440,490 L 110,490 Z"
+      fill="url(#sealNavyMountain)"
+    />
+
+    <!-- Lower Water / Ground Base -->
+    <rect x="110" y="375" width="380" height="115" fill="#dc564e" />
+
+    <!-- Calm Ripple Wave Lines -->
+    <path
+      d="M 115,391 Q 195,404 275,391 T 435,391 T 485,391"
+      fill="none"
+      stroke="#eb756e"
+      stroke-width="3"
+      opacity="0.85"
+    />
+    <path
+      d="M 125,406 Q 205,419 285,406 T 445,406"
+      fill="none"
+      stroke="#eb756e"
+      stroke-width="2.5"
+      opacity="0.75"
+    />
+    <path
+      d="M 140,422 Q 220,434 300,422 T 460,422"
+      fill="none"
+      stroke="#eb756e"
+      stroke-width="2"
+      opacity="0.55"
+    />
+
+    <!-- White Sitakunda Monument Landmark Structure on Right -->
+    <!-- Stylized Cantilever Tower Body & Arm -->
+    <path
+      d="M 252,156 
+         L 375,156 
+         Q 398,156 398,179 
+         L 398,368 
+         Q 412,372 438,375 
+         L 362,375 
+         L 362,270 
+         L 374,270 
+         L 374,228 
+         L 362,228 
+         L 362,180 
+         L 252,180 
+         Q 238,180 238,168 
+         Q 238,156 252,156 Z"
+      fill="#ffffff"
+    />
+
+    <!-- Architectural Relief Steps -->
+    <rect x="374" y="228" width="24" height="140" fill="#ffffff" />
+    <rect x="362" y="270" width="36" height="98" fill="#ffffff" />
+  </g>
+</svg>

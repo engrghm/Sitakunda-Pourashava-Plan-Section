@@ -1,0 +1,524 @@
+@import "tailwindcss";
+
+@layer base {
+  @font-face {
+    font-family: 'Kalpurush';
+    src: local('Kalpurush'), local('Kalpurush ANSI'), url('https://cdn.jsdelivr.net/gh/maateen/kalpurush@master/Kalpurush.ttf') format('truetype');
+    font-weight: 400 700;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  :root {
+    --font-kalpurush: 'Kalpurush', 'Noto Serif Bengali', 'SolaimanLipi', 'Hind Siliguri', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, serif;
+    font-family: var(--font-kalpurush);
+    --color-brand: #065f46;
+    --color-brand-light: #059669;
+    --color-brand-glow: rgba(5, 150, 105, 0.35);
+    --color-gold: #d97706;
+    --shadow-card: 0 4px 24px -4px rgba(0,0,0,0.08), 0 2px 8px -2px rgba(0,0,0,0.05);
+    --shadow-elevated: 0 20px 60px -12px rgba(0,0,0,0.12), 0 8px 24px -6px rgba(0,0,0,0.06);
+  }
+
+  body {
+    font-family: var(--font-kalpurush);
+    color: #1e293b;
+    background-color: #f8fafc;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6, input, select, textarea, button {
+    font-family: var(--font-kalpurush);
+  }
+}
+
+.font-kalpurush {
+  font-family: 'Kalpurush', 'Noto Serif Bengali', 'SolaimanLipi', serif;
+}
+
+.font-hind {
+  font-family: 'Kalpurush', 'Hind Siliguri', sans-serif;
+}
+
+/* Custom Smooth Animation Utilities */
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatGently {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(5, 150, 105, 0);
+  }
+}
+
+@keyframes confettiFall {
+  0% { opacity: 1; transform: translateY(-10px) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(120px) rotate(360deg); }
+}
+
+@keyframes shimmerGradient {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes badgeBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+@keyframes bounceIn {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { opacity: 1; transform: scale(1.08); }
+  80% { transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInLeft {
+  0% { opacity: 0; transform: translateX(-20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  0% { opacity: 0; transform: translateX(20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeInDown {
+  0% { opacity: 0; transform: translateY(-12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  14% { transform: scale(1.08); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.06); }
+  70% { transform: scale(1); }
+}
+
+@keyframes milestoneReveal {
+  0% { opacity: 0; transform: scale(0) rotate(-90deg); }
+  60% { transform: scale(1.15) rotate(5deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 0.5; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+@keyframes glowPulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(5,150,105,0.45)); }
+  50% { filter: drop-shadow(0 0 16px rgba(5,150,105,0.85)); }
+}
+
+@keyframes countUp {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scanLaser {
+  0% { top: 5%; opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { top: 92%; opacity: 0.8; }
+}
+
+.animate-fade-in-scale { animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-fade-in-up { animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-fade-in-down { animation: fadeInDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-slide-in-left { animation: slideInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-slide-in-right { animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-float-gently { animation: floatGently 3.5s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulseGlow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+.animate-glow-pulse { animation: glowPulse 2.2s ease-in-out infinite; }
+.animate-bounce-in { animation: bounceIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-heartbeat { animation: heartbeat 2s ease-in-out infinite; }
+.animate-milestone-reveal { animation: milestoneReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-count-up { animation: countUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-gradient-shift { background-size: 200% 200%; animation: gradientShift 5s ease infinite; }
+.animate-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.45) 50%, rgba(255,255,255,0) 100%);
+  background-size: 200% 100%;
+  animation: shimmerGradient 2.2s infinite linear;
+}
+
+/* Stagger delay utilities */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.12s; }
+.stagger-3 { animation-delay: 0.19s; }
+.stagger-4 { animation-delay: 0.26s; }
+.stagger-5 { animation-delay: 0.33s; }
+.stagger-6 { animation-delay: 0.40s; }
+
+/* Modern Card Hover Elevation */
+.modern-hover-card { transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+.modern-hover-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px -6px rgba(0, 0, 0, 0.1), 0 4px 12px -4px rgba(0,0,0,0.06);
+}
+
+/* Feature card hover */
+.feature-card { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.feature-card:hover { transform: translateY(-4px); box-shadow: 0 20px 60px -12px rgba(0,0,0,0.12); }
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+}
+.glass-panel-dark {
+  background: rgba(6, 20, 40, 0.88);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+}
+.glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px -4px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+/* Hero Section Utilities */
+.hero-gradient {
+  background: linear-gradient(135deg, #022c22 0%, #064e3b 35%, #065f46 60%, #047857 80%, #0d9488 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+}
+.hero-grid-overlay {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.hero-dot-overlay {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Stat cards (hero) */
+.stat-card {
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.18);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.stat-card:hover {
+  background: rgba(255,255,255,0.18);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 16px 40px -8px rgba(0,0,0,0.3);
+}
+
+/* Badge glow */
+.badge-glow { animation: badgeBounce 3s ease-in-out infinite; }
+
+/* Status badge variants */
+.status-badge-pending { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; border: 1px solid #fbbf24; }
+.status-badge-approved { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #064e3b; border: 1px solid #34d399; }
+.status-badge-investigating { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1e3a8a; border: 1px solid #60a5fa; }
+.status-badge-rejected { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #7f1d1d; border: 1px solid #f87171; }
+
+/* Timeline components */
+.timeline-connector {
+  position: absolute; left: 1.25rem; top: 2.5rem; bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, #059669, #d1fae5);
+  z-index: 1;
+}
+.timeline-connector-pending {
+  background: linear-gradient(to bottom, #d1fae5, #e2e8f0);
+}
+
+/* Form progress step */
+.step-circle-active {
+  box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.25), 0 0 0 8px rgba(5, 150, 105, 0.08);
+}
+
+/* Success screen */
+.success-celebration-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(5, 150, 105, 0.3);
+  animation: ripple 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+.tracking-id-card {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #d1fae5 100%);
+  border: 2px dashed #34d399;
+  box-shadow: 0 0 0 4px rgba(52,211,153,0.08), inset 0 1px 2px rgba(5,150,105,0.1);
+}
+
+/* Search input */
+.search-input-enhanced:focus {
+  box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.15), 0 2px 8px -2px rgba(5, 150, 105, 0.1);
+}
+
+/* Custom Scrollbar for Portal */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Custom print media styles for A4 official documents and PDF export */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 6mm 8mm 8mm 8mm;
+  }
+
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html, body, #root, .min-h-screen {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'Kalpurush', 'Noto Serif Bengali', 'SolaimanLipi', serif !important;
+    font-size: 10pt;
+    line-height: 1.35;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Hide UI elements on print */
+  .no-print, 
+  .no-print *, 
+  [class*="no-print"], 
+  header, 
+  footer, 
+  nav,
+  .toast,
+  button:not(.print-include),
+  .sticky {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Unconstrain fixed modal containers */
+  .fixed.inset-0,
+  div[class*="fixed"][class*="inset-0"] {
+    position: static !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    box-shadow: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-page-break {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .print-card,
+  [class*="print-card"] {
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border-radius: 0 !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  th, td {
+    border-color: #334155 !important;
+  }
+
+  .officer-print-watermark {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) rotate(-28deg) !important;
+    width: 85% !important;
+    max-width: 600px !important;
+    opacity: 0.06 !important;
+    z-index: 0 !important;
+    pointer-events: none !important;
+    text-align: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .officer-print-container {
+    position: relative !important;
+    z-index: 1 !important;
+    background: transparent !important;
+  }
+}
+
+.print-watermark-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+.screen-watermark-overlay {
+  display: none;
+}
+
+@media print {
+  .screen-watermark-overlay {
+    display: flex !important;
+  }
+}
+
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
+
+/* Officer Dark Mode theme overrides */
+.dark-officer-theme {
+  color: #f1f5f9;
+}
+
+.dark-officer-theme .bg-white {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+.dark-officer-theme .bg-slate-50 {
+  background-color: #0f172a !important;
+  color: #cbd5e1 !important;
+}
+
+.dark-officer-theme .bg-slate-100 {
+  background-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+.dark-officer-theme .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+.dark-officer-theme .text-slate-800 {
+  color: #f1f5f9 !important;
+}
+
+.dark-officer-theme .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+
+.dark-officer-theme .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+.dark-officer-theme .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.dark-officer-theme .border-slate-200,
+.dark-officer-theme .border-slate-300,
+.dark-officer-theme .border-slate-100 {
+  border-color: #334155 !important;
+}
+
+.dark-officer-theme input,
+.dark-officer-theme select,
+.dark-officer-theme textarea {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+
+.dark-officer-theme input::placeholder,
+.dark-officer-theme textarea::placeholder {
+  color: #64748b !important;
+}
+
+@keyframes scanLaser {
+  0% {
+    top: 5%;
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    top: 92%;
+    opacity: 0.8;
+  }
+}
