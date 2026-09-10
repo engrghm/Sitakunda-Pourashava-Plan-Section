@@ -1,3 +1,64 @@
+export type CouncilCategory = 
+  | 'administrator' // প্রশাসকের প্রোফাইল
+  | 'panel_mayor' // প্যানেল মেয়র প্রোফাইল
+  | 'executive_officer' // পৌর নির্বাহী কর্মকর্তা প্রোফাইল
+  | 'councillor' // ওয়ার্ড কাউন্সিলর প্রোফাইল
+  | 'staff' // কর্মকর্তা ও কর্মচারীবৃন্দ প্রোফাইল
+  | 'entrepreneur'; // উদ্যোক্তা ও অন্যান্য
+
+export interface CouncilMember {
+  id: string;
+  category: CouncilCategory;
+  name: string;
+  designation: string;
+  wardOrDepartment?: string;
+  phone?: string;
+  email?: string;
+  imageUrl?: string;
+  bioOrSpeech?: string;
+  joiningDate?: string;
+  displayOrder?: number;
+}
+
+export type NoticeCategory = 'notice' | 'office_order' | 'tender';
+
+export interface NoticeItem {
+  id: string;
+  category: NoticeCategory;
+  title: string;
+  memoNo?: string;
+  publishDate: string;
+  fileUrl?: string;
+  description?: string;
+  isImportant?: boolean;
+}
+
+export const NOTICE_CATEGORIES_META: {
+  category: NoticeCategory;
+  label: string;
+  shortLabel: string;
+  description: string;
+}[] = [
+  {
+    category: 'notice',
+    label: 'নোটিশ',
+    shortLabel: 'সাধারণ নোটিশ',
+    description: 'পৌরসভার সাধারণ নাগরিক বিজ্ঞপ্তি ও গুরুত্বপূর্ণ ঘোষণা',
+  },
+  {
+    category: 'office_order',
+    label: 'অফিস আদেশ',
+    shortLabel: 'দাপ্তরিক অফিস আদেশ',
+    description: 'কর্মকর্তা-কর্মচারী ও অভ্যন্তরীণ প্রশাসনিক সিদ্ধান্ত সংক্রান্ত আদেশ',
+  },
+  {
+    category: 'tender',
+    label: 'টেন্ডার নোটিশ',
+    shortLabel: 'ই-দরপত্র বিজ্ঞপ্তি',
+    description: 'উন্নয়ন প্রকল্প, রাস্তাঘাট, ড্রেন ও মালামাল সরবরাহ কাজের ই-দরপত্র',
+  },
+];
+
 export interface PortalConfig {
   // General Municipal Info
   municipalityName: string;
@@ -36,6 +97,12 @@ export interface PortalConfig {
   officerDesignation: string;
   officerMessage: string;
 
+  // Council Members (বর্তমান পরিষদ)
+  councilMembers: CouncilMember[];
+
+  // Notices List (নোটিশ, অফিস আদেশ, টেন্ডার নোটিশ)
+  noticesList: NoticeItem[];
+
   // Emergency Hotlines
   emergencyNumbers: {
     title: string;
@@ -72,6 +139,50 @@ export interface PortalConfig {
     url: string;
   }[];
 }
+
+export const COUNCIL_CATEGORIES_META: {
+  category: CouncilCategory;
+  label: string;
+  shortLabel: string;
+  description: string;
+}[] = [
+  {
+    category: 'administrator',
+    label: 'প্রশাসকের প্রোফাইল',
+    shortLabel: 'প্রশাসক',
+    description: 'উপজেলা নির্বাহী অফিসার ও সীতাকুণ্ড পৌরসভার প্রশাসক মহোদয়ের পরিচিতি ও বক্তব্য',
+  },
+  {
+    category: 'panel_mayor',
+    label: 'প্যানেল মেয়র প্রোফাইল',
+    shortLabel: 'প্যানেল মেয়র',
+    description: 'সীতাকুণ্ড পৌর পরিষদের নির্বাচিত প্যানেল মেয়রবৃন্দের পরিচিতি ও যোগাযোগ',
+  },
+  {
+    category: 'executive_officer',
+    label: 'পৌর নির্বাহী কর্মকর্তা প্রোফাইল',
+    shortLabel: 'পৌর নির্বাহী কর্মকর্তা (সচিব)',
+    description: 'পৌরসভার প্রধান প্রশাসনিক কর্মকর্তা ও সচিব মহোদয়ের পরিচিতি',
+  },
+  {
+    category: 'councillor',
+    label: 'ওয়ার্ড কাউন্সিলর প্রোফাইল',
+    shortLabel: 'ওয়ার্ড কাউন্সিলরবৃন্দ',
+    description: '০১ হতে ০৯ নং সাধারণ ওয়ার্ড ও সংরক্ষিত নারী কাউন্সিলরবৃন্দের তালিকা ও পরিচিতি',
+  },
+  {
+    category: 'staff',
+    label: 'কর্মকর্তা ও কর্মচারীবৃন্দ প্রোফাইল',
+    shortLabel: 'কর্মকর্তা ও কর্মচারীবৃন্দ',
+    description: 'প্রকৌশল, রাজস্ব, প্রশাসন, স্বাস্থ্য ও পরিচ্ছন্নতা শাখার দায়িত্বপ্রাপ্ত কর্মকর্তাবৃন্দ',
+  },
+  {
+    category: 'entrepreneur',
+    label: 'উদ্যোক্তা ও অন্যান্য',
+    shortLabel: 'উদ্যোক্তা ও ডিজিটাল টিম',
+    description: 'পৌর ডিজিটাল সেবা কেন্দ্র ও তথ্যপ্রযুক্তি সহায়তা টিমের পরিচিতি',
+  },
+];
 
 export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
   municipalityName: 'সীতাকুণ্ড পৌরসভা কার্যালয়',
@@ -112,6 +223,54 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
   officerDesignation: 'নির্বাহী প্রকৌশলী, সীতাকুণ্ড পৌরসভা',
   officerMessage: 'পরিকল্পিত নগরায়ন ও বিধি মোতাবেক ভবন নির্মাণের ক্ষেত্রে সীমানা সঠিকতা যাচাই ও ছাড়পত্র গ্রহণ অপরিহার্য। ডিজিটাল প্ল্যানিং শাখার মাধ্যমে আবেদনসমূহ দ্রুত নিষ্পত্তি করা হচ্ছে।',
 
+  councilMembers: [
+    // 1. Administrator (প্রশাসকের প্রোফাইল)
+    {
+      id: 'cm-admin-1',
+      category: 'administrator',
+      name: 'মুহাম্মদ ফখরুল ইসলাম',
+      designation: 'উপজেলা নির্বাহী অফিসার ও পৌর প্রশাসক',
+      wardOrDepartment: 'পৌর প্রশাসন ও নির্বাহী শাখা',
+      phone: '০৩০২৮-৫৬০৪৪',
+      email: 'uno.sitakunda@mopa.gov.bd',
+      imageUrl: '/logo.png',
+      bioOrSpeech: 'সীতাকুণ্ড পৌরসভাকে একটি পরিকল্পিত, আধুনিক, পরিবেশবান্ধব ও প্রযুক্তিনির্ভর স্মার্ট নগরী হিসেবে গড়ে তোলাই আমাদের মূল লক্ষ্য। সকল নাগরিক সেবাকে ডিজিটালাইজড করার মাধ্যমে আমরা পৌরবাসীর দৌড়গোড়ায় দ্রুত ও স্বচ্ছ সেবা নিশ্চিত করতে বদ্ধপরিকর।',
+      joiningDate: '২০২৪-০৮-১৫',
+      displayOrder: 1,
+    },
+  ],
+
+  // Notices List (নোটিশ, অফিস আদেশ, টেন্ডার নোটিশ)
+  noticesList: [
+    {
+      id: 'notice-1',
+      category: 'notice',
+      title: 'সীতাকুণ্ড পৌরসভা এলাকার সকল নাগরিকের অবগতির জন্য পৌর হোল্ডিং ও কর পরিশোধ সংক্রান্ত জরুরি বিজ্ঞপ্তি',
+      memoNo: 'সীকপ/প্রশা/২০২৬-১৮৯',
+      publishDate: '২০২৬-০৩-০১',
+      description: 'সীতাকুণ্ড পৌরসভা এলাকার সকল সম্মানিত পৌরবাসীর অবগতির জন্য জানানো যাচ্ছে যে, ২০২৫-২০২৬ অর্থ বছরের ধার্যকৃত পৌর হোল্ডিং কর ও বাণিজ্যিক এসেসমেন্ট আগামী ৩১শে মার্চের মধ্যে পরিশোধ করার জন্য বিশেষভাবে অনুরোধ করা হলো।',
+      isImportant: true
+    },
+    {
+      id: 'notice-2',
+      category: 'office_order',
+      title: 'ডিজিটাল ল্যান্ড ভেরিফিকেশন ও ইমারত নির্মাণ অনুমোদন সংক্রান্ত অফিস আদেশ',
+      memoNo: 'সীকপ/প্রকৌ/আদেশ/২০২৬-৭৪',
+      publishDate: '২০২৬-০২-২০',
+      description: 'সীতাকুণ্ড পৌরসভা আওতাধীন এলাকার সকল জমির সীমানা নির্ধারণ, ডিমার্কেশন প্রত্যয়ন ও ইমারত নির্মাণ নকশা অনুমোদন এখন থেকে সম্পূর্ণ অনলাইন পোর্টালের মাধ্যমে বাধ্যতামূলক করা হলো।',
+      isImportant: true
+    },
+    {
+      id: 'notice-3',
+      category: 'tender',
+      title: 'সীতাকুণ্ড পৌরসভা বিভিন্ন ওয়ার্ডের আরসিসি ড্রেন ও আরসিসি রাস্তা নির্মাণ কাজের উন্মুক্ত ই-দরপত্র বিজ্ঞপ্তি (e-GP/Tender)',
+      memoNo: 'সীকপ/ইজিপি-টেন্ডার/২০২৬-১২',
+      publishDate: '২০২৬-০২-১৫',
+      description: 'সীতাকুণ্ড পৌরসভার রাজস্ব ও উন্নয়ন তহবিলের আওতায় প্যাকেজ নম্বর- ০১ হতে ০৮ এর বিভিন্ন ওয়ার্ডে আরসিসি ড্রেন, রোড কার্পেটিং ও কালভার্ট নির্মাণের লক্ষ্যে যোগ্য ঠিকাদারদের নিকট হতে ই-জিপির মাধ্যমে দরপত্র আহ্বান করা যাচ্ছে।',
+      isImportant: true
+    }
+  ],
+
   emergencyNumbers: [
     {
       title: 'জাতীয় জরুরি সেবা',
@@ -149,7 +308,7 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
     {
       id: 'demarcation',
       title: 'Land Demarcation & Verification',
-      banglaTitle: '১. ভূমি ডিমার্কেশন ও মালিকানা প্রত্যয়ন',
+      banglaTitle: 'ভূমি ডিমার্কেশন ও মালিকানা প্রত্যয়ন',
       category: 'প্রকৌশল ও নগর পরিকল্পনা শাখা',
       fee: '৳ ১০০/-',
       duration: '৩-৭ কার্যদিবস',
@@ -161,7 +320,7 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
     {
       id: 'tracking',
       title: 'Real-time Application Tracking',
-      banglaTitle: '২. অনলাইন আবেদন লাইভ ট্র্যাকিং',
+      banglaTitle: 'অনলাইন আবেদন লাইভ ট্র্যাকিং',
       category: 'ডিজিটাল ই-সেবা',
       fee: 'সম্পূর্ণ ফ্রি',
       duration: 'তাৎক্ষণিক (Instant)',
@@ -173,7 +332,7 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
     {
       id: 'schedule1',
       title: 'Building Construction Approval (Schedule-1)',
-      banglaTitle: '৩. ইমারত নির্মাণ অনুমোদন (তফসিল-১)',
+      banglaTitle: 'ইমারত নির্মাণ অনুমোদন (তফসিল-১)',
       category: 'প্রকৌশল ও নকশা অনুমোদন শাখা',
       fee: '৳ ১,০০০/- + বিধি মোতাবেক ফি ও ভ্যাট',
       duration: '৭-১৫ কার্যদিবস',
@@ -185,7 +344,7 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
     {
       id: 'roadcutting',
       title: 'Road Cutting Permission',
-      banglaTitle: '৪. রাস্তা কর্তন ও মেরামত অনুমতি',
+      banglaTitle: 'রাস্তা কর্তন ও মেরামত অনুমতি',
       category: 'সড়ক ও অবকাঠামো শাখা',
       fee: '৳ ৩০০/- (আবেদন ফি)',
       duration: '৩-৫ কার্যদিবস',
@@ -280,7 +439,7 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
   ]
 };
 
-const STORAGE_KEY = 'sitakunda_smart_portal_config_v1';
+const STORAGE_KEY = 'sitakunda_smart_portal_config_v3';
 
 export function getPortalConfig(): PortalConfig {
   if (typeof window === 'undefined') return DEFAULT_PORTAL_CONFIG;
@@ -296,6 +455,7 @@ export function getPortalConfig(): PortalConfig {
       marqueeNotices: parsed.marqueeNotices || DEFAULT_PORTAL_CONFIG.marqueeNotices,
       statistics: parsed.statistics || DEFAULT_PORTAL_CONFIG.statistics,
       importantLinks: parsed.importantLinks || DEFAULT_PORTAL_CONFIG.importantLinks,
+      noticesList: parsed.noticesList || DEFAULT_PORTAL_CONFIG.noticesList,
     };
   } catch {
     return DEFAULT_PORTAL_CONFIG;

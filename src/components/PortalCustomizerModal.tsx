@@ -14,9 +14,11 @@ import {
   FileText, 
   AlertTriangle,
   Plus,
-  Trash2
+  Trash2,
+  Users
 } from 'lucide-react';
 import { PortalConfig, savePortalConfig, resetPortalConfig } from '../utils/portalConfig';
+import { CouncilManagementPanel } from './CouncilManagementPanel';
 
 interface PortalCustomizerModalProps {
   currentConfig: PortalConfig;
@@ -31,7 +33,7 @@ export const PortalCustomizerModal: React.FC<PortalCustomizerModalProps> = ({
   onClose,
   onConfigSaved,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'general' | 'hero' | 'notices' | 'leadership' | 'emergency'>('general');
+  const [activeSubTab, setActiveSubTab] = useState<'general' | 'hero' | 'notices' | 'leadership' | 'emergency' | 'council'>('general');
   const [formData, setFormData] = useState<PortalConfig>({ ...currentConfig });
   const [saveSuccessToast, setSaveSuccessToast] = useState(false);
   const [newNoticeInput, setNewNoticeInput] = useState('');
@@ -242,6 +244,17 @@ export const PortalCustomizerModal: React.FC<PortalCustomizerModalProps> = ({
           >
             <PhoneCall className="w-4 h-4" />
             <span>৫. জরুরি হটলাইন নম্বর</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('council')}
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-colors cursor-pointer ${
+              activeSubTab === 'council' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>৬. বর্তমান পরিষদ ও কর্মকর্তা</span>
           </button>
         </div>
 
@@ -637,6 +650,18 @@ export const PortalCustomizerModal: React.FC<PortalCustomizerModalProps> = ({
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* SubTab 6: Council Members & Officers Management */}
+          {activeSubTab === 'council' && (
+            <div className="space-y-4 animate-fade-in">
+              <CouncilManagementPanel 
+                onSuccessNotification={() => {
+                  setSaveSuccessToast(true);
+                  setTimeout(() => setSaveSuccessToast(false), 3000);
+                }} 
+              />
             </div>
           )}
 

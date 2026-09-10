@@ -16,14 +16,20 @@ import { RoadCuttingApplicationForm } from './components/RoadCuttingApplicationF
 import { RoadCuttingApplicationPrintA4 } from './components/RoadCuttingApplicationPrintA4';
 import { RoadCuttingSuccessView } from './components/RoadCuttingSuccessView';
 import { Footer } from './components/Footer';
+import { CouncilMembersModal } from './components/CouncilMembersModal';
+import { NoticesModal } from './components/NoticesModal';
 import { DemarcationApplication, BuildingConstructionApplication, RoadCuttingApplication } from './types';
 import { getOfficerSession } from './utils/storage';
-import { PortalConfig, getPortalConfig } from './utils/portalConfig';
+import { PortalConfig, getPortalConfig, CouncilCategory, NoticeCategory } from './utils/portalConfig';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'apply' | 'track' | 'schedule1' | 'roadcutting' | 'admin'>('home');
   const [portalConfig, setPortalConfig] = useState<PortalConfig>(getPortalConfig);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [isCouncilModalOpen, setIsCouncilModalOpen] = useState(false);
+  const [selectedCouncilCategory, setSelectedCouncilCategory] = useState<CouncilCategory | null>(null);
+  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
+  const [selectedNoticeCategory, setSelectedNoticeCategory] = useState<NoticeCategory | null>(null);
 
   const [submittedApp, setSubmittedApp] = useState<DemarcationApplication | null>(null);
   const [submittedRoadCuttingApp, setSubmittedRoadCuttingApp] = useState<RoadCuttingApplication | null>(null);
@@ -135,6 +141,24 @@ export default function App() {
         isAdminLoggedIn={isAdminLoggedIn}
         config={portalConfig}
         onOpenCustomizer={() => setIsCustomizerOpen(true)}
+        onSelectCouncilCategory={(cat) => {
+          setSelectedCouncilCategory(cat);
+          setIsCouncilModalOpen(true);
+        }}
+        onSelectNoticeCategory={(cat) => {
+          setSelectedNoticeCategory(cat);
+          setIsNoticeModalOpen(true);
+        }}
+        onOpenProjects={() => alert('প্রকল্প তালিকা শীঘ্রই যুক্ত হবে।')}
+        onOpenComplaints={() => alert('অভিযোগ মার্গ শীঘ্রই যুক্ত হবে।')}
+        onOpenOthers={() => alert('অন্যান্য সেবা শীঘ্রই যুক্ত হবে।')}
+        onOpenCitizenServiceInfo={(service) => {
+          if (service === 'holding') {
+            alert('সীতাকুণ্ড পৌরসভা ই-হোল্ডিং ট্যাক্স ও এসেসমেন্ট সেবা:\n\nনাগরিকগণ পৌর রাজস্ব শাখায় সরাসরি এসেসমেন্ট কর পরিশোধ করতে পারবেন অথবা পৌর নির্বাহী কর্মকর্তার কার্যালয় থেকে হোল্ডিং নম্বর যাচাই ও ধার্যকৃত বাৎসরিক কর বিবরণী সংগ্রহ করতে পারবেন।');
+          } else if (service === 'tradelicense') {
+            alert('সীতাকুণ্ড পৌরসভা ই-ট্রেড লাইসেন্স সেবা:\n\nনতুন ব্যবসা শুরু বা নবায়নের জন্য পৌর ট্রেড লাইসেন্স শাখায় নির্ধারিত ফি ও ট্রেজারি চালানের মাধ্যমে দ্রুততম সময়ে লাইসেন্স ইস্যু করা হয়।');
+          }
+        }}
       />
 
       {/* Main Content Area */}
@@ -151,6 +175,10 @@ export default function App() {
             }}
             onSearchTracking={handleGoToTracking}
             onOpenCustomizer={() => setIsCustomizerOpen(true)}
+            onOpenCouncilCategory={(cat) => {
+              setSelectedCouncilCategory(cat);
+              setIsCouncilModalOpen(true);
+            }}
           />
         )}
 
@@ -271,6 +299,26 @@ export default function App() {
           onClose={() => setRoadCuttingPrintApp(null)}
         />
       )}
+
+      {/* Council & Officers Profile Modal */}
+      <CouncilMembersModal
+        isOpen={isCouncilModalOpen}
+        onClose={() => setIsCouncilModalOpen(false)}
+        initialCategory={selectedCouncilCategory}
+        members={portalConfig.councilMembers || []}
+        isAdminLoggedIn={isAdminLoggedIn}
+        onOpenAdminPanel={() => {
+          setActiveTab('admin');
+        }}
+      />
+
+      {/* Notices Modal */}
+      <NoticesModal
+        isOpen={isNoticeModalOpen}
+        onClose={() => setIsNoticeModalOpen(false)}
+        initialCategory={selectedNoticeCategory}
+        notices={portalConfig.noticesList || []}
+      />
 
       {/* Official Footer */}
       <Footer

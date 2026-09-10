@@ -68,6 +68,8 @@ import { RoadCuttingApplicationPrintA4 } from './RoadCuttingApplicationPrintA4';
 import { BuildingApprovalPermitPrintA4 } from './BuildingApprovalPermitPrintA4';
 import { CustomCsvExportModal } from './CustomCsvExportModal';
 import { CsvModuleType } from '../utils/csvExportHelper';
+import { CouncilManagementPanel } from './CouncilManagementPanel';
+import { NoticeManagementPanel } from './NoticeManagementPanel';
 import { 
   DemarcationApplication, 
   BuildingConstructionApplication,
@@ -252,8 +254,8 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
   const [pwdChangeError, setPwdChangeError] = useState<string | null>(null);
   const [pwdChangeSuccess, setPwdChangeSuccess] = useState<string | null>(null);
 
-  // Active Dashboard Module: Demarcation or Building Schedule-1
-  const [activeModule, setActiveModule] = useState<'demarcation' | 'schedule1' | 'roadcutting'>('demarcation');
+  // Active Dashboard Module: Demarcation, Schedule-1, Road Cutting, Council, or Notices
+  const [activeModule, setActiveModule] = useState<'demarcation' | 'schedule1' | 'roadcutting' | 'council' | 'notices'>('demarcation');
   const [roadCuttingApplications, setRoadCuttingApplications] = useState<RoadCuttingApplication[]>([]);
   const [roadCuttingSearchQuery, setRoadCuttingSearchQuery] = useState<string>('');
   const [roadCuttingSelectedStatus, setRoadCuttingSelectedStatus] = useState<string>('all');
@@ -1518,6 +1520,34 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
         >
           <Construction className="w-4 h-4 text-amber-400" />
           <span>৩. রাস্তা কর্তন অনুমোদন ফরম ({toBanglaNumber(roadCuttingApplications.length)})</span>
+        </button>
+
+        <button
+          type="button"
+          id="module-tab-council"
+          onClick={() => setActiveModule('council')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeModule === 'council'
+              ? 'bg-emerald-800 text-white shadow-sm ring-2 ring-emerald-600/30'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Users className="w-4 h-4 text-emerald-400" />
+          <span>৪. বর্তমান পরিষদ ও কর্মকর্তা প্রোফাইল</span>
+        </button>
+
+        <button
+          type="button"
+          id="module-tab-notices"
+          onClick={() => setActiveModule('notices')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeModule === 'notices'
+              ? 'bg-blue-700 text-white shadow-sm ring-2 ring-blue-600/30'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Bell className="w-4 h-4 text-blue-400" />
+          <span>৫. নোটিশ ও টেন্ডার ব্যবস্থাপনা</span>
         </button>
 
         {onOpenCustomizer && (
@@ -2986,6 +3016,30 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* MODULE 4: Council & Officers Management Panel */}
+      {activeModule === 'council' && (
+        <div className="space-y-6 animate-fade-in">
+          <CouncilManagementPanel 
+            onSuccessNotification={(msg) => {
+              setSaveSuccessMsg(msg);
+              setTimeout(() => setSaveSuccessMsg(null), 4000);
+            }} 
+          />
+        </div>
+      )}
+
+      {/* MODULE 5: Notice, Office Order & Tender Management */}
+      {activeModule === 'notices' && (
+        <div className="space-y-6 animate-fade-in">
+          <NoticeManagementPanel
+            onSuccessNotification={(msg) => {
+              setSaveSuccessMsg(msg);
+              setTimeout(() => setSaveSuccessMsg(null), 4000);
+            }}
+          />
         </div>
       )}
 

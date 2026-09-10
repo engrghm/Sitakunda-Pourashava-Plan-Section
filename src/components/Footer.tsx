@@ -8,9 +8,7 @@ import {
   ArrowUp, 
   Globe, 
   Award,
-  ExternalLink,
-  Sparkles,
-  Settings
+  ExternalLink
 } from 'lucide-react';
 import { MunicipalityLogo } from './MunicipalityLogo';
 import { PortalConfig } from '../utils/portalConfig';
@@ -70,7 +68,7 @@ export const Footer: React.FC<FooterProps> = ({ config, onOpenCustomizer, onNavi
                     onClick={() => onNavigateTab('apply')}
                     className="hover:text-emerald-300 transition-colors cursor-pointer flex items-center gap-1.5 text-left"
                   >
-                    <span>১. ভূমি ডিমার্কেশন ও মালিকানা যাচাই</span>
+                    <span>ভূমি ডিমার্কেশন ও মালিকানা যাচাই</span>
                   </button>
                 </li>
                 <li>
@@ -79,7 +77,7 @@ export const Footer: React.FC<FooterProps> = ({ config, onOpenCustomizer, onNavi
                     onClick={() => onNavigateTab('track')}
                     className="hover:text-emerald-300 transition-colors cursor-pointer flex items-center gap-1.5 text-left"
                   >
-                    <span>২. কিউআর কোড লাইভ আবেদন ট্র্যাকিং</span>
+                    <span>কিউআর কোড লাইভ আবেদন ট্র্যাকিং</span>
                   </button>
                 </li>
                 <li>
@@ -88,7 +86,7 @@ export const Footer: React.FC<FooterProps> = ({ config, onOpenCustomizer, onNavi
                     onClick={() => onNavigateTab('schedule1')}
                     className="hover:text-emerald-300 transition-colors cursor-pointer flex items-center gap-1.5 text-left"
                   >
-                    <span>৩. ইমারত নির্মাণ অনুমোদন (তফসিল-১)</span>
+                    <span>ইমারত নির্মাণ অনুমোদন (তফসিল-১)</span>
                   </button>
                 </li>
                 <li>
@@ -97,7 +95,7 @@ export const Footer: React.FC<FooterProps> = ({ config, onOpenCustomizer, onNavi
                     onClick={() => onNavigateTab('roadcutting')}
                     className="hover:text-emerald-300 transition-colors cursor-pointer flex items-center gap-1.5 text-left"
                   >
-                    <span>৪. রাস্তা কর্তন ও মেরামত অনুমোদন</span>
+                    <span>রাস্তা কর্তন ও মেরামত অনুমোদন</span>
                   </button>
                 </li>
                 <li>
@@ -106,7 +104,7 @@ export const Footer: React.FC<FooterProps> = ({ config, onOpenCustomizer, onNavi
                     onClick={() => onNavigateTab('admin')}
                     className="hover:text-emerald-300 transition-colors cursor-pointer flex items-center gap-1.5 text-left"
                   >
-                    <span>৫. কর্মকর্তা ও কর্মচারী দাপ্তরিক লগইন</span>
+                    <span>কর্মকর্তা ও কর্মচারী দাপ্তরিক লগইন</span>
                   </button>
                 </li>
               </ul>
@@ -145,7 +143,7 @@ export const Footer: React.FC<FooterProps> = ({ config, onOpenCustomizer, onNavi
             <div className="space-y-3">
               <h4 className="text-white font-semibold text-sm flex items-center gap-2 border-b border-slate-800 pb-2">
                 <Globe className="w-4 h-4 text-emerald-400" />
-                <span>জাতীয় লিংক ও সেটিংস</span>
+                <span>জাতীয় গুরুত্বপূর্ণ লিংকসমূহ</span>
               </h4>
               <ul className="space-y-1.5 text-xs text-slate-300">
                 {config.importantLinks.map((link, idx) => (
@@ -162,17 +160,6 @@ export const Footer: React.FC<FooterProps> = ({ config, onOpenCustomizer, onNavi
                   </li>
                 ))}
               </ul>
-
-              <div className="pt-3">
-                <button
-                  type="button"
-                  onClick={onOpenCustomizer}
-                  className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 text-xs font-bold border border-slate-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Settings className="w-3.5 h-3.5" />
-                  <span>ওয়েবসাইট কাস্টমাইজ করুন</span>
-                </button>
-              </div>
             </div>
 
           </div>
