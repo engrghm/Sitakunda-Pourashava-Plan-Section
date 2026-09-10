@@ -1,8 +1,13 @@
 import { DemarcationApplication, OfficerUser, ApplicationDraftData, SystemAuditLogItem, AuditActionType, BuildingConstructionApplication, RoadCuttingApplication } from '../types';
+import {
+  INITIAL_DEMARCATION_APPLICATIONS,
+  INITIAL_BUILDING_APPLICATIONS,
+  INITIAL_ROAD_CUTTING_APPLICATIONS
+} from '../data/initialApplications';
 
-const STORAGE_KEY = 'sitakunda_demarcation_applications_v4';
-const BUILDING_APPS_STORAGE_KEY = 'sitakunda_building_applications_v3';
-const ROAD_CUTTING_APPS_STORAGE_KEY = 'sitakunda_road_cutting_applications_v2';
+const STORAGE_KEY = 'sitakunda_demarcation_applications_clean_v1';
+const BUILDING_APPS_STORAGE_KEY = 'sitakunda_building_applications_clean_v1';
+const ROAD_CUTTING_APPS_STORAGE_KEY = 'sitakunda_road_cutting_applications_clean_v1';
 const AUTH_KEY = 'sitakunda_admin_session_auth';
 const PASSWORDS_STORAGE_KEY = 'sitakunda_officer_passwords_v1';
 const DRAFT_STORAGE_KEY = 'sitakunda_demarcation_draft_v1';
@@ -14,8 +19,15 @@ try {
     localStorage.removeItem('sitakunda_demarcation_applications_v1');
     localStorage.removeItem('sitakunda_demarcation_applications_v2');
     localStorage.removeItem('sitakunda_demarcation_applications_v3');
+    localStorage.removeItem('sitakunda_demarcation_applications_v4');
+    localStorage.removeItem('sitakunda_demarcation_applications_v5');
     localStorage.removeItem('sitakunda_building_applications_v1');
     localStorage.removeItem('sitakunda_building_applications_v2');
+    localStorage.removeItem('sitakunda_building_applications_v3');
+    localStorage.removeItem('sitakunda_building_applications_v4');
+    localStorage.removeItem('sitakunda_road_cutting_applications_v1');
+    localStorage.removeItem('sitakunda_road_cutting_applications_v2');
+    localStorage.removeItem('sitakunda_road_cutting_applications_v3');
     localStorage.removeItem('sitakunda_demarcation_draft_v1');
     localStorage.removeItem('sitakunda_recent_tracking_searches_v1');
   }
@@ -188,7 +200,6 @@ export function getStoredApplications(): DemarcationApplication[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      // Initialize with empty array — no demo data
       localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
       return [];
     }
@@ -520,7 +531,6 @@ export function getBuildingApplications(): BuildingConstructionApplication[] {
   try {
     const raw = localStorage.getItem(BUILDING_APPS_STORAGE_KEY);
     if (!raw) {
-      // Initialize with empty array — no demo data
       localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify([]));
       return [];
     }
@@ -571,7 +581,6 @@ export function getRoadCuttingApplications(): RoadCuttingApplication[] {
   try {
     const raw = localStorage.getItem(ROAD_CUTTING_APPS_STORAGE_KEY);
     if (!raw) {
-      // Initialize with empty array — no demo data
       localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify([]));
       return [];
     }
@@ -627,4 +636,26 @@ export function generateRoadCuttingId(): string {
 export function generateRoadCuttingFormNo(): string {
   const randomSixDigits = Math.floor(100000 + Math.random() * 900000);
   return `SKM-RC-FORM-${randomSixDigits}`;
+}
+
+/**
+ * Resets all applications across all 3 modules to empty
+ */
+export function resetToDemoApplications(): {
+  demarcation: DemarcationApplication[];
+  building: BuildingConstructionApplication[];
+  roadCutting: RoadCuttingApplication[];
+} {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+    localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify([]));
+    localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify([]));
+  } catch (err) {
+    console.error('Error clearing applications:', err);
+  }
+  return {
+    demarcation: [],
+    building: [],
+    roadCutting: [],
+  };
 }

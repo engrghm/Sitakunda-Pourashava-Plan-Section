@@ -7,6 +7,8 @@ export interface LandOwner {
   sameAsPermanent?: boolean; // স্থায়ী ঠিকানা ও বর্তমান ঠিকানা একই
   nid?: string; // জাতীয় পরিচয়পত্র (NID) নম্বর * (১০ / ১৩ / ১৭ ডিজিট)
   email?: string; // ইমেইল ঠিকানা (ঐচ্ছিক)
+  mobile?: string; // মোবাইল নম্বর (ঐচ্ছিক)
+  ownershipShare?: string; // মালিকানার হিস্যা/অংশ
 }
 
 export interface ProposedConstruction {
@@ -209,8 +211,8 @@ export interface DemarcationApplication {
   paymentDetails?: PaymentDetails;
   draftsmanReview?: DraftsmanReview;
   engineerApproval?: EngineerApproval;
-  declaredByApplicant: boolean;
-  declarationDate: string;
+  declaredByApplicant?: boolean;
+  declarationDate?: string;
   notificationPreferences?: NotificationPreferences;
   notificationLogs?: NotificationLog[];
   statusHistory?: StatusHistoryItem[];
@@ -388,8 +390,18 @@ export interface BuildingConstructionApplication {
     gasLineDistance: string; // (ঙ) গ্যাস সরবরাহ লাইনের দূরত্ব
   };
 
-  // ফি ও পেমেন্ট (১,০০০/- টাকা)
-  feeAmount: number; // ১০০০ টাকা
+  // ফি ও পেমেন্ট (১. আবেদন ফি ১০০০/- ফিক্সড; ২. ইমারত নির্মাণ ফি + ১৫% ভ্যাট = মোট চালান)
+  applicationFeeAmount?: number; // ২। ইমারত নির্মাণ আবেদন ফি (ফিক্সড ১,০০০/- টাকা, ভ্যাট প্রযোজ্য নহে)
+  applicationFeeStatus?: 'paid' | 'unpaid'; // আবেদন ফি জমার অবস্থা
+  applicationFeeReceiptNo?: string; // আবেদন ফি ক্যাশ রসিদ নং / ট্রানজেকশন নং
+  applicationFeeReceiptDate?: string; // আবেদন ফি জমার তারিখ
+  applicationFeePaymentMethod?: string; // আবেদন ফি জমার মাধ্যম (ক্যাশ কাউন্টার / অনলাইন)
+
+  // ৩। ইমারত নির্মাণ ফি জমা ও মোট চালান বিবরণ
+  buildingPermitFeeAmount?: number; // ইমারত নির্মাণ ফি (টাকা) - নক্সাকার কর্তৃক সম্পাদিত
+  vatAmount?: number; // ১৫% সরকারি ভ্যাট (টাকা) - নক্সাকার কর্তৃক সম্পাদিত
+  vatPercent?: number; // ভ্যাট শতকরা হার (ডিফল্ট ১৫%)
+  feeAmount: number; // সর্বমোট ফি / চালান জমার পরিমাণ (টাকা) (ইমারত নির্মাণ ফি + ১৫% ভ্যাট)
   feeStatus: 'paid' | 'unpaid';
   paymentMethod: 'online' | 'counter_receipt' | 'bank_draft' | 'pay_order' | 'chalan' | string;
   paymentMethodTitle: string;
@@ -401,10 +413,27 @@ export interface BuildingConstructionApplication {
   moneyReceiptNo?: string; // পৌরসভা ক্যাশ রসিদ নম্বর
   moneyReceiptDate?: string; // রসিদ জমার তারিখ
   treasuryCode?: string; // সরকারি ট্রেজারী কোড (যেমন ১-২০৩১-০০০০-২৬৮১)
+
+  // ১৫% ভ্যাট আলাদা ট্রেজারী চালানে জমার অপশন
+  hasSeparateVatChalan?: boolean; // ভ্যাটের চালান কি আলাদাভাবে দাখিল করা হয়েছে?
+  vatChalanNo?: string; // পৃথক ভ্যাট ট্রেজারী চালান নম্বর
+  vatChalanDate?: string; // ভ্যাট চালান জমার তারিখ
+  vatBankName?: string; // ভ্যাট জমার ব্যাংক
+  vatBranchName?: string; // ভ্যাট জমার শাখা
+  vatEconomicCode?: string; // ভ্যাট ট্রেজারী কোড (যেমন ১-১১৩৩-০০১০-০৩১১)
+
   treasuryVerifiedBy?: string; // নক্সাকারের নাম ও আইডি
   treasuryVerifiedAt?: string; // নক্সাকার এন্ট্রির তারিখ/সময়
-  treasuryRemarks?: string; // নক্সাকারের মূল্যায়ন ও মন্তব্য
   attachedDrawingsDescription?: string;
+  submittedDocuments?: {
+    sevenCopiesDrawings?: boolean;
+    soilTestOriginal?: boolean;
+    engineerAffidavitStamp?: boolean;
+    ownerAffidavitStamp?: boolean;
+    loadBearingCertificate?: boolean;
+    others?: boolean;
+    othersDetails?: string;
+  };
 
   // নক্সাকার কর্তৃক ২ দফা ডাটা আপডেট:
   // ১। ৭ কপি নকশার ফর্দ জমা দিয়েছে কি না

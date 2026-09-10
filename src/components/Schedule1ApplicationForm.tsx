@@ -34,7 +34,9 @@ import {
   Flame,
   Download,
   ExternalLink,
-  Award
+  Award,
+  AlertCircle,
+  FileCheck
 } from 'lucide-react';
 import { Schedule1ApplicationPrintA4 } from './Schedule1ApplicationPrintA4';
 import { 
@@ -82,50 +84,50 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
   const [applicantEmail, setApplicantEmail] = useState<string>('');
 
   // 3. Land / Site Details
-  const [siteAreaName, setSiteAreaName] = useState<string>('সীতাকুণ্ড পৌরসভা');
-  const [dagKhatianPlotNo, setDagKhatianPlotNo] = useState<string>('বি.এস দাগ নং- ১৫৩৩, বি.এস খতিয়ান নং- ২৭৪');
-  const [mouzaBlockSector, setMouzaBlockSector] = useState<string>('আমিরাবাদ (জে.এল নং- ২৫)');
-  const [wardNo, setWardNo] = useState<string>('৭ নং ওয়ার্ড');
-  const [roadName, setRoadName] = useState<string>('পৌর মেইন রোড');
-  const [sheetNo, setSheetNo] = useState<string>('০১ নং সিট');
-  const [applicantShare, setApplicantShare] = useState<string>('সম্পূর্ণ অংশ (১০০%)');
-  const [landAcquisitionSource, setLandAcquisitionSource] = useState<string>('সাফ-কবলা দলিল নং- ৪১৪/২৩');
+  const [siteAreaName, setSiteAreaName] = useState<string>('');
+  const [dagKhatianPlotNo, setDagKhatianPlotNo] = useState<string>('');
+  const [mouzaBlockSector, setMouzaBlockSector] = useState<string>('');
+  const [wardNo, setWardNo] = useState<string>('');
+  const [roadName, setRoadName] = useState<string>('');
+  const [sheetNo, setSheetNo] = useState<string>('');
+  const [applicantShare, setApplicantShare] = useState<string>('');
+  const [landAcquisitionSource, setLandAcquisitionSource] = useState<string>('');
 
   // 4. Site details
-  const [siteAreaSize, setSiteAreaSize] = useState<string>('১০.৫০ শতাংশ');
-  const [boundNorth, setBoundNorth] = useState<string>('উত্তরে ব্যক্তিমালিকানাধীন জায়গা');
-  const [boundSouth, setBoundSouth] = useState<string>('দক্ষিণে পৌরসভা সড়ক');
-  const [boundEast, setBoundEast] = useState<string>('পূর্বে সীমানা দেওয়াল');
-  const [boundWest, setBoundWest] = useState<string>('পশ্চিমে খালি জমি');
+  const [siteAreaSize, setSiteAreaSize] = useState<string>('');
+  const [boundNorth, setBoundNorth] = useState<string>('');
+  const [boundSouth, setBoundSouth] = useState<string>('');
+  const [boundEast, setBoundEast] = useState<string>('');
+  const [boundWest, setBoundWest] = useState<string>('');
 
-  const [coveredFirstFloor, setCoveredFirstFloor] = useState<string>('১১৫.৫০');
-  const [coveredOtherFloors, setCoveredOtherFloors] = useState<string>('২৩০.৪৯');
+  const [coveredFirstFloor, setCoveredFirstFloor] = useState<string>('');
+  const [coveredOtherFloors, setCoveredOtherFloors] = useState<string>('');
 
-  const [nearestRoadName, setNearestRoadName] = useState<string>('পৌর প্রধান সংযোগ সড়ক');
-  const [nearestRoadPosition, setNearestRoadPosition] = useState<string>('দক্ষিণ');
-  const [nearestRoadDistance, setNearestRoadDistance] = useState<string>('১০ ফুট');
-  const [nearestRoadWidth, setNearestRoadWidth] = useState<string>('১৮ ফুট');
-  const [roadAccessWay, setRoadAccessWay] = useState<string>('পৌর মেইন রাস্তা হইতে সরাসরি প্রবেশপথ');
+  const [nearestRoadName, setNearestRoadName] = useState<string>('');
+  const [nearestRoadPosition, setNearestRoadPosition] = useState<string>('');
+  const [nearestRoadDistance, setNearestRoadDistance] = useState<string>('');
+  const [nearestRoadWidth, setNearestRoadWidth] = useState<string>('');
+  const [roadAccessWay, setRoadAccessWay] = useState<string>('');
 
-  const [setbackNorth, setSetbackNorth] = useState<string>('৫ ফুট');
-  const [setbackSouth, setSetbackSouth] = useState<string>('৫ ফুট');
-  const [setbackEast, setSetbackEast] = useState<string>('৩.৫ ফুট');
-  const [setbackWest, setSetbackWest] = useState<string>('৩.৫ ফুট');
+  const [setbackNorth, setSetbackNorth] = useState<string>('');
+  const [setbackSouth, setSetbackSouth] = useState<string>('');
+  const [setbackEast, setSetbackEast] = useState<string>('');
+  const [setbackWest, setSetbackWest] = useState<string>('');
 
   // 5. Existing structure
-  const [existingStructure, setExistingStructure] = useState<string>('কোন পূর্ব নির্মিত ইমারত নাই (খালি সাইট)');
-  const [demolitionRequired, setDemolitionRequired] = useState<string>('না, কোনো অংশ ভাঙ্গার প্রয়োজন নাই');
+  const [existingStructure, setExistingStructure] = useState<string>('');
+  const [demolitionRequired, setDemolitionRequired] = useState<string>('');
 
   // 6. Utilities
-  const [utilElectricity, setUtilElectricity] = useState<boolean>(true);
-  const [utilWater, setUtilWater] = useState<boolean>(true);
+  const [utilElectricity, setUtilElectricity] = useState<boolean>(false);
+  const [utilWater, setUtilWater] = useState<boolean>(false);
   const [utilGas, setUtilGas] = useState<boolean>(false);
-  const [utilSewerage, setUtilSewerage] = useState<boolean>(true);
-  const [utilSepticTank, setUtilSepticTank] = useState<boolean>(true);
+  const [utilSewerage, setUtilSewerage] = useState<boolean>(false);
+  const [utilSepticTank, setUtilSepticTank] = useState<boolean>(false);
 
   // 7, 8
-  const [workStartDate, setWorkStartDate] = useState<string>('২০২৬-১০-১৫');
-  const [purpose, setPurpose] = useState<string>('পৌর এলাকার বিল্ডিং কোড অনুযায়ী পরিকল্পিত আবাসিক ভবন নির্মাণ।');
+  const [workStartDate, setWorkStartDate] = useState<string>('');
+  const [purpose, setPurpose] = useState<string>('');
 
   // 9, 10
   const [priorNotice, setPriorNotice] = useState<boolean>(false);
@@ -134,11 +136,20 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
   const [legalCaseDetails, setLegalCaseDetails] = useState<string>('');
 
   // 11. Activity Distances
-  const [distRoad, setDistRoad] = useState<string>('১০ ফুট');
-  const [distBuilding, setDistBuilding] = useState<string>('১৫ ফুট');
-  const [distDrain, setDistDrain] = useState<string>('৮ ফুট');
-  const [distElectric, setDistElectric] = useState<string>('১২ ফুট');
-  const [distGas, setDistGas] = useState<string>('নাই');
+  const [distRoad, setDistRoad] = useState<string>('');
+  const [distBuilding, setDistBuilding] = useState<string>('');
+  const [distDrain, setDistDrain] = useState<string>('');
+  const [distElectric, setDistElectric] = useState<string>('');
+  const [distGas, setDistGas] = useState<string>('');
+
+  // সংযুক্ত আবশ্যকীয় কাগজপত্র ও নকশা চেকলিস্ট
+  const [doc7Drawings, setDoc7Drawings] = useState<boolean>(true); // ১. ৭ ফর্দ নকশা
+  const [docSoilTestOriginal, setDocSoilTestOriginal] = useState<boolean>(false); // ২. সয়েল টেস্টের মূল কপি
+  const [docEngineerAffidavit, setDocEngineerAffidavit] = useState<boolean>(false); // ৩. প্রকৌশলীর অঙ্গীকারনামা (নোটারি)
+  const [docOwnerAffidavit, setDocOwnerAffidavit] = useState<boolean>(false); // ৪. ইমারত মালিকের অঙ্গীকারনামা (নোটারি)
+  const [docLoadBearingCert, setDocLoadBearingCert] = useState<boolean>(false); // ৫. লোড বিয়ারিং সার্টিফিকেট
+  const [docOthers, setDocOthers] = useState<boolean>(false); // ৬. অন্যান্য
+  const [docOthersDetails, setDocOthersDetails] = useState<string>('');
 
   // Form Validation and Submission Error State
   const [formValidationErrors, setFormValidationErrors] = useState<string[]>([]);
@@ -477,8 +488,16 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
       paymentMethodTitle: 'পৌরসভা ক্যাশ কাউন্টার রসিদ',
       moneyReceiptNo: moneyReceiptNo.trim() || undefined,
       moneyReceiptDate: moneyReceiptDate || new Date().toISOString().split('T')[0],
-      trxId: moneyReceiptNo.trim() || `MR-${Math.floor(100000 + Math.random() * 900000)}`,
       attachedDrawingsDescription: attachedDrawingsDesc,
+      submittedDocuments: {
+        sevenCopiesDrawings: doc7Drawings,
+        soilTestOriginal: docSoilTestOriginal,
+        engineerAffidavitStamp: docEngineerAffidavit,
+        ownerAffidavitStamp: docOwnerAffidavit,
+        loadBearingCertificate: docLoadBearingCert,
+        others: docOthers,
+        othersDetails: docOthersDetails,
+      },
 
       declarationAccepted: true,
       status: 'submitted',
@@ -883,9 +902,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                 </label>
                 <input
                   type="text"
+                  placeholder="উদাঃ সীতাকুণ্ড পৌরসভা, কলেজ রোড"
                   value={siteAreaName}
                   onChange={(e) => setSiteAreaName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none placeholder:text-slate-400 placeholder:font-normal"
                 />
               </div>
 
@@ -895,9 +915,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                 </label>
                 <input
                   type="text"
+                  placeholder="উদাঃ বি.এস দাগ নং- ১৫৩৩, বি.এস খতিয়ান নং- ২৭৪"
                   value={dagKhatianPlotNo}
                   onChange={(e) => setDagKhatianPlotNo(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none font-semibold"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none font-semibold placeholder:text-slate-400 placeholder:font-normal"
                 />
               </div>
 
@@ -907,9 +928,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                 </label>
                 <input
                   type="text"
+                  placeholder="উদাঃ আমিরাবাদ (জে.এল নং- ২৫)"
                   value={mouzaBlockSector}
                   onChange={(e) => setMouzaBlockSector(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none placeholder:text-slate-400 placeholder:font-normal"
                 />
               </div>
 
@@ -922,6 +944,7 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                   onChange={(e) => setWardNo(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                 >
+                  <option value="">-- ওয়ার্ড নং নির্বাচন করুন --</option>
                   {VALID_WARDS.map((w) => (
                     <option key={w} value={w}>
                       {w}
@@ -936,9 +959,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                 </label>
                 <input
                   type="text"
+                  placeholder="উদাঃ পৌর মেইন রোড"
                   value={roadName}
                   onChange={(e) => setRoadName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none placeholder:text-slate-400 placeholder:font-normal"
                 />
               </div>
 
@@ -948,9 +972,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                 </label>
                 <input
                   type="text"
+                  placeholder="উদাঃ ০১ নং সিট"
                   value={sheetNo}
                   onChange={(e) => setSheetNo(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none placeholder:text-slate-400 placeholder:font-normal"
                 />
               </div>
 
@@ -960,9 +985,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                 </label>
                 <input
                   type="text"
+                  placeholder="উদাঃ সম্পূর্ণ অংশ (১০০%) অথবা ৫.২৫ শতাংশ"
                   value={applicantShare}
                   onChange={(e) => setApplicantShare(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none font-semibold"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none font-semibold placeholder:text-slate-400 placeholder:font-normal"
                 />
               </div>
 
@@ -996,9 +1022,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                 </label>
                 <input
                   type="text"
+                  placeholder="উদাঃ ১০.৫০ শতাংশ (বা ৪৫৭৩.৮ বর্গফুট)"
                   value={siteAreaSize}
                   onChange={(e) => setSiteAreaSize(e.target.value)}
-                  className="w-full max-w-md px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none font-semibold"
+                  className="w-full max-w-md px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none font-semibold placeholder:text-slate-400 placeholder:font-normal"
                 />
               </div>
 
@@ -1013,10 +1040,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                     </label>
                     <input
                       type="text"
-                      placeholder="যেমন: নিজস্ব জমি / রাস্তা"
+                      placeholder="উদাঃ ব্যক্তিমালিকানাধীন জায়গা / জমি"
                       value={boundNorth}
                       onChange={(e) => setBoundNorth(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-600 bg-white"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-600 bg-white placeholder:text-slate-400"
                     />
                   </div>
                   <div>
@@ -1025,10 +1052,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                     </label>
                     <input
                       type="text"
-                      placeholder="যেমন: পার্শ্ববর্তী সীমানা"
+                      placeholder="উদাঃ পৌরসভা পাকা সড়ক"
                       value={boundSouth}
                       onChange={(e) => setBoundSouth(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-600 bg-white"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-600 bg-white placeholder:text-slate-400"
                     />
                   </div>
                   <div>
@@ -1037,10 +1064,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                     </label>
                     <input
                       type="text"
-                      placeholder="যেমন: সংযোগ সড়ক ও ড্রেন"
+                      placeholder="উদাঃ সীমানা দেওয়াল"
                       value={boundEast}
                       onChange={(e) => setBoundEast(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-600 bg-white"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-600 bg-white placeholder:text-slate-400"
                     />
                   </div>
                   <div>
@@ -1049,10 +1076,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                     </label>
                     <input
                       type="text"
-                      placeholder="যেমন: সীমানা প্রাচীর"
+                      placeholder="উদাঃ খালি জমি"
                       value={boundWest}
                       onChange={(e) => setBoundWest(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-600 bg-white"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-600 bg-white placeholder:text-slate-400"
                     />
                   </div>
                 </div>
@@ -1192,9 +1219,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                 </label>
                 <input
                   type="text"
+                  placeholder="উদাঃ পৌর মেইন রাস্তা হইতে সরাসরি প্রবেশপথ"
                   value={roadAccessWay}
                   onChange={(e) => setRoadAccessWay(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none placeholder:text-slate-400 placeholder:font-normal"
                 />
               </div>
 
@@ -1303,9 +1331,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                 </label>
                 <input
                   type="text"
+                  placeholder="উদাঃ কোন পূর্ব নির্মিত ইমারত নাই (খালি সাইট)"
                   value={existingStructure}
                   onChange={(e) => setExistingStructure(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm"
+                  className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm placeholder:text-slate-400 placeholder:font-normal focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                 />
               </div>
 
@@ -1315,9 +1344,10 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                 </label>
                 <input
                   type="text"
+                  placeholder="উদাঃ না, কোনো অংশ ভাঙ্গার প্রয়োজন নাই"
                   value={demolitionRequired}
                   onChange={(e) => setDemolitionRequired(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm"
+                  className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm placeholder:text-slate-400 placeholder:font-normal focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                 />
               </div>
             </div>
@@ -1687,72 +1717,139 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
               </div>
             </div>
 
-            {/* 7 Drawings Checklist Box */}
-            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2.5">
-              <span className="text-xs font-bold text-emerald-950 block">
-                ইমারত নির্মাণ বিধিমালা ১৯৯৬ এর বিধি ৫ মোতাবেক সংযুক্ত ৭ ফর্দ নকশা চেকলিস্ট:
-              </span>
+            {/* সংযুক্ত আবশ্যকীয় কাগজপত্র ও নকশা চেকলিস্ট */}
+            <div className="p-4 sm:p-5 bg-emerald-50/80 border-2 border-emerald-300 rounded-2xl space-y-3.5 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200 pb-2.5">
+                <div>
+                  <span className="text-xs sm:text-sm font-bold text-emerald-950 flex items-center gap-2">
+                    <FileCheck className="w-4 h-4 text-emerald-700" />
+                    ইমারত নির্মাণ অনুমোদনের জন্য সংযুক্ত আবশ্যকীয় কাগজপত্র ও নকশার চেকলিস্ট:
+                  </span>
+                  <p className="text-[11px] text-emerald-800 mt-0.5">
+                    আবেদনকারী যে সকল কাগজপত্র দাখিল করিবেন সেগুলোর পাশে টিক [✓] দিন।
+                  </p>
+                </div>
+                <span className="inline-flex items-center text-[10px] font-bold text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-300 self-start sm:self-auto">
+                  দাখিলযোগ্য চেকলিস্ট
+                </span>
+              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-800">
-                <label className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded-lg border border-emerald-100">
+              {/* Notice: All original copies must be submitted to municipal authority */}
+              <div className="p-3 bg-amber-50/90 border border-amber-300 rounded-xl text-xs flex items-start gap-2.5 text-amber-900">
+                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <div className="text-[11px] leading-relaxed">
+                  <strong className="text-amber-950 font-bold block mb-0.5">মূল কপি (Original Copy) জমা সংক্রান্ত জরুরি নির্দেশনা:</strong>
+                  উক্ত সকল নথিপত্র ও কাগজপত্রের <strong>মূল কপি (Original Copy)</strong> সরাসরি পৌরসভা কর্তৃপক্ষের নিকট জমা প্রদান করিতে হইবে।
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-800">
+                {/* ১. ৭ ফর্দ নকশা */}
+                <label className={`flex items-start gap-2.5 p-3 rounded-xl border transition-all cursor-pointer ${
+                  doc7Drawings ? 'bg-white border-emerald-500 ring-1 ring-emerald-400 shadow-xs' : 'bg-white/70 border-slate-200 hover:bg-white'
+                }`}>
                   <input
                     type="checkbox"
-                    checked={checked7Drawings}
-                    onChange={(e) => setChecked7Drawings(e.target.checked)}
-                    className="w-3.5 h-3.5 text-emerald-600 rounded"
+                    checked={doc7Drawings}
+                    onChange={(e) => setDoc7Drawings(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded mt-0.5 cursor-pointer accent-emerald-600"
                   />
-                  <span>১:২০০ স্কেলে সাইট লে-আউট প্ল্যান ও চৌহদ্দি</span>
+                  <div>
+                    <span className="font-bold text-slate-900 block">১. ৭ ফর্দ নকশা</span>
+                    <span className="text-[11px] text-slate-600">ইমারত নির্মাণ বিধিমালা ১৯৯৬ এর বিধি ৫ মোতাবেক ৭ কপি নকশার ফর্দ</span>
+                  </div>
                 </label>
 
-                <label className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded-lg border border-emerald-100">
+                {/* ২. ১ থেকে বহুতল ইমারতের জন্য সয়েল টেস্টের মূল কপি */}
+                <label className={`flex items-start gap-2.5 p-3 rounded-xl border transition-all cursor-pointer ${
+                  docSoilTestOriginal ? 'bg-white border-emerald-500 ring-1 ring-emerald-400 shadow-xs' : 'bg-white/70 border-slate-200 hover:bg-white'
+                }`}>
                   <input
                     type="checkbox"
-                    checked={checked7Drawings}
-                    onChange={(e) => setChecked7Drawings(e.target.checked)}
-                    className="w-3.5 h-3.5 text-emerald-600 rounded"
+                    checked={docSoilTestOriginal}
+                    onChange={(e) => setDocSoilTestOriginal(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded mt-0.5 cursor-pointer accent-emerald-600"
                   />
-                  <span>সি.এস / আর.এস মৌজা দাগ অবস্থান নির্দেশক সাইট প্ল্যান</span>
+                  <div>
+                    <span className="font-bold text-slate-900 block">২. সয়েল টেস্টের মূল কপি</span>
+                    <span className="text-[11px] text-slate-600">১ থেকে বহুতল ইমারতের জন্য সয়েল টেস্টের মূল কপি (Soil Test Report)</span>
+                  </div>
                 </label>
 
-                <label className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded-lg border border-emerald-100">
+                {/* ৩. ৩০০ টাকার অঙ্গীকারনামায় ইঞ্জিনিয়ার স্ট্যাম্প (নোটারি) */}
+                <label className={`flex items-start gap-2.5 p-3 rounded-xl border transition-all cursor-pointer ${
+                  docEngineerAffidavit ? 'bg-white border-emerald-500 ring-1 ring-emerald-400 shadow-xs' : 'bg-white/70 border-slate-200 hover:bg-white'
+                }`}>
                   <input
                     type="checkbox"
-                    checked={checked7Drawings}
-                    onChange={(e) => setChecked7Drawings(e.target.checked)}
-                    className="w-3.5 h-3.5 text-emerald-600 rounded"
+                    checked={docEngineerAffidavit}
+                    onChange={(e) => setDocEngineerAffidavit(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded mt-0.5 cursor-pointer accent-emerald-600"
                   />
-                  <span>১:৫০ বা ১:১০০ স্কেলে প্রতিটি তলার বিস্তারিত ফ্লোর প্ল্যান</span>
+                  <div>
+                    <span className="font-bold text-slate-900 block">৩. প্রকৌশলীর অঙ্গীকারনামা (নোটারি)</span>
+                    <span className="text-[11px] text-slate-600">৩০০ টাকার নন-জুডিশিয়াল স্ট্যাম্পে সংশ্লিষ্ট প্রকৌশলীর অঙ্গীকারনামা (নোটারিকৃত)</span>
+                  </div>
                 </label>
 
-                <label className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded-lg border border-emerald-100">
+                {/* ৪. ৩০০ টাকার অঙ্গীকারনামায় ইমারত মালিকের স্ট্যাম্প (নোটারি) */}
+                <label className={`flex items-start gap-2.5 p-3 rounded-xl border transition-all cursor-pointer ${
+                  docOwnerAffidavit ? 'bg-white border-emerald-500 ring-1 ring-emerald-400 shadow-xs' : 'bg-white/70 border-slate-200 hover:bg-white'
+                }`}>
                   <input
                     type="checkbox"
-                    checked={checked7Drawings}
-                    onChange={(e) => setChecked7Drawings(e.target.checked)}
-                    className="w-3.5 h-3.5 text-emerald-600 rounded"
+                    checked={docOwnerAffidavit}
+                    onChange={(e) => setDocOwnerAffidavit(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded mt-0.5 cursor-pointer accent-emerald-600"
                   />
-                  <span>প্রধান সড়ক সম্মুখের এলিভেশন ও ক্রস সেকশন</span>
+                  <div>
+                    <span className="font-bold text-slate-900 block">৪. ইমারত মালিকের অঙ্গীকারনামা (নোটারি)</span>
+                    <span className="text-[11px] text-slate-600">৩০০ টাকার নন-জুডিশিয়াল স্ট্যাম্পে ইমারত মালিকের অঙ্গীকারনামা (নোটারিকৃত)</span>
+                  </div>
                 </label>
 
-                <label className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded-lg border border-emerald-100">
+                {/* ৫. লোড বেয়ারিং সার্টিফিকেট */}
+                <label className={`flex items-start gap-2.5 p-3 rounded-xl border transition-all cursor-pointer ${
+                  docLoadBearingCert ? 'bg-white border-emerald-500 ring-1 ring-emerald-400 shadow-xs' : 'bg-white/70 border-slate-200 hover:bg-white'
+                }`}>
                   <input
                     type="checkbox"
-                    checked={checked7Drawings}
-                    onChange={(e) => setChecked7Drawings(e.target.checked)}
-                    className="w-3.5 h-3.5 text-emerald-600 rounded"
+                    checked={docLoadBearingCert}
+                    onChange={(e) => setDocLoadBearingCert(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded mt-0.5 cursor-pointer accent-emerald-600"
                   />
-                  <span>সিঁড়িঘর, র‍্যাম্প ও জরুরি নির্গমন পথের সেকশন</span>
+                  <div>
+                    <span className="font-bold text-slate-900 block">৫. লোড বেয়ারিং সার্টিফিকেট</span>
+                    <span className="text-[11px] text-slate-600">অনুমোদিত স্ট্রাকচারাল ইঞ্জিনিয়ার কর্তৃক লোড বেয়ারিং সনদ (Load Bearing Certificate)</span>
+                  </div>
                 </label>
 
-                <label className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded-lg border border-emerald-100">
-                  <input
-                    type="checkbox"
-                    checked={checked7Drawings}
-                    onChange={(e) => setChecked7Drawings(e.target.checked)}
-                    className="w-3.5 h-3.5 text-emerald-600 rounded"
-                  />
-                  <span>কার্নিশ, সানসেড, ছাদ ও পার্কিং লে-আউট ড্রয়িং</span>
-                </label>
+                {/* ৬. অন্যান্য (Others) */}
+                <div className={`p-3 rounded-xl border transition-all ${
+                  docOthers ? 'bg-white border-emerald-500 ring-1 ring-emerald-400 shadow-xs' : 'bg-white/70 border-slate-200'
+                }`}>
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={docOthers}
+                      onChange={(e) => setDocOthers(e.target.checked)}
+                      className="w-4 h-4 text-emerald-600 rounded mt-0.5 cursor-pointer accent-emerald-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 block">৬. অন্যান্য কাগজপত্র (Others)</span>
+                      <span className="text-[11px] text-slate-600">বিশেষ কোনো অনাপত্তি বা ছাড়পত্র (প্রযোজ্য ক্ষেত্রে)</span>
+                    </div>
+                  </label>
+                  {docOthers && (
+                    <input
+                      type="text"
+                      placeholder="অন্যান্য সংযুক্ত কাগজপত্রের নাম ও বিবরণ লিখুন..."
+                      value={docOthersDetails}
+                      onChange={(e) => setDocOthersDetails(e.target.value)}
+                      className="mt-2 w-full px-3 py-1.5 border border-emerald-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none bg-white placeholder:text-slate-400"
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1836,7 +1933,7 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
               <div className="space-y-0.5">
                 <span className="font-bold block text-amber-950">অফিসিয়াল ট্রেজারী চালান ও ব্যাংক ড্রাফট সংক্রান্ত নির্দেশনা:</span>
                 <p className="text-[11px] text-amber-800 leading-relaxed">
-                  গ্রাহক নিজে পৌরসভার ক্যাশ রশিদ মারফত ফি জমা প্রদান করবেন। <strong>ট্রেজারী চালান / ব্যাংক ড্রাফট / পে-অর্ডারের বিবরণ ও সরকারি হিসাব কোড</strong> নক্সাকার (সিভিল) তার অফিসিয়াল আইডি হতে যাচাইপূর্বক সিস্টেমে ইনপুট প্রদান করবেন।
+                  গ্রাহক নিজে পৌরসভার ক্যাশ রশিদ মারফত ফি জমা প্রদান করবেন। <strong>ট্রেজারী চালান / ব্যাংক ড্রাফট / পে-অর্ডারের বিবরণ ও সরকারি হিসাব কোড</strong> সংশ্লিষ্ট কর্মকর্তা তার অফিসিয়াল আইডি হতে যাচাইপূর্বক সিস্টেমে ইনপুট প্রদান করবেন।
                 </p>
               </div>
             </div>

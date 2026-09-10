@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
@@ -10,7 +10,7 @@ import { randomBytes } from 'crypto';
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
 // Configure body parsers with limit to handle PDF/image base64 document attachments
 app.use(express.json({ limit: '50mb' }));
@@ -313,9 +313,22 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Server] Land Demarcation Verification backend listening on port ${PORT}`);
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[Server] Land Demarcation Verification backend listening on port ${PORT} -> http://localhost:${PORT}`);
   });
+
+  if (PORT !== 80) {
+    try {
+      const server80 = app.listen(80, '0.0.0.0', () => {
+        console.log(`[Server] Also listening on default HTTP port 80 -> http://localhost/`);
+      });
+      server80.on('error', (err: any) => {
+        console.log(`[Server] Port 80 not available (${err.code || err.message}). Please use http://localhost:${PORT}`);
+      });
+    } catch (e: any) {
+      console.log(`[Server] Port 80 binding error: ${e.message}`);
+    }
+  }
 }
 
 startServer();

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import QRCode from 'react-qr-code';
 import { Printer, X, ShieldCheck, CheckCircle2, FileDown, Building2 } from 'lucide-react';
 import { MunicipalityLogo } from './MunicipalityLogo';
@@ -16,14 +17,22 @@ export const BuildingApprovalPermitPrintA4: React.FC<BuildingApprovalPermitPrint
 }) => {
   const [showToast, setShowToast] = React.useState(false);
 
+  // Isolate print stylesheet on mount/unmount
+  useEffect(() => {
+    document.body.classList.add('print-modal-active');
+    return () => {
+      document.body.classList.remove('print-modal-active');
+    };
+  }, []);
+
   const handlePrint = () => {
     setShowToast(true);
     setTimeout(() => {
       window.print();
-    }, 150);
+    }, 100);
     setTimeout(() => {
       setShowToast(false);
-    }, 5000);
+    }, 4000);
   };
 
   const trackingUrl = typeof window !== 'undefined' ? `${window.location.origin}/?track=${application.id}` : '';
@@ -52,8 +61,10 @@ export const BuildingApprovalPermitPrintA4: React.FC<BuildingApprovalPermitPrint
   const motherName = (application as any).applicantMotherName || 'মোসাম্মৎ নূর বাহার বেগম';
   const holdingNo = application.siteDetails?.holdingNo || '৫৮৮';
 
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs overflow-y-auto p-2 sm:p-4 md:p-6 flex flex-col items-center print:static print:bg-transparent print:overflow-visible print:p-0 print:m-0 print:block">
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="print-modal-portal print-modal-container fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs overflow-y-auto p-2 sm:p-4 md:p-6 flex flex-col items-center print:static print:bg-white print:overflow-visible print:p-0 print:m-0 print:block print:w-full print:h-auto">
       {/* Toast Notification */}
       {showToast && (
         <div className="no-print fixed top-6 right-6 z-60 bg-emerald-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-emerald-400/40 flex items-start gap-3.5 max-w-md animate-in slide-in-from-top-4 duration-300">
@@ -338,6 +349,7 @@ export const BuildingApprovalPermitPrintA4: React.FC<BuildingApprovalPermitPrint
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

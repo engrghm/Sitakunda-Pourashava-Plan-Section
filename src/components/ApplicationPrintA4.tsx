@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import QRCode from 'react-qr-code';
 import { Printer, X, Download, Building2, CheckCircle2, ShieldCheck, FileDown, Check } from 'lucide-react';
 import { MunicipalityLogo } from './MunicipalityLogo';
@@ -11,23 +12,25 @@ interface ApplicationPrintA4Props {
 }
 
 export const ApplicationPrintA4: React.FC<ApplicationPrintA4Props> = ({ application, onClose }) => {
-  const [isExporting, setIsExporting] = useState(false);
   const [showToast, setShowToast] = useState(false);
+
+  // Isolate print stylesheet on mount/unmount
+  useEffect(() => {
+    document.body.classList.add('print-modal-active');
+    return () => {
+      document.body.classList.remove('print-modal-active');
+    };
+  }, []);
 
   // Trigger high-quality native print dialog optimized for Save as PDF
   const handlePrint = () => {
-    setIsExporting(true);
     setShowToast(true);
-
-    // Give browser a frame to prepare render styles
     setTimeout(() => {
       window.print();
-      setIsExporting(false);
-    }, 150);
-
+    }, 100);
     setTimeout(() => {
       setShowToast(false);
-    }, 5000);
+    }, 4000);
   };
 
   const trackingUrl = typeof window !== 'undefined'
@@ -94,8 +97,10 @@ export const ApplicationPrintA4: React.FC<ApplicationPrintA4Props> = ({ applicat
         { id: 'doc-4', docTitle: 'সাইট ম্যাপ / অবস্থান নকশা' }
       ];
 
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs overflow-y-auto p-2 sm:p-4 md:p-6 flex flex-col items-center print:static print:bg-transparent print:overflow-visible print:p-0 print:m-0 print:block">
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="print-modal-portal print-modal-container fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs overflow-y-auto p-2 sm:p-4 md:p-6 flex flex-col items-center print:static print:bg-white print:overflow-visible print:p-0 print:m-0 print:block print:w-full print:h-auto">
       {/* Toast Notification */}
       {showToast && (
         <div className="no-print fixed top-6 right-6 z-60 bg-emerald-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-emerald-400/40 flex items-start gap-3.5 max-w-md animate-in slide-in-from-top-4 duration-300">
@@ -515,6 +520,7 @@ export const ApplicationPrintA4: React.FC<ApplicationPrintA4Props> = ({ applicat
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

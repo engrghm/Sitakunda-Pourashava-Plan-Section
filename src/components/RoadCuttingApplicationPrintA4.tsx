@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import QRCode from 'react-qr-code';
 import { Printer, X, FileDown, Construction, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { MunicipalityLogo } from './MunicipalityLogo';
@@ -14,16 +15,56 @@ export const RoadCuttingApplicationPrintA4: React.FC<RoadCuttingApplicationPrint
   application,
   onClose,
 }) => {
+  const [showToast, setShowToast] = useState(false);
+
+  // Isolate print stylesheet on mount/unmount
+  useEffect(() => {
+    document.body.classList.add('print-modal-active');
+    return () => {
+      document.body.classList.remove('print-modal-active');
+    };
+  }, []);
+
   const handlePrint = () => {
-    window.print();
+    setShowToast(true);
+    setTimeout(() => {
+      window.print();
+    }, 100);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 4000);
   };
 
   const trackingUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/?track=${application.id}`
     : `https://sitakunda-pourashava.gov.bd/?track=${application.id}`;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs overflow-y-auto p-2 sm:p-4 md:p-6 flex flex-col items-center print:static print:bg-transparent print:overflow-visible print:p-0 print:m-0 print:block">
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="print-modal-portal print-modal-container fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs overflow-y-auto p-2 sm:p-4 md:p-6 flex flex-col items-center print:static print:bg-white print:overflow-visible print:p-0 print:m-0 print:block print:w-full print:h-auto">
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="no-print fixed top-6 right-6 z-60 bg-amber-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-amber-400/40 flex items-start gap-3.5 max-w-md animate-in slide-in-from-top-4 duration-300">
+          <div className="p-2 bg-amber-700 rounded-xl shrink-0 mt-0.5">
+            <CheckCircle2 className="w-5 h-5 text-amber-300" />
+          </div>
+          <div className="flex-1 text-xs sm:text-sm">
+            <h4 className="font-bold text-white mb-0.5">রাস্তা কর্তন ফরম PDF প্রস্তুত হচ্ছে</h4>
+            <p className="text-amber-100 text-xs leading-relaxed">
+              প্রিন্ট ডায়ালগ থেকে Destination হিসেবে <strong>'Save as PDF'</strong> অথবা প্রিন্টার নির্বাচন করে ফরমটি প্রিন্ট বা সংরক্ষণ করুন।
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowToast(false)}
+            className="text-amber-300 hover:text-white p-1 rounded-lg hover:bg-amber-800 transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Top Action Bar (hidden on print) */}
       <div className="no-print w-full max-w-4xl bg-white rounded-2xl shadow-xl p-3.5 sm:p-4 mb-4 flex flex-wrap items-center justify-between gap-3 border border-slate-200 sticky top-2 z-20">
         <div className="flex items-center gap-2.5">
@@ -43,17 +84,30 @@ export const RoadCuttingApplicationPrintA4: React.FC<RoadCuttingApplicationPrint
           </span>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={handlePrint}
+            title="ব্রাউজারের প্রিন্ট ডায়ালগ খুলুন"
             className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer hover:shadow-lg"
           >
             <FileDown className="w-4 h-4" />
             <span>PDF ডাউনলোড / প্রিন্ট করুন (A4)</span>
           </button>
 
+          <button
+            type="button"
+            onClick={handlePrint}
+            title="সরাসরি প্রিন্টারে প্রিন্ট কমান্ড পাঠান"
+            className="hidden sm:flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs sm:text-sm font-semibold rounded-xl border border-slate-300 transition-colors cursor-pointer"
+          >
+            <Printer className="w-4 h-4 text-slate-700" />
+            <span>প্রিন্ট</span>
+          </button>
+
           {onClose && (
             <button
+              type="button"
               onClick={onClose}
               className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-semibold rounded-xl transition-colors cursor-pointer"
             >
@@ -181,30 +235,17 @@ export const RoadCuttingApplicationPrintA4: React.FC<RoadCuttingApplicationPrint
           </div>
 
           {/* Signatures */}
-          <div className="pt-8 grid grid-cols-3 gap-4 text-center text-xs">
-            <div>
+          <div className="pt-10 flex justify-end text-center text-xs">
+            <div className="w-56">
               <div className="border-t border-slate-400 pt-1 font-bold text-slate-800">
                 আবেদনকারীর স্বাক্ষর
               </div>
               <div className="text-[10px] text-slate-500">{application.applicantName}</div>
             </div>
-
-            <div>
-              <div className="border-t border-slate-400 pt-1 font-bold text-slate-800">
-                নক্সাকার / উপ-সহকারী প্রকৌশলী
-              </div>
-              <div className="text-[10px] text-slate-500">সীতাকুণ্ড পৌরসভা</div>
-            </div>
-
-            <div>
-              <div className="border-t border-slate-400 pt-1 font-bold text-slate-800">
-                সহকারী / নির্বাহী প্রকৌশলী
-              </div>
-              <div className="text-[10px] text-slate-500">সীতাকুণ্ড পৌরসভা</div>
-            </div>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

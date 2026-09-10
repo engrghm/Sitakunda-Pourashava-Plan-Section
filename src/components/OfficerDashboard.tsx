@@ -99,7 +99,8 @@ import {
   changeOfficerPassword, 
   getOfficerAccounts,
   addAuditLog,
-  getStoredAuditLogs
+  getStoredAuditLogs,
+  resetToDemoApplications
 } from '../utils/storage';
 import { 
   sendAutomatedStatusAlert, 
@@ -269,22 +270,51 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
   const [selectedRoadCuttingAppIds, setSelectedRoadCuttingAppIds] = useState<string[]>([]);
   const [csvExportModalModule, setCsvExportModalModule] = useState<CsvModuleType | null>(null);
 
-  // Noksakar Draftsman Data Update Modal State (৭ কপি নকশার ফর্দ & ইমারত ফি বিবরণ)
+  // Noksakar Draftsman Data Update Modal State (১. ৭ কপি নকশার ফর্দ • ২. আবেদন ফি ১০০০/- ফিক্সড • ৩. ইমারত নির্মাণ ফি ও চালান বিবরণ)
   const [treasuryModalApp, setTreasuryModalApp] = useState<BuildingConstructionApplication | null>(null);
+
+  // ১। ৭ কপি নকশার ফর্দ
   const [sevenCopiesSubmitted, setSevenCopiesSubmitted] = useState<boolean>(true);
   const [sevenCopiesDate, setSevenCopiesDate] = useState<string>('');
   const [sevenCopiesDetails, setSevenCopiesDetails] = useState<string>('');
-  const [feeSubmitted, setFeeSubmitted] = useState<boolean>(true);
-  const [feeAmount, setFeeAmount] = useState<number>(1000);
+
+  // ২। ইমারত নির্মাণ আবেদন ফি জমা বিবরণ (Fixed 1000/-, কোনো ভ্যাট নেই)
+  const [appFeeSubmitted, setAppFeeSubmitted] = useState<boolean>(true);
+  const [appFeePaymentMethod, setAppFeePaymentMethod] = useState<string>('counter_receipt');
+  const [appFeeReceiptNo, setAppFeeReceiptNo] = useState<string>('');
+  const [appFeeReceiptDate, setAppFeeReceiptDate] = useState<string>('');
+
+  // ৩। ইমারত নির্মাণ ফি জমা ও মোট চালান বিবরণ (যা নক্সাকার এডিট করবে)
+  const [constructionFeeSubmitted, setConstructionFeeSubmitted] = useState<boolean>(true);
+  const [buildingPermitFee, setBuildingPermitFee] = useState<number>(5000);
+  const [permitVatAmount, setPermitVatAmount] = useState<number>(750);
+  const [totalPermitChalanAmount, setTotalPermitChalanAmount] = useState<number>(5750);
   const [treasuryPaymentInstrument, setTreasuryPaymentInstrument] = useState<string>('chalan');
   const [treasuryGovtCode, setTreasuryGovtCode] = useState<string>('১-২০৩১-০০০০-২৬৮১');
   const [treasuryInstrumentNo, setTreasuryInstrumentNo] = useState<string>('');
   const [treasuryDepositDate, setTreasuryDepositDate] = useState<string>('');
   const [treasuryBankName, setTreasuryBankName] = useState<string>('সোনালী ব্যাংক পিএলসি');
   const [treasuryBranchName, setTreasuryBranchName] = useState<string>('সীতাকুণ্ড শাখা, চট্টগ্রাম');
+
+  // ভ্যাটের চালান আলাদাভাবে যুক্ত করার অপশন
+  const [hasSeparateVatChalan, setHasSeparateVatChalan] = useState<boolean>(false);
+  const [vatChalanNo, setVatChalanNo] = useState<string>('');
+  const [vatChalanDate, setVatChalanDate] = useState<string>('');
+  const [vatBankName, setVatBankName] = useState<string>('সোনালী ব্যাংক পিএলসি');
+  const [vatBranchName, setVatBranchName] = useState<string>('সীতাকুণ্ড শাখা, চট্টগ্রাম');
+  const [vatEconomicCode, setVatEconomicCode] = useState<string>('১-১১৩৩-০০১০-০৩১১');
+
   const [treasuryRemarks, setTreasuryRemarks] = useState<string>('');
   const [buildingAppStatusUpdate, setBuildingAppStatusUpdate] = useState<'submitted' | 'under_review' | 'approved' | 'rejected'>('approved');
   const [treasurySuccessMsg, setTreasurySuccessMsg] = useState<string | null>(null);
+
+  // Requirement: Only Draftsman can fill/edit Schedule-1 Noksakar verification entry
+  const isCurrentOfficerDraftsman = 
+    Boolean(currentOfficer && (
+      currentOfficer.role === 'draftsman' || 
+      currentOfficer.username?.toLowerCase().includes('draftsman') ||
+      currentOfficer.username === 'draftsman.sitakunda'
+    ));
 
   // Check existing session on mount
   useEffect(() => {
@@ -815,35 +845,67 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
     setIsAdminEditMode(false);
   };
 
-  // Open Draftsman Data Update modal (৭ কপি নকশার ফর্দ & ইমারত ফি বিবরণ)
+  // Open Draftsman Data Update modal (১. ৭ কপি নকশার ফর্দ • ২. আবেদন ফি ১০০০/- ফিক্সড • ৩. ইমারত নির্মাণ ফি ও চালান বিবরণ)
   const handleOpenTreasuryModal = (bApp: BuildingConstructionApplication) => {
     setTreasuryModalApp(bApp);
+
+    // ১। ৭ কপি নকশার ফর্দ
     setSevenCopiesSubmitted(bApp.sevenCopiesDrawingsSubmitted ?? true);
     setSevenCopiesDate(bApp.sevenCopiesSubmittedDate || bApp.createdAt || new Date().toISOString().split('T')[0]);
     setSevenCopiesDetails(
       bApp.sevenCopiesDrawingsDetails ||
         'বিধি অনুযায়ী ৭ কপি পূর্ণাঙ্গ নকশার ফর্দ (সাইট লে-আউট, ফ্লোর প্ল্যান, এলিভেশন, সেকশন ও স্ট্রাকচারাল ড্রয়িংস) যথাযথভাবে দাখিল করা হইয়াছে।'
     );
-    setFeeSubmitted(bApp.feeStatus === 'paid' || bApp.feeSubmittedConfirmed !== false);
-    setFeeAmount(bApp.feeAmount || 1000);
+
+    // ২। ইমারত নির্মাণ আবেদন ফি জমা বিবরণ (Fixed 1000/-, কোনো ভ্যাট নেই)
+    setAppFeeSubmitted(bApp.applicationFeeStatus ? bApp.applicationFeeStatus === 'paid' : true);
+    setAppFeePaymentMethod(bApp.applicationFeePaymentMethod || 'counter_receipt');
+    setAppFeeReceiptNo(bApp.applicationFeeReceiptNo || (bApp.moneyReceiptNo ? `MR-${bApp.moneyReceiptNo}` : 'MR-2026-9182'));
+    setAppFeeReceiptDate(bApp.applicationFeeReceiptDate || bApp.moneyReceiptDate || bApp.createdAt || new Date().toISOString().split('T')[0]);
+
+    // ৩। ইমারত নির্মাণ ফি জমা ও মোট চালান বিবরণ (যা নক্সাকার এডিট করবে)
+    const permitFee = bApp.buildingPermitFeeAmount ?? (bApp.feeAmount && bApp.feeAmount > 1000 ? Math.round(bApp.feeAmount / 1.15) : 5000);
+    const vat = bApp.vatAmount ?? Math.round(permitFee * 0.15);
+    const totalChalan = bApp.feeAmount || (permitFee + vat);
+
+    setConstructionFeeSubmitted(bApp.feeStatus === 'paid' || bApp.feeSubmittedConfirmed !== false);
+    setBuildingPermitFee(permitFee);
+    setPermitVatAmount(vat);
+    setTotalPermitChalanAmount(totalChalan);
+
     setTreasuryPaymentInstrument(bApp.paymentMethod || 'chalan');
     setTreasuryGovtCode(bApp.treasuryCode || '১-২০৩১-০০০০-২৬৮১');
-    setTreasuryInstrumentNo(bApp.chalanOrDraftNo || (bApp.moneyReceiptNo ? `MR-${bApp.moneyReceiptNo}` : ''));
-    setTreasuryDepositDate(bApp.chalanOrDraftDate || bApp.moneyReceiptDate || bApp.createdAt || new Date().toISOString().split('T')[0]);
+    setTreasuryInstrumentNo(bApp.chalanOrDraftNo || '');
+    setTreasuryDepositDate(bApp.chalanOrDraftDate || bApp.createdAt || new Date().toISOString().split('T')[0]);
     setTreasuryBankName(bApp.bankName || 'সোনালী ব্যাংক পিএলসি');
     setTreasuryBranchName(bApp.branchName || 'সীতাকুণ্ড শাখা, চট্টগ্রাম');
+
+    // ভ্যাটের চালান আলাদাভাবে যুক্ত করার অপশন
+    setHasSeparateVatChalan(bApp.hasSeparateVatChalan ?? false);
+    setVatChalanNo(bApp.vatChalanNo || '');
+    setVatChalanDate(bApp.vatChalanDate || bApp.chalanOrDraftDate || new Date().toISOString().split('T')[0]);
+    setVatBankName(bApp.vatBankName || 'সোনালী ব্যাংক পিএলসি');
+    setVatBranchName(bApp.vatBranchName || 'সীতাকুণ্ড শাখা, চট্টগ্রাম');
+    setVatEconomicCode(bApp.vatEconomicCode || '১-১১৩৩-০০১০-০৩১১');
+
     setTreasuryRemarks(
       bApp.treasuryRemarks ||
-        '৭ কপি নকশার ফর্দ ও সরকারি ট্রেজারী চালান যাচাইপূর্বক সঠিক পাওয়া গেল।'
+        '৭ কপি নকশার ফর্দ, ফিক্সড ১,০০০/- টাকা আবেদন ফি এবং ইমারত নির্মাণ ফি ও ১৫% সরকারি ভ্যাট সরকারি ট্রেজারী চালানের মাধ্যমে যথাযথভাবে যাচাইপূর্বক সঠিক পাওয়া গেল।'
     );
     setBuildingAppStatusUpdate(bApp.status || 'under_review');
     setTreasurySuccessMsg(null);
   };
 
-  // Save Draftsman 2-point updates (৭ কপি নকশার ফর্দ ও ফি বিবরণ)
+  // Save Draftsman 3-point updates (১. ৭ কপি নকশা • ২. আবেদন ফি ১০০০/- ফিক্সড • ৩. ইমারত নির্মাণ ফি ও ভ্যাট চালান)
   const handleSaveTreasuryData = (e: React.FormEvent) => {
     e.preventDefault();
     if (!treasuryModalApp) return;
+
+    // Requirement: শুধুমাত্র নক্সাকার (draftsman.sitakunda) আইডি দিয়ে পূরণ ও সংরক্ষণ করা যাবে
+    if (!isCurrentOfficerDraftsman) {
+      alert('অননুমোদিত অ্যাক্সেস: নক্সাকারের ডাটা যাচাই ও অনুমোদন এন্ট্রি (তফসিল-১) শুধুমাত্র নক্সাকার (draftsman.sitakunda) আইডি দিয়ে পূরণ ও সম্পাদন করা যাবে!');
+      return;
+    }
 
     const officerDesignation = currentOfficer?.title || currentOfficer?.designation || 'নক্সাকার (সিভিল)';
     const officerName = currentOfficer?.name || currentOfficer?.title || 'নক্সাকার';
@@ -856,24 +918,47 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
       counter_receipt: 'পৌর ক্যাশ রসিদ',
     };
 
+    const finalPermitFee = Number(buildingPermitFee) || 0;
+    const finalVat = Number(permitVatAmount) || 0;
+    const finalTotalChalan = Number(totalPermitChalanAmount) || (finalPermitFee + finalVat);
+
     const updatedApp: Partial<BuildingConstructionApplication> = {
       // ১। ৭ কপি নকশার ফর্দ
       sevenCopiesDrawingsSubmitted: sevenCopiesSubmitted,
       sevenCopiesSubmittedDate: sevenCopiesSubmitted ? sevenCopiesDate : undefined,
       sevenCopiesDrawingsDetails: sevenCopiesDetails.trim(),
 
-      // ২। ইমারত নির্মাণ ফি ও চালান বিবরণ
-      feeStatus: feeSubmitted ? 'paid' : 'unpaid',
-      feeSubmittedConfirmed: feeSubmitted,
-      feeAmount: Number(feeAmount) || 1000,
+      // ২। ইমারত নির্মাণ আবেদন ফি (ফিক্সড ১,০০০/- টাকা, ভ্যাট থাকবে না)
+      applicationFeeAmount: 1000,
+      applicationFeeStatus: appFeeSubmitted ? 'paid' : 'unpaid',
+      applicationFeePaymentMethod: appFeePaymentMethod,
+      applicationFeeReceiptNo: appFeeSubmitted ? appFeeReceiptNo.trim() : undefined,
+      applicationFeeReceiptDate: appFeeSubmitted ? appFeeReceiptDate : undefined,
+
+      // ৩। ইমারত নির্মাণ ফি জমা ও মোট চালান বিবরণ (যা নক্সাকার এডিট করবে)
+      buildingPermitFeeAmount: finalPermitFee,
+      vatAmount: finalVat,
+      vatPercent: 15,
+      feeAmount: finalTotalChalan,
+      feeStatus: constructionFeeSubmitted ? 'paid' : 'unpaid',
+      feeSubmittedConfirmed: constructionFeeSubmitted,
       paymentMethod: treasuryPaymentInstrument,
       paymentMethodTitle: instrumentTitles[treasuryPaymentInstrument] || 'ট্রেজারী চালান',
       treasuryCode: treasuryGovtCode.trim() || '১-২০৩১-০০০০-২৬৮১',
-      chalanOrDraftNo: feeSubmitted ? treasuryInstrumentNo.trim() : undefined,
-      chalanOrDraftDate: feeSubmitted ? treasuryDepositDate : undefined,
-      bankName: feeSubmitted ? treasuryBankName.trim() : undefined,
-      branchName: feeSubmitted ? treasuryBranchName.trim() : undefined,
-      treasuryVerifiedBy: `${officerName && officerDesignation && (officerName === officerDesignation || officerDesignation.includes(officerName)) ? officerDesignation : `${officerName} (${officerDesignation})`} [আইডি: ${currentOfficer?.username || 'officer'}]`,
+      chalanOrDraftNo: constructionFeeSubmitted ? treasuryInstrumentNo.trim() : undefined,
+      chalanOrDraftDate: constructionFeeSubmitted ? treasuryDepositDate : undefined,
+      bankName: constructionFeeSubmitted ? treasuryBankName.trim() : undefined,
+      branchName: constructionFeeSubmitted ? treasuryBranchName.trim() : undefined,
+
+      // ভ্যাটের চালান আলাদাভাবে যুক্ত করার অপশন
+      hasSeparateVatChalan: hasSeparateVatChalan,
+      vatChalanNo: (constructionFeeSubmitted && hasSeparateVatChalan) ? vatChalanNo.trim() : undefined,
+      vatChalanDate: (constructionFeeSubmitted && hasSeparateVatChalan) ? vatChalanDate : undefined,
+      vatBankName: (constructionFeeSubmitted && hasSeparateVatChalan) ? vatBankName.trim() : undefined,
+      vatBranchName: (constructionFeeSubmitted && hasSeparateVatChalan) ? vatBranchName.trim() : undefined,
+      vatEconomicCode: (constructionFeeSubmitted && hasSeparateVatChalan) ? vatEconomicCode.trim() : undefined,
+
+      treasuryVerifiedBy: `${officerName && officerDesignation && (officerName === officerDesignation || officerDesignation.includes(officerName)) ? officerDesignation : `${officerName} (${officerDesignation})`} [আইডি: ${currentOfficer?.username || 'draftsman'}]`,
       treasuryVerifiedAt: new Date().toISOString(),
       treasuryRemarks: treasuryRemarks.trim(),
 
@@ -889,19 +974,19 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
 
     // Save to System Audit Log
     addAuditLog({
-      officerUsername: currentOfficer?.username || 'draftsman',
+      officerUsername: currentOfficer?.username || 'draftsman.sitakunda',
       officerName: officerName,
       officerRole: currentOfficer?.role || 'draftsman',
       officerDesignation: officerDesignation,
       actionType: 'schedule1_treasury_updated',
-      actionTitle: 'তফসিল-১ নক্সাকার ডাটা আপডেট (৭ কপি নকশা ও ফি বিবরণ)',
+      actionTitle: 'তফসিল-১ নক্সাকার ডাটা আপডেট (৭ কপি নকশা, ফিক্সড আবেদন ফি, ইমারত নির্মাণ ফি ও ভ্যাট চালান)',
       targetId: treasuryModalApp.id,
       applicantName: (treasuryModalApp as any).applicantName || (treasuryModalApp as any).applicantDetails?.name || '',
-      details: `তফসিল-১ আবেদন #${treasuryModalApp.id} এর ৭ কপি নকশার ফর্দ (${sevenCopiesSubmitted ? 'জমা হয়েছে' : 'বাকি'}) এবং ইমারত নির্মাণ ফি বিবরণ (${feeSubmitted ? `পরিশোধিত, চালান নং ${treasuryInstrumentNo}` : 'বাকি'}) সফলভাবে হালনাগাদ করা হয়েছে। বর্তমান স্ট্যাটাস: ${buildingAppStatusUpdate}।`,
+      details: `তফসিল-১ আবেদন #${treasuryModalApp.id} এর ১. ৭ কপি নকশা (${sevenCopiesSubmitted ? 'জমা হয়েছে' : 'বাকি'}), ২. আবেদন ফি: ৳ ১,০০০/- (ফিক্সড, ${appFeeSubmitted ? 'পরিশোধিত' : 'বাকি'}), ৩. ইমারত নির্মাণ ফি: ৳ ${toBanglaNumber(finalPermitFee)}/-, ১৫% ভ্যাট: ৳ ${toBanglaNumber(finalVat)}/- (মোট ট্রেজারী চালান: ৳ ${toBanglaNumber(finalTotalChalan)}/- ${hasSeparateVatChalan ? `, আলাদা ভ্যাট চালান নং: ${vatChalanNo}` : ''}) সফলভাবে হালনাগাদ করা হয়েছে। বর্তমান স্ট্যাটাস: ${buildingAppStatusUpdate}।`,
     });
 
     loadApplications();
-    setTreasurySuccessMsg('নক্সাকারের তথ্যাদি (৭ কপি নকশার ফর্দ ও ফি চালানের পূর্ণাঙ্গ বিবরণ) সফলভাবে সংরক্ষিত হয়েছে!');
+    setTreasurySuccessMsg('নক্সাকারের তথ্যাদি (৭ কপি নকশার ফর্দ, ফিক্সড আবেদন ফি, ইমারত নির্মাণ ফি ও ট্রেজারী চালান বিবরণ) সফলভাবে সংরক্ষিত হয়েছে!');
 
     setTimeout(() => {
       setTreasuryModalApp(null);
@@ -1310,6 +1395,20 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
           >
             <KeyRound className="w-3.5 h-3.5 text-emerald-700" />
             <span>পাসওয়ার্ড পরিবর্তন</span>
+          </button>
+
+          {/* Refresh Applications */}
+          <button
+            type="button"
+            id="officer-refresh-data-btn"
+            onClick={() => {
+              loadApplications();
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg shadow-xs transition-colors cursor-pointer border border-slate-300"
+            title="আবেদন তালিকা রিফ্রেশ করুন"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-slate-700" />
+            <span>তালিকা রিফ্রেশ</span>
           </button>
 
           {/* XEN Export All Pending Applications PDF Button */}
@@ -2434,11 +2533,28 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleOpenTreasuryModal(bApp)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs whitespace-nowrap"
-                                title="৭ কপি নকশার ফর্দ এবং ইমারত নির্মাণ ফি-এর পূর্ণাঙ্গ বিবরণ এন্ট্রি ও হালনাগাদ করুন"
+                                className={
+                                  isCurrentOfficerDraftsman
+                                    ? "inline-flex items-center gap-1 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs whitespace-nowrap"
+                                    : "inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-600 hover:bg-slate-700 text-slate-100 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs whitespace-nowrap"
+                                }
+                                title={
+                                  isCurrentOfficerDraftsman
+                                    ? "৭ কপি নকশার ফর্দ এবং ইমারত নির্মাণ আবেদন ফি ও ১৫% ভ্যাট চালান বিবরণ এন্ট্রি ও হালনাগাদ করুন"
+                                    : "নক্সাকারের সংরক্ষিত ডাটা ও চালান বিবরণ দেখুন (শুধুমাত্র নক্সাকার সম্পাদনা করতে পারবেন)"
+                                }
                               >
-                                <Edit3 className="w-3.5 h-3.5 text-amber-200" />
-                                <span>নক্সাকার ডাটা আপডেট</span>
+                                {isCurrentOfficerDraftsman ? (
+                                  <>
+                                    <Edit3 className="w-3.5 h-3.5 text-amber-200" />
+                                    <span>নক্সাকার ডাটা এন্ট্রি</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Lock className="w-3.5 h-3.5 text-amber-300" />
+                                    <span>নক্সাকার ডাটা দেখুন</span>
+                                  </>
+                                )}
                               </button>
                               <button
                                 type="button"
@@ -4282,7 +4398,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                     নক্সাকারের ডাটা যাচাই ও অনুমোদন এন্ট্রি (তফসিল-১)
                   </h3>
                   <p className="text-xs text-amber-200">
-                    ১. ৭ কপি নকশার ফর্দ জমার অবস্থা & ২. ইমারত নির্মাণ ফি ও ট্রেজারী চালানের মোট বিবরণ
+                    ১. ৭ কপি নকশার ফর্দ অবস্থা • ২. আবেদন ফি (১,০০০/- ফিক্সড) • ৩. ইমারত নির্মাণ ফি ও চালান বিবরণ
                   </p>
                 </div>
               </div>
@@ -4294,6 +4410,21 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Non-draftsman Read-Only Security Warning Banner */}
+            {!isCurrentOfficerDraftsman && (
+              <div className="mx-6 mt-4 p-3.5 bg-rose-50 border-2 border-rose-300 rounded-xl flex items-center gap-3 text-rose-950 text-xs shadow-xs">
+                <Lock className="w-5 h-5 shrink-0 text-rose-600" />
+                <div>
+                  <span className="font-bold text-sm text-rose-950 block">
+                    শুধুমাত্র নক্সাকার (draftsman.sitakunda) আইডি দ্বারা এন্ট্রি ও সম্পাদনযোগ্য (রিড-অনলি মোড)
+                  </span>
+                  <span className="text-[11px] text-rose-800 block mt-0.5">
+                    বর্তমান আইডি: <strong>{currentOfficer?.username || 'অন্যান্য কর্মকর্তা'}</strong> ({currentOfficer?.title || currentOfficer?.name})। বিধি মোতাবেক এই ফরমের তথ্য শুধুমাত্র অনুমোদিত নক্সাকার আইডি দ্বারা এন্ট্রি ও হালনাগাদ করা যাবে। অন্য কোনো আইডি দ্বারা ডাটা পরিবর্তন বা অনুমোদন সংরক্ষণ করা যাবে না।
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Success Message Banner */}
             {treasurySuccessMsg && (
@@ -4329,7 +4460,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
               </div>
             </div>
 
-            {/* Form with 2 Specific Sections */}
+            {/* Form with 3 Specific Sections */}
             <form onSubmit={handleSaveTreasuryData} className="p-6 space-y-6 text-xs max-h-[70vh] overflow-y-auto">
               {/* =========================================================
                   ১ম অংশ: ৭ কপি নকশার ফর্দ জমা সংক্রান্ত তথ্য
@@ -4351,20 +4482,22 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                       ৭ কপি নকশার ফর্দ জমা করেছে কি না? <span className="text-red-600">*</span>
                     </label>
                     <div className="flex items-center gap-4 pt-1">
-                      <label className="flex items-center gap-2 cursor-pointer font-bold text-emerald-950">
+                      <label className={`flex items-center gap-2 font-bold text-emerald-950 ${isCurrentOfficerDraftsman ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}>
                         <input
                           type="radio"
                           name="sevenCopies"
+                          disabled={!isCurrentOfficerDraftsman}
                           checked={sevenCopiesSubmitted === true}
                           onChange={() => setSevenCopiesSubmitted(true)}
                           className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
                         />
                         <span>হ্যাঁ, ৭ কপি জমা প্রদান করেছে</span>
                       </label>
-                      <label className="flex items-center gap-2 cursor-pointer font-bold text-rose-950">
+                      <label className={`flex items-center gap-2 font-bold text-rose-950 ${isCurrentOfficerDraftsman ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}>
                         <input
                           type="radio"
                           name="sevenCopies"
+                          disabled={!isCurrentOfficerDraftsman}
                           checked={sevenCopiesSubmitted === false}
                           onChange={() => setSevenCopiesSubmitted(false)}
                           className="w-4 h-4 text-rose-600 focus:ring-rose-500"
@@ -4381,9 +4514,10 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                       </label>
                       <input
                         type="date"
+                        disabled={!isCurrentOfficerDraftsman}
                         value={sevenCopiesDate}
                         onChange={(e) => setSevenCopiesDate(e.target.value)}
-                        className="w-full p-2 rounded-lg border border-slate-300 font-semibold text-slate-800 bg-white"
+                        className="w-full p-2 rounded-lg border border-slate-300 font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-500"
                       />
                     </div>
                   )}
@@ -4395,156 +4529,428 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                   </label>
                   <textarea
                     rows={2}
+                    disabled={!isCurrentOfficerDraftsman}
                     value={sevenCopiesDetails}
                     onChange={(e) => setSevenCopiesDetails(e.target.value)}
                     placeholder="বিধি অনুযায়ী ৭ কপি পূর্ণাঙ্গ নকশার ফর্দ (সাইট লে-আউট, ফ্লোর প্ল্যান, এলিভেশন, সেকশন ও স্ট্রাকচারাল ড্রয়িংস) যথাযথভাবে দাখিল করা হইয়াছে।"
-                    className="w-full p-2 rounded-lg border border-slate-300 text-xs bg-white"
+                    className="w-full p-2 rounded-lg border border-slate-300 text-xs bg-white disabled:bg-slate-100 disabled:text-slate-500"
                   />
                 </div>
               </div>
 
               {/* =========================================================
-                  ২য় অংশ: ইমারত নির্মাণ ফি জমা ও মোট বিবরণ
+                  ২য় অংশ: ইমারত নির্মাণ আবেদন ফি জমা বিবরণ (Fixed ১,০০০/-, ভ্যাট থাকবে না)
                   ========================================================= */}
-              <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/50 space-y-3">
-                <div className="flex items-center justify-between border-b border-amber-200 pb-2">
-                  <h4 className="font-bold text-sm text-amber-950 flex items-center gap-2">
-                    <Receipt className="w-4 h-4 text-amber-700" />
-                    <span>২. ইমারত নির্মাণ ফি জমা ও মোট চালান বিবরণ</span>
+              <div className="p-4 rounded-xl border border-blue-300 bg-blue-50/50 space-y-3">
+                <div className="flex items-center justify-between border-b border-blue-200 pb-2">
+                  <h4 className="font-bold text-sm text-blue-950 flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-blue-700" />
+                    <span>২. ইমারত নির্মাণ আবেদন ফি জমা বিবরণ</span>
                   </h4>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-200 text-amber-950 font-bold">
-                    সরকারি ট্রেজারী হিসাব
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-200 text-blue-950 font-bold border border-blue-300">
+                    ফিক্সড ৳ ১,০০০/- (ভ্যাট প্রযোজ্য নহে)
                   </span>
                 </div>
 
                 <div>
                   <label className="block font-bold text-slate-800 mb-1.5">
-                    ইমারত নির্মাণ সরকারি ফি জমা করেছে কি না? <span className="text-red-600">*</span>
+                    আবেদন দাখিল ফি জমা করেছে কি না? <span className="text-red-600">*</span>
                   </label>
                   <div className="flex items-center gap-4 pt-1 pb-1">
-                    <label className="flex items-center gap-2 cursor-pointer font-bold text-emerald-950">
+                    <label className={`flex items-center gap-2 font-bold text-emerald-950 ${isCurrentOfficerDraftsman ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}>
                       <input
                         type="radio"
-                        name="feeSubmittedRadio"
-                        checked={feeSubmitted === true}
-                        onChange={() => setFeeSubmitted(true)}
+                        name="appFeeRadio"
+                        disabled={!isCurrentOfficerDraftsman}
+                        checked={appFeeSubmitted === true}
+                        onChange={() => setAppFeeSubmitted(true)}
                         className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
                       />
-                      <span>হ্যাঁ, ফি জমা হয়েছে (পরিশোধিত)</span>
+                      <span>হ্যাঁ, ১,০০০/- টাকা ফি জমা হয়েছে (পরিশোধিত)</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer font-bold text-amber-950">
+                    <label className={`flex items-center gap-2 font-bold text-rose-950 ${isCurrentOfficerDraftsman ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}>
                       <input
                         type="radio"
-                        name="feeSubmittedRadio"
-                        checked={feeSubmitted === false}
-                        onChange={() => setFeeSubmitted(false)}
-                        className="w-4 h-4 text-amber-600 focus:ring-amber-500"
+                        name="appFeeRadio"
+                        disabled={!isCurrentOfficerDraftsman}
+                        checked={appFeeSubmitted === false}
+                        onChange={() => setAppFeeSubmitted(false)}
+                        className="w-4 h-4 text-rose-600 focus:ring-rose-500"
                       />
                       <span>না, ফি জমা এখনো বাকি</span>
                     </label>
                   </div>
                 </div>
 
-                {feeSubmitted && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-amber-200/70">
+                {appFeeSubmitted && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-blue-200/70">
                     <div>
                       <label className="block font-bold text-slate-800 mb-1">
-                        মোট ফি-এর পরিমাণ (টাকা) <span className="text-red-600">*</span>
+                        আবেদন ফির পরিমাণ
                       </label>
-                      <input
-                        type="number"
-                        required
-                        value={feeAmount}
-                        onChange={(e) => setFeeAmount(Number(e.target.value))}
-                        className="w-full p-2 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white"
-                      />
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-slate-500 font-bold">৳</span>
+                        <input
+                          type="text"
+                          readOnly
+                          value="১,০০০/- (ফিক্সড)"
+                          className="w-full pl-7 pr-3 py-2 rounded-lg border border-slate-300 font-bold text-blue-950 bg-blue-100/50 cursor-not-allowed"
+                        />
+                      </div>
+                      <span className="text-[10px] text-blue-700 font-semibold block mt-0.5">
+                        * নির্ধারিত আবেদন ফি ১,০০০/- টাকা (এতে ভ্যাট থাকবে না)
+                      </span>
                     </div>
 
                     <div>
                       <label className="block font-bold text-slate-800 mb-1">
-                        ফি জমা প্রদানের মাধ্যম <span className="text-red-600">*</span>
+                        আবেদন ফি জমার মাধ্যম <span className="text-red-600">*</span>
                       </label>
                       <select
-                        value={treasuryPaymentInstrument}
-                        onChange={(e) => setTreasuryPaymentInstrument(e.target.value)}
-                        className="w-full p-2 rounded-lg border border-slate-300 font-semibold text-slate-800 bg-white"
+                        disabled={!isCurrentOfficerDraftsman}
+                        value={appFeePaymentMethod}
+                        onChange={(e) => setAppFeePaymentMethod(e.target.value)}
+                        className="w-full p-2 rounded-lg border border-slate-300 font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-500"
                       >
-                        <option value="chalan">ট্রেজারী চালান (Treasury Challan)</option>
-                        <option value="bank_draft">ব্যাংক ড্রাফট (Bank Draft)</option>
-                        <option value="pay_order">পে-অর্ডার (Pay Order)</option>
-                        <option value="online">সোনালী ই-সেবা চালান</option>
-                        <option value="counter_receipt">পৌর ক্যাশ রসিদ</option>
+                        <option value="counter_receipt">পৌর ক্যাশ কাউন্টার রসিদ</option>
+                        <option value="online">অনলাইন পেমেন্ট</option>
+                        <option value="bank_draft">ব্যাংক ড্রাফট / পে-অর্ডার</option>
+                        <option value="chalan">ট্রেজারী চালান</option>
                       </select>
                     </div>
 
                     <div>
                       <label className="block font-bold text-slate-800 mb-1">
-                        চালান / ড্রাফট / পে-অর্ডার / রসিদ নম্বর <span className="text-red-600">*</span>
+                        ক্যাশ রসিদ / ট্রানজেকশন নং <span className="text-red-600">*</span>
                       </label>
                       <input
                         type="text"
                         required
-                        value={treasuryInstrumentNo}
-                        onChange={(e) => setTreasuryInstrumentNo(e.target.value)}
-                        placeholder="উদাঃ CH-2026-98421 / BD-00234"
-                        className="w-full p-2 rounded-lg border border-slate-300 font-mono font-bold text-slate-900 bg-white"
+                        disabled={!isCurrentOfficerDraftsman}
+                        value={appFeeReceiptNo}
+                        onChange={(e) => setAppFeeReceiptNo(e.target.value)}
+                        placeholder="উদাঃ MR-2026-9841"
+                        className="w-full p-2 rounded-lg border border-slate-300 font-mono font-bold text-slate-900 bg-white disabled:bg-slate-100 disabled:text-slate-500"
                       />
                     </div>
+                  </div>
+                )}
+              </div>
 
-                    <div>
-                      <label className="block font-bold text-slate-800 mb-1">
-                        জমার তারিখ <span className="text-red-600">*</span>
-                      </label>
+              {/* =========================================================
+                  ৩য় অংশ: ইমারত নির্মাণ ফি জমা ও মোট চালান বিবরণ (যা নক্সাকার এডিট করবে)
+                  ========================================================= */}
+              <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/50 space-y-3">
+                <div className="flex items-center justify-between border-b border-amber-200 pb-2">
+                  <h4 className="font-bold text-sm text-amber-950 flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-amber-700" />
+                    <span>৩. ইমারত নির্মাণ ফি জমা ও মোট চালান বিবরণ</span>
+                  </h4>
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-950 font-bold border border-amber-300">
+                    নক্সাকার কর্তৃক নির্ধারিত ও সম্পাদিত
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1.5">
+                    ইমারত নির্মাণ ফি ও চালান জমা করেছে কি না? <span className="text-red-600">*</span>
+                  </label>
+                  <div className="flex items-center gap-4 pt-1 pb-1">
+                    <label className={`flex items-center gap-2 font-bold text-emerald-950 ${isCurrentOfficerDraftsman ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}>
                       <input
-                        type="date"
-                        required
-                        value={treasuryDepositDate}
-                        onChange={(e) => setTreasuryDepositDate(e.target.value)}
-                        className="w-full p-2 rounded-lg border border-slate-300 font-semibold text-slate-800 bg-white"
+                        type="radio"
+                        name="constructionFeeRadio"
+                        disabled={!isCurrentOfficerDraftsman}
+                        checked={constructionFeeSubmitted === true}
+                        onChange={() => setConstructionFeeSubmitted(true)}
+                        className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
                       />
+                      <span>হ্যাঁ, ইমারত নির্মাণ ফি ও চালান জমা হয়েছে (পরিশোধিত)</span>
+                    </label>
+                    <label className={`flex items-center gap-2 font-bold text-amber-950 ${isCurrentOfficerDraftsman ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}>
+                      <input
+                        type="radio"
+                        name="constructionFeeRadio"
+                        disabled={!isCurrentOfficerDraftsman}
+                        checked={constructionFeeSubmitted === false}
+                        onChange={() => setConstructionFeeSubmitted(false)}
+                        className="w-4 h-4 text-amber-600 focus:ring-amber-500"
+                      />
+                      <span>না, চালান জমা এখনো বাকি</span>
+                    </label>
+                  </div>
+                </div>
+
+                {constructionFeeSubmitted && (
+                  <div className="space-y-4 pt-2 border-t border-amber-200/70">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* ইমারত নির্মাণ ফি (টাকা) */}
+                      <div>
+                        <label className="block font-bold text-slate-800 mb-1">
+                          ইমারত নির্মাণ ফি (টাকা) <span className="text-red-600">*</span>
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2.5 text-slate-500 font-bold">৳</span>
+                          <input
+                            type="number"
+                            required
+                            min="0"
+                            disabled={!isCurrentOfficerDraftsman}
+                            value={buildingPermitFee}
+                            onChange={(e) => {
+                              const val = Number(e.target.value) || 0;
+                              setBuildingPermitFee(val);
+                              const calcVat = Math.round(val * 0.15);
+                              setPermitVatAmount(calcVat);
+                              setTotalPermitChalanAmount(val + calcVat);
+                            }}
+                            placeholder="যেমন: ৫০০০"
+                            className="w-full pl-7 pr-3 py-2 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white disabled:bg-slate-100 disabled:text-slate-500"
+                          />
+                        </div>
+                        <span className="text-[10px] text-slate-500 block mt-0.5">
+                          অনুমোদিত তলা ও আয়তন অনুযায়ী নক্সাকার কর্তৃক হিসাবকৃত মূল নির্মাণ ফি
+                        </span>
+                      </div>
+
+                      {/* ১৫% সরকারি ভ্যাট (টাকা) */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block font-bold text-slate-800">
+                            ১৫% সরকারি ভ্যাট (টাকা) <span className="text-red-600">*</span>
+                          </label>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 font-bold">
+                            ১৫% ভ্যাট (এডিটযোগ্য)
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2.5 text-slate-500 font-bold">৳</span>
+                          <input
+                            type="number"
+                            required
+                            min="0"
+                            disabled={!isCurrentOfficerDraftsman}
+                            value={permitVatAmount}
+                            onChange={(e) => {
+                              const v = Number(e.target.value) || 0;
+                              setPermitVatAmount(v);
+                              setTotalPermitChalanAmount(buildingPermitFee + v);
+                            }}
+                            placeholder="যেমন: ৭৫০"
+                            className="w-full pl-7 pr-3 py-2 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white disabled:bg-slate-100 disabled:text-slate-500"
+                          />
+                        </div>
+                        <span className="text-[10px] text-emerald-800 font-medium block mt-0.5">
+                          নির্মাণ ফির ১৫% ভ্যাট বাবদ ৳ {toBanglaNumber(Math.round(buildingPermitFee * 0.15))}/- (নক্সাকার সম্পাদনযোগ্য)
+                        </span>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block font-bold text-slate-800 mb-1">
-                        ব্যাংকের নাম
-                      </label>
-                      <input
-                        type="text"
-                        value={treasuryBankName}
-                        onChange={(e) => setTreasuryBankName(e.target.value)}
-                        placeholder="সোনালী ব্যাংক পিএলসি"
-                        className="w-full p-2 rounded-lg border border-slate-300 font-semibold text-slate-800 bg-white"
-                      />
+                    {/* সর্বমোট ট্রেজারী চালান জমার পরিমাণ */}
+                    <div className="p-3 bg-gradient-to-r from-amber-100/90 to-amber-50 border border-amber-300 rounded-xl">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <span className="font-bold text-xs text-amber-950 block">
+                            সর্বমোট ট্রেজারী চালান / জমার পরিমাণ (নির্মাণ ফি + ১৫% ভ্যাট):
+                          </span>
+                          <span className="text-[11px] text-slate-700">
+                            নির্মাণ ফি ৳ {toBanglaNumber(buildingPermitFee)}/- + ১৫% ভ্যাট ৳ {toBanglaNumber(permitVatAmount)}/- = সর্বমোট চালান
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-700 font-bold">মোট চালান (৳):</span>
+                          <input
+                            type="number"
+                            required
+                            min="0"
+                            disabled={!isCurrentOfficerDraftsman}
+                            value={totalPermitChalanAmount}
+                            onChange={(e) => setTotalPermitChalanAmount(Number(e.target.value) || 0)}
+                            className="w-32 px-3 py-1.5 rounded-lg border-2 border-amber-500 font-mono font-black text-amber-950 bg-white text-sm text-right disabled:bg-slate-100 disabled:text-slate-500"
+                          />
+                        </div>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block font-bold text-slate-800 mb-1">
-                        শাখার নাম
-                      </label>
-                      <input
-                        type="text"
-                        value={treasuryBranchName}
-                        onChange={(e) => setTreasuryBranchName(e.target.value)}
-                        placeholder="সীতাকুণ্ড শাখা, চট্টগ্রাম"
-                        className="w-full p-2 rounded-lg border border-slate-300 font-semibold text-slate-800 bg-white"
-                      />
+                    {/* মূল ট্রেজারী চালান তথ্যাদি */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="block font-bold text-slate-800 mb-1">
+                          ফি জমা প্রদানের মাধ্যম <span className="text-red-600">*</span>
+                        </label>
+                        <select
+                          disabled={!isCurrentOfficerDraftsman}
+                          value={treasuryPaymentInstrument}
+                          onChange={(e) => setTreasuryPaymentInstrument(e.target.value)}
+                          className="w-full p-2 rounded-lg border border-slate-300 font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-500"
+                        >
+                          <option value="chalan">ট্রেজারী চালান (Treasury Challan)</option>
+                          <option value="bank_draft">ব্যাংক ড্রাফট (Bank Draft)</option>
+                          <option value="pay_order">পে-অর্ডার (Pay Order)</option>
+                          <option value="online">সোনালী ই-সেবা চালান</option>
+                          <option value="counter_receipt">পৌর ক্যাশ রসিদ</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-800 mb-1">
+                          ট্রেজারী চালান / ড্রাফট নম্বর <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          disabled={!isCurrentOfficerDraftsman}
+                          value={treasuryInstrumentNo}
+                          onChange={(e) => setTreasuryInstrumentNo(e.target.value)}
+                          placeholder="উদাঃ CH-2026-98421 / BD-00234"
+                          className="w-full p-2 rounded-lg border border-slate-300 font-mono font-bold text-slate-900 bg-white disabled:bg-slate-100 disabled:text-slate-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-800 mb-1">
+                          চালান জমার তারিখ <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          disabled={!isCurrentOfficerDraftsman}
+                          value={treasuryDepositDate}
+                          onChange={(e) => setTreasuryDepositDate(e.target.value)}
+                          className="w-full p-2 rounded-lg border border-slate-300 font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-800 mb-1">
+                          ব্যাংকের নাম
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isCurrentOfficerDraftsman}
+                          value={treasuryBankName}
+                          onChange={(e) => setTreasuryBankName(e.target.value)}
+                          placeholder="সোনালী ব্যাংক পিএলসি"
+                          className="w-full p-2 rounded-lg border border-slate-300 font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-800 mb-1">
+                          শাখার নাম
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!isCurrentOfficerDraftsman}
+                          value={treasuryBranchName}
+                          onChange={(e) => setTreasuryBranchName(e.target.value)}
+                          placeholder="সীতাকুণ্ড শাখা, চট্টগ্রাম"
+                          className="w-full p-2 rounded-lg border border-slate-300 font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-800 mb-1">
+                          সরকারি ট্রেজারী হিসাব কোড <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          disabled={!isCurrentOfficerDraftsman}
+                          value={treasuryGovtCode}
+                          onChange={(e) => setTreasuryGovtCode(e.target.value)}
+                          placeholder="১-২০৩১-০০০০-২৬৮১"
+                          className="w-full p-2 rounded-lg border border-slate-300 font-mono font-bold text-slate-900 bg-slate-50 disabled:bg-slate-100 disabled:text-slate-500"
+                        />
+                      </div>
                     </div>
 
-                    <div className="sm:col-span-2">
-                      <label className="block font-bold text-slate-800 mb-1">
-                        সরকারি ট্রেজারী হিসাব কোড <span className="text-red-600">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={treasuryGovtCode}
-                        onChange={(e) => setTreasuryGovtCode(e.target.value)}
-                        placeholder="১-২০৩১-০০০০-২৬৮১"
-                        className="w-full p-2 rounded-lg border border-slate-300 font-mono font-bold text-slate-900 bg-slate-50"
-                      />
-                      <span className="text-[10px] text-slate-500 block mt-0.5">
-                        ইমারত নির্মাণ বিধিমালা অনুযায়ী সরকারি নির্ধারিত জমা কোড
-                      </span>
+                    {/* ভ্যাটের চালান আলাদাভাবে যুক্ত করার অপশন */}
+                    <div className="mt-4 p-3.5 bg-white rounded-xl border border-amber-300/80 shadow-2xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className={`flex items-center gap-2 font-bold text-amber-950 ${isCurrentOfficerDraftsman ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}>
+                          <input
+                            type="checkbox"
+                            disabled={!isCurrentOfficerDraftsman}
+                            checked={hasSeparateVatChalan}
+                            onChange={(e) => setHasSeparateVatChalan(e.target.checked)}
+                            className="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500"
+                          />
+                          <span>১৫% ভ্যাটের চালান কি আলাদাভাবে দাখিল করা হয়েছে?</span>
+                        </label>
+                        <span className="text-[10px] text-slate-500 bg-amber-100 px-2 py-0.5 rounded font-semibold">
+                          ভ্যাট চালান পৃথক অপশন
+                        </span>
+                      </div>
+
+                      {hasSeparateVatChalan ? (
+                        <div className="p-3 bg-amber-50/60 rounded-lg border border-amber-200 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                          <div>
+                            <label className="block font-bold text-slate-800 mb-1">
+                              পৃথক ভ্যাট চালান নম্বর / মূসক দাখিলপত্র নং <span className="text-red-600">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              disabled={!isCurrentOfficerDraftsman}
+                              value={vatChalanNo}
+                              onChange={(e) => setVatChalanNo(e.target.value)}
+                              placeholder="উদাঃ VAT-2026-4421 / মূসক-৬.৩"
+                              className="w-full p-2 rounded-lg border border-slate-300 font-mono font-bold text-slate-900 bg-white disabled:bg-slate-100 disabled:text-slate-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block font-bold text-slate-800 mb-1">
+                              ভ্যাট চালান জমার তারিখ <span className="text-red-600">*</span>
+                            </label>
+                            <input
+                              type="date"
+                              required
+                              disabled={!isCurrentOfficerDraftsman}
+                              value={vatChalanDate}
+                              onChange={(e) => setVatChalanDate(e.target.value)}
+                              className="w-full p-2 rounded-lg border border-slate-300 font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block font-bold text-slate-800 mb-1">
+                              ভ্যাট জমার ব্যাংক ও শাখা
+                            </label>
+                            <input
+                              type="text"
+                              disabled={!isCurrentOfficerDraftsman}
+                              value={`${vatBankName}, ${vatBranchName}`}
+                              onChange={(e) => {
+                                const parts = e.target.value.split(',');
+                                setVatBankName(parts[0]?.trim() || 'সোনালী ব্যাংক পিএলসি');
+                                setVatBranchName(parts[1]?.trim() || 'সীতাকুণ্ড শাখা');
+                              }}
+                              placeholder="সোনালী ব্যাংক পিএলসি, সীতাকুণ্ড শাখা"
+                              className="w-full p-2 rounded-lg border border-slate-300 font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block font-bold text-slate-800 mb-1">
+                              ভ্যাট সরকারি ট্রেজারী কোড
+                            </label>
+                            <input
+                              type="text"
+                              disabled={!isCurrentOfficerDraftsman}
+                              value={vatEconomicCode}
+                              onChange={(e) => setVatEconomicCode(e.target.value)}
+                              placeholder="১-১১৩৩-০০১০-০৩১১"
+                              className="w-full p-2 rounded-lg border border-slate-300 font-mono font-bold text-slate-900 bg-slate-50 disabled:bg-slate-100 disabled:text-slate-500"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-slate-600 italic pl-6">
+                          * ভ্যাট ও মূল ইমারত নির্মাণ ফি একই সমন্বিত ট্রেজারী চালানে অন্তর্ভুক্ত থাকলে আলাদা ভ্যাট চালানের প্রয়োজন নেই। আলাদা চালানে ভ্যাট জমা দিলে টিক দিয়ে বিস্তারিত পূরণ করুন।
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -4558,10 +4964,11 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                   </label>
                   <textarea
                     rows={2}
+                    disabled={!isCurrentOfficerDraftsman}
                     value={treasuryRemarks}
                     onChange={(e) => setTreasuryRemarks(e.target.value)}
-                    placeholder="৭ কপি নকশার ফর্দ ও সরকারি ট্রেজারী চালান যাচাইপূর্বক সঠিক পাওয়া গেল।"
-                    className="w-full p-2 rounded-lg border border-slate-300 text-xs bg-white"
+                    placeholder="৭ কপি নকশার ফর্দ, ফিক্সড ১,০০০/- টাকা আবেদন ফি এবং ইমারত নির্মাণ ফি ও ১৫% সরকারি ভ্যাট ট্রেজারী চালান যাচাইপূর্বক সঠিক পাওয়া গেল।"
+                    className="w-full p-2 rounded-lg border border-slate-300 text-xs bg-white disabled:bg-slate-100 disabled:text-slate-500"
                   />
                 </div>
 
@@ -4570,9 +4977,10 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                     আবেদনের বর্তমান অবস্থা / স্ট্যাটাস পরিবর্তন করুন:
                   </label>
                   <select
+                    disabled={!isCurrentOfficerDraftsman}
                     value={buildingAppStatusUpdate}
                     onChange={(e) => setBuildingAppStatusUpdate(e.target.value as any)}
-                    className="w-full p-2.5 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white"
+                    className="w-full p-2.5 rounded-lg border border-slate-300 font-bold text-slate-900 bg-white disabled:bg-slate-100 disabled:text-slate-500"
                   >
                     <option value="approved">✓ অনুমোদিত (Approved) - নকশা ও ফি সঠিক</option>
                     <option value="under_review">⏳ রিভিউাধীন (Under Review) - যাচাই চলমান</option>
@@ -4583,43 +4991,53 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
               </div>
 
               {/* Verified By Footnote */}
-              <div className="p-3 bg-slate-100 rounded-lg border border-slate-200 text-[11px] text-slate-700 flex items-center justify-between">
+              <div className="p-3 bg-slate-100 rounded-lg border border-slate-200 text-[11px] text-slate-700 flex flex-wrap items-center justify-between gap-2">
                 <span>
                   এন্ট্রি প্রদানকারী কর্মকর্তা: <strong>{currentOfficer?.name || currentOfficer?.title}</strong> (আইডি: <span className="font-mono">{currentOfficer?.username}</span>)
                 </span>
                 <span className="font-bold text-slate-900">
-                  সর্বমোট ফি: ৳ {toBanglaNumber(feeSubmitted ? feeAmount : 0)}/- টাকা
+                  আবেদন ফি: ৳ ১,০০০/- (ফিক্সড) • নির্মাণ ফি: ৳ {toBanglaNumber(buildingPermitFee)}/- • ভ্যাট (১৫%): ৳ {toBanglaNumber(permitVatAmount)}/- • সর্বমোট চালান: ৳ {toBanglaNumber(constructionFeeSubmitted ? totalPermitChalanAmount : 0)}/-
                 </span>
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setTreasuryModalApp(null)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold transition-colors cursor-pointer"
-                >
-                  বাতিল
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-gradient-to-r from-amber-700 to-amber-800 hover:from-amber-800 hover:to-amber-900 text-white rounded-lg font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer text-xs"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>নক্সাকার ডাটা সংরক্ষণ ও আপডেট নিশ্চিত করুন</span>
-                </button>
+              <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2.5">
+                {!isCurrentOfficerDraftsman ? (
+                  <>
+                    <div className="flex items-center gap-2 text-xs text-rose-700 font-bold bg-rose-50 border border-rose-300 px-3 py-2 rounded-lg">
+                      <Lock className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>নক্সাকার ব্যতীত অন্য কোনো আইডি দিয়ে ডাটা পরিবর্তন বা অনুমোদন সংরক্ষণ করা যাবে না</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTreasuryModalApp(null)}
+                      className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold text-xs cursor-pointer shadow-xs transition-colors"
+                    >
+                      বন্ধ করুন
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setTreasuryModalApp(null)}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold transition-colors cursor-pointer"
+                    >
+                      বাতিল
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 bg-gradient-to-r from-amber-700 to-amber-800 hover:from-amber-800 hover:to-amber-900 text-white rounded-lg font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer text-xs"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>নক্সাকার ডাটা সংরক্ষণ ও আপডেট নিশ্চিত করুন</span>
+                    </button>
+                  </>
+                )}
               </div>
             </form>
           </div>
         </div>
-      )}
-
-      {/* Schedule-1 Official A4 Print Modal */}
-      {selectedBuildingPrint && (
-        <Schedule1ApplicationPrintA4
-          application={selectedBuildingPrint}
-          onClose={() => setSelectedBuildingPrint(null)}
-        />
       )}
 
       {/* Custom CSV Export & Filtering Modal for all 3 modules */}

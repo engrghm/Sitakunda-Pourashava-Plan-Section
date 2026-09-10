@@ -3,6 +3,8 @@ build/
 dist/
 coverage/
 .DS_Store
+Thumbs.db
 *.log
+*.zip
 .env*
 !.env.example
