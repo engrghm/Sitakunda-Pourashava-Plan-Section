@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ConnectionStatusBanner } from './components/ConnectionStatusBanner';
+import { SmartPortalHome } from './components/SmartPortalHome';
+import { PortalCustomizerModal } from './components/PortalCustomizerModal';
 import { NoticeSection } from './components/NoticeSection';
 import { NewApplicationForm } from './components/NewApplicationForm';
 import { ApplicationSuccessView } from './components/ApplicationSuccessView';
@@ -16,9 +18,13 @@ import { RoadCuttingSuccessView } from './components/RoadCuttingSuccessView';
 import { Footer } from './components/Footer';
 import { DemarcationApplication, BuildingConstructionApplication, RoadCuttingApplication } from './types';
 import { getOfficerSession } from './utils/storage';
+import { PortalConfig, getPortalConfig } from './utils/portalConfig';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'apply' | 'track' | 'schedule1' | 'roadcutting' | 'admin'>('apply');
+  const [activeTab, setActiveTab] = useState<'home' | 'apply' | 'track' | 'schedule1' | 'roadcutting' | 'admin'>('home');
+  const [portalConfig, setPortalConfig] = useState<PortalConfig>(getPortalConfig);
+  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+
   const [submittedApp, setSubmittedApp] = useState<DemarcationApplication | null>(null);
   const [submittedRoadCuttingApp, setSubmittedRoadCuttingApp] = useState<RoadCuttingApplication | null>(null);
   const [printApp, setPrintApp] = useState<DemarcationApplication | null>(null);
@@ -30,6 +36,15 @@ export default function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => !!getOfficerSession());
 
   const isAnyPrintModalOpen = !!(printApp || certificateApp || schedule1PrintApp || roadCuttingPrintApp);
+
+  // Sync portal config when updated in localStorage or from customizer modal
+  useEffect(() => {
+    const handleConfigUpdate = () => {
+      setPortalConfig(getPortalConfig());
+    };
+    window.addEventListener('portal-config-updated', handleConfigUpdate);
+    return () => window.removeEventListener('portal-config-updated', handleConfigUpdate);
+  }, []);
 
   // Handle auto-routing via query param for QR codes (e.g. ?track=... or ?id=...)
   useEffect(() => {
@@ -118,10 +133,27 @@ export default function App() {
           }
         }}
         isAdminLoggedIn={isAdminLoggedIn}
+        config={portalConfig}
+        onOpenCustomizer={() => setIsCustomizerOpen(true)}
       />
 
       {/* Main Content Area */}
       <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 ${isAnyPrintModalOpen ? 'no-print' : ''}`}>
+        
+        {/* Tab 0: Smart Portal Homepage (smartpourashava.com style) */}
+        {activeTab === 'home' && (
+          <SmartPortalHome
+            config={portalConfig}
+            onNavigateTab={(tab) => {
+              setActiveTab(tab);
+              setSubmittedApp(null);
+              setSubmittedRoadCuttingApp(null);
+            }}
+            onSearchTracking={handleGoToTracking}
+            onOpenCustomizer={() => setIsCustomizerOpen(true)}
+          />
+        )}
+
         {/* Tab 1: Apply for Demarcation & Ownership Certificate */}
         {activeTab === 'apply' && (
           <div>
@@ -159,7 +191,7 @@ export default function App() {
               setSchedule1PrintApp(bApp);
             }}
             onCancel={() => {
-              setActiveTab('apply');
+              setActiveTab('home');
               setSelectedSchedule1Demarcation(null);
             }}
           />
@@ -181,7 +213,7 @@ export default function App() {
                   setSubmittedRoadCuttingApp(rcApp);
                 }}
                 onCancel={() => {
-                  setActiveTab('apply');
+                  setActiveTab('home');
                 }}
               />
             )}
@@ -194,9 +226,18 @@ export default function App() {
             onViewPrintA4={handleViewPrintA4}
             onViewCertificate={handleViewCertificate}
             onAuthChange={setIsAdminLoggedIn}
+            onOpenCustomizer={() => setIsCustomizerOpen(true)}
           />
         )}
       </main>
+
+      {/* Website Customizer & CMS Settings Modal */}
+      <PortalCustomizerModal
+        currentConfig={portalConfig}
+        isOpen={isCustomizerOpen}
+        onClose={() => setIsCustomizerOpen(false)}
+        onConfigSaved={(newConf) => setPortalConfig(newConf)}
+      />
 
       {/* Printable Official A4 Document Modal (Demarcation) */}
       {printApp && (
@@ -232,7 +273,15 @@ export default function App() {
       )}
 
       {/* Official Footer */}
-      <Footer />
+      <Footer
+        config={portalConfig}
+        onOpenCustomizer={() => setIsCustomizerOpen(true)}
+        onNavigateTab={(tab) => {
+          setActiveTab(tab);
+          setSubmittedApp(null);
+          setSubmittedRoadCuttingApp(null);
+        }}
+      />
     </div>
   );
 }

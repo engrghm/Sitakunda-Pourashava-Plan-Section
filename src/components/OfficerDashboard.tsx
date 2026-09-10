@@ -112,6 +112,7 @@ interface OfficerDashboardProps {
   onViewPrintA4: (app: DemarcationApplication) => void;
   onViewCertificate: (app: DemarcationApplication) => void;
   onAuthChange?: (isLoggedIn: boolean) => void;
+  onOpenCustomizer?: () => void;
 }
 
 const getStatusLabelBangla = (st: ApplicationStatus) => {
@@ -128,6 +129,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
   onViewPrintA4,
   onViewCertificate,
   onAuthChange,
+  onOpenCustomizer,
 }) => {
   // Theme state (Light / Dark mode toggle)
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -1517,6 +1519,19 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
           <Construction className="w-4 h-4 text-amber-400" />
           <span>৩. রাস্তা কর্তন অনুমোদন ফরম ({toBanglaNumber(roadCuttingApplications.length)})</span>
         </button>
+
+        {onOpenCustomizer && (
+          <button
+            type="button"
+            id="module-tab-customizer"
+            onClick={onOpenCustomizer}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer bg-slate-900 hover:bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-sm ml-auto"
+            title="ওয়েবসাইট কাস্টমাইজেশন ও সিএমএস সেটিংস"
+          >
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span>ওয়েবসাইট কাস্টমাইজেশন (CMS)</span>
+          </button>
+        )}
       </div>
 
       {/* MODULE 1: Demarcation & Ownership Certification Form */}
