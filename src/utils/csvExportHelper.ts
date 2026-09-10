@@ -641,7 +641,7 @@ export const ROADCUTTING_CSV_COLUMNS: CsvColumnDefinition[] = [
     label: 'আবেদন ফরম ফি (টাকা)',
     category: 'approval_fees',
     defaultSelected: true,
-    getValue: (rcApp: RoadCuttingApplication) => rcApp.applicationFee || 100,
+    getValue: (rcApp: RoadCuttingApplication) => rcApp.applicationFee || 300,
   },
   {
     key: 'paymentMethodTitle',

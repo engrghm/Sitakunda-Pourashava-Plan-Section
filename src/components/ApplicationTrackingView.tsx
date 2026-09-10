@@ -485,7 +485,7 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
                 <span className="text-slate-500 block">পরিমাপ ও ফি:</span>
                 <strong className="text-slate-900 block text-sm">{toBanglaNumber(searchedRoadCuttingApp.totalAreaSqFt)} বর্গফুট</strong>
-                <span className="text-emerald-700 font-bold">ফি: ৳ {toBanglaNumber(searchedRoadCuttingApp.applicationFee || 100)}/-</span>
+                <span className="text-emerald-700 font-bold">ফি: ৳ {toBanglaNumber(searchedRoadCuttingApp.applicationFee || 300)}/-</span>
               </div>
             </div>
           </div>

@@ -205,7 +205,7 @@ export const RoadCuttingApplicationPrintA4: React.FC<RoadCuttingApplicationPrint
               ৩। আবেদন ফরম ফি বিবরণ:
             </h3>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div><strong>আবেদন ফরমের মূল্য:</strong> ৳ {toBanglaNumber(application.applicationFee || 100)}/- (একশত টাকা)</div>
+              <div><strong>আবেদন ফরমের মূল্য:</strong> ৳ {toBanglaNumber(application.applicationFee || 300)}/- (তিনশত টাকা)</div>
               <div>
                 <strong>পরিশোধ স্ট্যাটাস:</strong>{' '}
                 {application.moneyReceiptNo ? (

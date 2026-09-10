@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Printer, 
   X, 
@@ -24,11 +25,27 @@ export const PendingApplicationsPrint: React.FC<PendingApplicationsPrintProps> =
   applications,
   onClose,
 }) => {
+  const [showToast, setShowToast] = useState(false);
+
+  // Isolate print stylesheet on mount/unmount
+  useEffect(() => {
+    document.body.classList.add('print-modal-active');
+    return () => {
+      document.body.classList.remove('print-modal-active');
+    };
+  }, []);
+
   // Only filter pending applications
   const pendingApps = applications.filter((a) => a.status === 'pending');
 
   const handlePrint = () => {
-    window.print();
+    setShowToast(true);
+    setTimeout(() => {
+      window.print();
+    }, 100);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 4000);
   };
 
   const printTimestamp = new Date().toLocaleDateString('bn-BD', {
@@ -39,10 +56,34 @@ export const PendingApplicationsPrint: React.FC<PendingApplicationsPrintProps> =
     minute: '2-digit',
   });
 
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex flex-col overflow-y-auto print:static print:bg-white print:overflow-visible print:p-0">
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="print-modal-portal print-modal-container fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex flex-col overflow-y-auto print:static print:bg-white print:overflow-visible print:p-0 print:m-0 print:block print:w-full print:h-auto">
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="no-print fixed top-6 right-6 z-60 bg-amber-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-amber-400/40 flex items-start gap-3.5 max-w-md animate-in slide-in-from-top-4 duration-300">
+          <div className="p-2 bg-amber-700 rounded-xl shrink-0 mt-0.5">
+            <CheckCircle2 className="w-5 h-5 text-amber-200" />
+          </div>
+          <div className="flex-1 text-xs sm:text-sm">
+            <h4 className="font-bold text-white mb-0.5">অপেক্ষমান আবেদন PDF রিপোর্ট প্রস্তুত হচ্ছে</h4>
+            <p className="text-amber-100 text-xs leading-relaxed">
+              প্রিন্ট ডায়ালগ থেকে <strong>'Save as PDF'</strong> অথবা প্রিন্টার নির্বাচন করে রিপোর্টটি সংরক্ষণ করুন।
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowToast(false)}
+            className="text-amber-300 hover:text-white p-1 rounded-lg hover:bg-amber-800 transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Top Action Bar - Hidden in print mode */}
-      <div className="sticky top-0 z-10 bg-slate-900 text-white px-4 sm:px-6 py-3 shadow-lg flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="no-print sticky top-0 z-10 bg-slate-900 text-white px-4 sm:px-6 py-3 shadow-lg flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex items-center gap-2">
           <Printer className="w-5 h-5 text-amber-400" />
           <h2 className="text-sm sm:text-base font-bold text-white">
@@ -199,6 +240,7 @@ export const PendingApplicationsPrint: React.FC<PendingApplicationsPrintProps> =
           সীতাকুণ্ড পৌরসভা ডিজিটাল ভূমি ডিমার্কেশন ব্যবস্থাপনা সিস্টেম | সিস্টেম জেনারেটেড সারসংক্ষেপ রিপোর্ট
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

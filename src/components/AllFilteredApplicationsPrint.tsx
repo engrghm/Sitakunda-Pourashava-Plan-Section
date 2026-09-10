@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Printer, 
   X, 
@@ -33,8 +34,24 @@ export const AllFilteredApplicationsPrint: React.FC<AllFilteredApplicationsPrint
   onClose,
   onExportCSV,
 }) => {
+  const [showToast, setShowToast] = useState(false);
+
+  // Isolate print stylesheet on mount/unmount
+  useEffect(() => {
+    document.body.classList.add('print-modal-active');
+    return () => {
+      document.body.classList.remove('print-modal-active');
+    };
+  }, []);
+
   const handlePrint = () => {
-    window.print();
+    setShowToast(true);
+    setTimeout(() => {
+      window.print();
+    }, 100);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 4000);
   };
 
   const totalCount = applications.length;
@@ -64,10 +81,34 @@ export const AllFilteredApplicationsPrint: React.FC<AllFilteredApplicationsPrint
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex flex-col overflow-y-auto print:static print:bg-white print:overflow-visible print:p-0">
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="print-modal-portal print-modal-container fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex flex-col overflow-y-auto print:static print:bg-white print:overflow-visible print:p-0 print:m-0 print:block print:w-full print:h-auto">
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="no-print fixed top-6 right-6 z-60 bg-emerald-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-emerald-400/40 flex items-start gap-3.5 max-w-md animate-in slide-in-from-top-4 duration-300">
+          <div className="p-2 bg-emerald-700 rounded-xl shrink-0 mt-0.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-300" />
+          </div>
+          <div className="flex-1 text-xs sm:text-sm">
+            <h4 className="font-bold text-white mb-0.5">ফিল্টারকৃত রেজিস্টার PDF প্রস্তুত হচ্ছে</h4>
+            <p className="text-emerald-100 text-xs leading-relaxed">
+              প্রিন্ট ডায়ালগ থেকে <strong>'Save as PDF'</strong> অথবা প্রিন্টার নির্বাচন করে সকল ফিল্টারকৃত তালিকা প্রিন্ট করুন।
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowToast(false)}
+            className="text-emerald-300 hover:text-white p-1 rounded-lg hover:bg-emerald-800 transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Top Action Bar - Hidden in print mode */}
-      <div className="sticky top-0 z-10 bg-slate-900 text-white px-4 sm:px-6 py-3 shadow-lg flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="no-print sticky top-0 z-10 bg-slate-900 text-white px-4 sm:px-6 py-3 shadow-lg flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex items-center gap-2">
           <Printer className="w-5 h-5 text-emerald-400" />
           <h2 className="text-sm sm:text-base font-bold text-white">
@@ -285,6 +326,7 @@ export const AllFilteredApplicationsPrint: React.FC<AllFilteredApplicationsPrint
           * এই রেজিস্টার প্রতিবেদনটি সীতাকুণ্ড পৌরসভার অনলাইন ডিমার্কেশন ম্যানেজমেন্ট সিস্টেম থেকে তৈরি করা হয়েছে।
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

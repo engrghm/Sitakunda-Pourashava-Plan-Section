@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Printer, 
   X, 
@@ -29,14 +30,22 @@ export const BulkApplicationsMergedPrint: React.FC<BulkApplicationsMergedPrintPr
 }) => {
   const [showToast, setShowToast] = useState(false);
 
+  // Isolate print stylesheet on mount/unmount
+  useEffect(() => {
+    document.body.classList.add('print-modal-active');
+    return () => {
+      document.body.classList.remove('print-modal-active');
+    };
+  }, []);
+
   const handlePrint = () => {
     setShowToast(true);
     setTimeout(() => {
       window.print();
-    }, 300);
+    }, 100);
     setTimeout(() => {
       setShowToast(false);
-    }, 5000);
+    }, 4000);
   };
 
   const currentDateFormatted = formatBanglaDate(new Date().toISOString());
@@ -91,10 +100,12 @@ export const BulkApplicationsMergedPrint: React.FC<BulkApplicationsMergedPrintPr
     document.body.removeChild(link);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex flex-col overflow-y-auto print:static print:bg-white print:overflow-visible print:p-0">
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="print-modal-portal print-modal-container fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex flex-col overflow-y-auto print:static print:bg-white print:overflow-visible print:p-0 print:m-0 print:block print:w-full print:h-auto">
       {/* Top Action Bar - Hidden in print */}
-      <div className="sticky top-0 z-10 bg-slate-900 text-white px-4 sm:px-6 py-3 shadow-lg flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="no-print sticky top-0 z-10 bg-slate-900 text-white px-4 sm:px-6 py-3 shadow-lg flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex items-center gap-2">
           <Layers className="w-5 h-5 text-emerald-400" />
           <h2 className="text-sm sm:text-base font-bold text-white">
@@ -134,7 +145,7 @@ export const BulkApplicationsMergedPrint: React.FC<BulkApplicationsMergedPrintPr
 
       {/* Toast Notification */}
       {showToast && (
-        <div className="fixed top-16 right-6 z-50 bg-emerald-950 text-emerald-100 border border-emerald-500/50 px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-xs animate-in fade-in slide-in-from-top-4 print:hidden">
+        <div className="no-print fixed top-16 right-6 z-50 bg-emerald-950 text-emerald-100 border border-emerald-500/50 px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-xs animate-in fade-in slide-in-from-top-4 print:hidden">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <div>
             <div className="font-bold text-white">বাল্ক PDF প্রিন্ট ও মার্জ প্রস্তুত হচ্ছে</div>
@@ -315,6 +326,7 @@ export const BulkApplicationsMergedPrint: React.FC<BulkApplicationsMergedPrintPr
           ))
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

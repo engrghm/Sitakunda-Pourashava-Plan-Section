@@ -2701,10 +2701,10 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                   </span>
                 </div>
                 <span className="text-2xl font-black block tracking-tight text-indigo-950">
-                  ৳ {toBanglaNumber(roadCuttingApplications.reduce((sum, r) => sum + (r.applicationFee || 100), 0))}/-
+                  ৳ {toBanglaNumber(roadCuttingApplications.reduce((sum, r) => sum + (r.applicationFee || 300), 0))}/-
                 </span>
                 <span className="text-[11px] block mt-0.5 text-indigo-700">
-                  প্রতি আবেদন ৳ ১০০/-
+                  প্রতি আবেদন ৳ ৩০০/-
                 </span>
               </div>
             </div>
@@ -2926,7 +2926,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                           </td>
                           <td className="p-3">
                             <strong className="text-emerald-900 block font-bold">
-                              ৳ {toBanglaNumber(rcApp.applicationFee || 100)}/-
+                              ৳ {toBanglaNumber(rcApp.applicationFee || 300)}/-
                             </strong>
                             <span className="text-[10px] text-slate-500">ক্যাশ কাউন্টার</span>
                           </td>

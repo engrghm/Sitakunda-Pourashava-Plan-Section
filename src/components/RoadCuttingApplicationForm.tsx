@@ -61,8 +61,8 @@ export const RoadCuttingApplicationForm: React.FC<RoadCuttingApplicationFormProp
   const [declarationAccepted, setDeclarationAccepted] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
-  // Fixed Application Form Price: ৳ 100/-
-  const formFee = 100;
+  // Fixed Application Form Price: ৳ 300/-
+  const formFee = 300;
 
   // Convert string (Bengali or English digits) to number
   const parseBanglaOrEngNumber = (str: string): number => {
@@ -500,7 +500,7 @@ export const RoadCuttingApplicationForm: React.FC<RoadCuttingApplicationFormProp
             </div>
 
             <p className="text-xs sm:text-sm text-emerald-950 leading-relaxed font-medium">
-              অনলাইনে আবেদন জমা দেওয়ার পর, প্রাপ্ত ট্র্যাকিং নম্বর নিয়ে সীতাকুণ্ড পৌরসভা কার্যালয়ের ক্যাশ কাউন্টারে সরাসরি ফি <strong>৳ ১০০/- (একশত টাকা)</strong> জমা দিয়ে অফিসিয়াল সিলযুক্ত রসিদ সংগ্রহ করুন।
+              অনলাইনে আবেদন জমা দেওয়ার পর, প্রাপ্ত ট্র্যাকিং নম্বর নিয়ে সীতাকুণ্ড পৌরসভা কার্যালয়ের ক্যাশ কাউন্টারে সরাসরি ফি <strong>৳ ৩০০/- (তিনশত টাকা)</strong> জমা দিয়ে অফিসিয়াল সিলযুক্ত রসিদ সংগ্রহ করুন।
             </p>
           </div>
 

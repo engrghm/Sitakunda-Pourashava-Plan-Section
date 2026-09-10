@@ -493,7 +493,7 @@ export interface RoadCuttingApplication {
   totalAreaSqFt: number; // মোট ক্ষেত্রফল (বর্গফুট)
   ratePerSqFt: number; // প্রতি বর্গফুট পুনঃনির্মাণ ক্ষতিপূরণ ফি
   restorationFee: number; // রাস্তা পুনঃনির্মাণ ক্ষতিপূরণ ফি
-  applicationFee: number; // আবেদন ফি (৳ ৫০০/-)
+  applicationFee: number; // আবেদন ফি (৳ ৩০০/-)
   totalAmount: number; // সর্বমোট ফি
   workDurationDays: number; // কাজের মেয়াদকাল (দিন)
   workStartDate: string;

@@ -56,7 +56,7 @@ export const RoadCuttingStatusChart: React.FC<RoadCuttingStatusChartProps> = ({
   const rejectedCount = applications.filter((a) => a.status === 'rejected').length;
   const total = applications.length;
 
-  const totalFees = applications.reduce((sum, a) => sum + (a.applicationFee || 100), 0);
+  const totalFees = applications.reduce((sum, a) => sum + (a.applicationFee || 300), 0);
 
   const statusData = [
     {
