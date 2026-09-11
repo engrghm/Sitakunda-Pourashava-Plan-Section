@@ -406,9 +406,6 @@ export const BuildingLegalGuidelinesModal: React.FC<BuildingLegalGuidelinesModal
                 </h4>
                 <div className="space-y-1.5 text-xs text-amber-950">
                   <p>
-                    <strong>ধারা ৭:</strong> বহুতল (৭ তলা বা তদূর্ধ্ব) কিংবা বাণিজ্যিক ভবনের ক্ষেত্রে ফায়ার সার্ভিস ও সিভিল ডিফেন্স অধিদপ্তরের পূর্বানুমোদন ও অনাপত্তিপত্র (NOC) ব্যতিরেকে পৌরসভার নকশা অনুমোদন কার্যকর হইবে না।
-                  </p>
-                  <p>
                     <strong>ধারা ৮:</strong> বিদ্যমান ভবনে পর্যাপ্ত অগ্নিনির্বাপক ব্যবস্থা, জরুরি বহির্গমন সিঁড়ি ও ফায়ার হাইড্রেন্ট সংরক্ষণ বাধ্যতামূলক।
                   </p>
                 </div>
