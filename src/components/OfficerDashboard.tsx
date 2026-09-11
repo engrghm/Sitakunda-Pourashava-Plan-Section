@@ -85,7 +85,8 @@ import {
   GeoCoordinates,
   LandOwner,
   CONSTRUCTION_TYPES,
-  LAND_CLASSES
+  LAND_CLASSES,
+  UploadedDocument
 } from '../types';
 import { 
   getStoredApplications, 
@@ -693,12 +694,30 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
     );
   };
 
+  // Update documents for currently selected application (Draftsman/Admin can add, edit, or delete attachments & maps)
+  const handleUpdateSelectedAppDocuments = (updatedDocs: UploadedDocument[]) => {
+    if (!selectedApp) return;
+
+    const updatedApp: DemarcationApplication = {
+      ...selectedApp,
+      documents: updatedDocs,
+    };
+
+    setSelectedApp(updatedApp);
+    saveApplication(updatedApp);
+    loadApplications();
+
+    setSaveSuccessMsg('সংযুক্ত নথিপত্র ও ম্যাপসমূহ সফলভাবে আপডেট ও ডাটাবেজে সংরক্ষিত হয়েছে!');
+    setTimeout(() => setSaveSuccessMsg(null), 3500);
+  };
+
   // Save changes by officer
   const handleSaveAppUpdates = () => {
     if (!selectedApp) return;
 
     const reviewerTitle = currentOfficer?.title || 'নক্সাকার (সিভিল)';
     const approverTitle = currentOfficer?.title || 'নির্বাহী প্রকৌশলী';
+
 
     // ─── নক্সাকার (Draftsman) রোল: শুধুমাত্র নিজের সরজমিন মন্তব্য আপডেট করতে পারবে ───
     // অন্য কোনো ফিল্ড (status, applicant info, schedule, fee, certificate) পরিবর্তন করতে পারবে না।
@@ -903,6 +922,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
     loadApplications();
     setIsAdminEditMode(false);
   };
+
 
   // Open Draftsman Data Update modal (১. ৭ কপি নকশার ফর্দ • ২. আবেদন ফি ১০০০/- ফিক্সড • ৩. ইমারত নির্মাণ ফি ও চালান বিবরণ)
   const handleOpenTreasuryModal = (bApp: BuildingConstructionApplication) => {
@@ -3319,10 +3339,10 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                   <ShieldCheck className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
                   <div className="text-xs">
                     <span className="font-bold text-amber-900 block text-sm mb-0.5">
-                      নক্সাকার (সিভিল) সরজমিন পরিদর্শন মোড সক্রিয়
+                      নক্সাকার (সিভিল) সরজমিন পরিদর্শন ও নথিপত্র মূল্যায়ন মোড সক্রিয়
                     </span>
                     <p className="text-amber-800 leading-relaxed">
-                      আপনি এই আবেদনে <strong>নক্সাকারের সরজমিন মূল্যায়ন মন্তব্য</strong>, <strong>সাইট পরিদর্শন স্ট্যাটাস</strong> এবং <strong>জমির জিপিএস লোকেশন (ম্যাপ পিন)</strong> হালনাগাদ করতে পারবেন। আবেদন অনুমোদন/বাতিল এবং অন্যান্য প্রশাসনিক তথ্য সুরক্ষিত রাখা হয়েছে।
+                      আপনি এই আবেদনে <strong>নক্সাকারের সরজমিন মূল্যায়ন মন্তব্য</strong>, <strong>সাইট পরিদর্শন স্ট্যাটাস</strong>, <strong>জমির জিপিএস লোকেশন (ম্যাপ পিন)</strong> এবং নিচের <strong>সংযুক্ত নথিপত্র ও মৌজা ম্যাপসমূহ (নতুন ম্যাপ/নথি যোগ, এডিট বা ফাইল প্রতিস্থাপন)</strong> সরাসরি হালনাগাদ করতে পারবেন। আবেদন অনুমোদন/বাতিল এবং অন্যান্য প্রশাসনিক তথ্য সুরক্ষিত রাখা হয়েছে।
                     </p>
                   </div>
                 </div>
@@ -4014,6 +4034,8 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                   documents={selectedApp.documents || []}
                   applicantName={editApplicantName || selectedApp.siteLocation.applicantName}
                   applicationId={selectedApp.id}
+                  allowManage={currentOfficer?.role === 'draftsman' || ['admin', 'super_admin'].includes(currentOfficer?.role || '')}
+                  onUpdateDocuments={handleUpdateSelectedAppDocuments}
                 />
               </div>
 

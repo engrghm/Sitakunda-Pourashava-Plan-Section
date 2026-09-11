@@ -3,31 +3,68 @@ import {
   FileText, 
   Map, 
   FileSpreadsheet, 
-  Image as ImageIcon, 
   Download, 
   Eye, 
   CheckCircle2, 
   ExternalLink, 
   X, 
-  ZoomIn, 
   ShieldCheck,
-  FileCheck
+  FileCheck,
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
+  Upload,
+  AlertCircle
 } from 'lucide-react';
 import { UploadedDocument } from '../types';
 import { toBanglaNumber, formatBanglaDate } from '../utils/storage';
+import { uploadDocumentToServer } from '../utils/apiStorage';
+
+const DRAFTSMAN_DOC_TYPES = [
+  { key: 'mouza_map_sketch', label: 'মৌজা ম্যাপ ও দাগ স্কেচ (Mouza Map & Plot Sketch)' },
+  { key: 'field_inspection_report', label: 'সরজমিন পরিদর্শন ও পরিমাপ প্রতিবেদন (Field Inspection Report)' },
+  { key: 'final_demarcation_drawing', label: 'সীমানা চিহ্নিতকরণ চূড়ান্ত নক্সা (Final Demarcation Drawing)' },
+  { key: 'khatian_copy', label: 'খতিয়ান / পরচা কপি (Khatian / Porcha)' },
+  { key: 'deed_copy', label: 'রেজিস্ট্রি দলিল কপি (Registered Deed)' },
+  { key: 'tax_receipt', label: 'ভূমি উন্নয়ন কর দাখিলা (Holding / Land Tax Receipt)' },
+  { key: 'nid_copy', label: 'জাতীয় পরিচয়পত্র (NID Card)' },
+  { key: 'others', label: 'অন্যান্য অফিসিয়াল কাগজপত্র (Others)' },
+  { key: 'custom', label: 'অন্যান্য / কাস্টম শিরোনাম...' },
+];
 
 interface DocumentAttachmentsViewerProps {
   documents: UploadedDocument[];
   applicantName: string;
   applicationId: string;
+  allowManage?: boolean;
+  onUpdateDocuments?: (updatedDocs: UploadedDocument[]) => void;
 }
 
 export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps> = ({
   documents,
   applicantName,
   applicationId,
+  allowManage = false,
+  onUpdateDocuments,
 }) => {
   const [selectedDoc, setSelectedDoc] = useState<UploadedDocument | null>(null);
+
+  // Add Document Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [selectedDocType, setSelectedDocType] = useState<string>('mouza_map_sketch');
+  const [customTitle, setCustomTitle] = useState<string>('');
+  const [newFile, setNewFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Edit Document Modal State
+  const [editingDoc, setEditingDoc] = useState<UploadedDocument | null>(null);
+  const [editTitle, setEditTitle] = useState<string>('');
+  const [editDocType, setEditDocType] = useState<string>('mouza_map_sketch');
+  const [editReplacementFile, setEditReplacementFile] = useState<File | null>(null);
+  const [isEditUploading, setIsEditUploading] = useState<boolean>(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const getDocTypeBadge = (type: string, title: string) => {
     if (type.includes('map') || title.includes('ম্যাপ') || title.includes('নক্সা')) {
@@ -56,6 +93,13 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
         label: 'ভূমি কর দাখিলা',
         bg: 'bg-amber-50 text-amber-800 border-amber-200',
         icon: FileCheck,
+      };
+    }
+    if (type.includes('report') || title.includes('প্রতিবেদন') || title.includes('পরিদর্শন')) {
+      return {
+        label: 'পরিদর্শন ও পরিমাপ প্রতিবেদন',
+        bg: 'bg-teal-50 text-teal-800 border-teal-200',
+        icon: FileText,
       };
     }
     if (type.includes('other') || title.includes('অন্যান্য') || title.includes('Others')) {
@@ -107,7 +151,6 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
             setTimeout(() => URL.revokeObjectURL(url), 1000);
           })
           .catch(() => {
-            // Fallback: direct window open / anchor download
             const a = document.createElement('a');
             a.href = doc.fileUrl;
             a.download = doc.fileName || `${doc.docTitle}.pdf`;
@@ -132,22 +175,167 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
     }
   };
 
+  // Add new document handler
+  const handleAddDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUploadError(null);
+
+    if (!newFile) {
+      setUploadError('অনুগ্রহ করে একটি ফাইল (PDF বা ছবি) নির্বাচন করুন।');
+      return;
+    }
+
+    if (newFile.size > 15 * 1024 * 1024) {
+      setUploadError('ফাইলের সাইজ ১৫ MB-এর বেশি হতে পারবে না।');
+      return;
+    }
+
+    const title = selectedDocType === 'custom' 
+      ? customTitle.trim() || 'সংযুক্ত নথি' 
+      : (DRAFTSMAN_DOC_TYPES.find(d => d.key === selectedDocType)?.label.split(' (')[0] || 'মৌজা ম্যাপ / নক্সা');
+
+    setIsUploading(true);
+    try {
+      const uploadedRes = await uploadDocumentToServer(newFile, selectedDocType, title, false);
+      const newDocItem: UploadedDocument = {
+        id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        docType: selectedDocType,
+        docTitle: title,
+        fileName: uploadedRes.fileName || newFile.name,
+        fileSize: uploadedRes.fileSize || newFile.size,
+        fileUrl: uploadedRes.fileUrl,
+        uploadDate: new Date().toISOString().split('T')[0],
+        isMandatory: false,
+      };
+
+      const nextDocs = [...documents, newDocItem];
+      onUpdateDocuments?.(nextDocs);
+
+      setIsAddModalOpen(false);
+      setNewFile(null);
+      setCustomTitle('');
+      setSelectedDocType('mouza_map_sketch');
+    } catch (err: any) {
+      setUploadError('ফাইল আপলোড করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Start edit handler
+  const handleStartEdit = (doc: UploadedDocument) => {
+    setEditingDoc(doc);
+    setEditTitle(doc.docTitle);
+    setEditDocType(doc.docType);
+    setEditReplacementFile(null);
+    setEditError(null);
+  };
+
+  // Save edit handler
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDoc) return;
+    setEditError(null);
+
+    if (!editTitle.trim()) {
+      setEditError('নথির শিরোনাম আবশ্যক।');
+      return;
+    }
+
+    setIsEditUploading(true);
+    try {
+      let updatedFileUrl = editingDoc.fileUrl;
+      let updatedFileName = editingDoc.fileName;
+      let updatedFileSize = editingDoc.fileSize;
+
+      if (editReplacementFile) {
+        if (editReplacementFile.size > 15 * 1024 * 1024) {
+          setEditError('ফাইলের সাইজ ১৫ MB-এর বেশি হতে পারবে না।');
+          setIsEditUploading(false);
+          return;
+        }
+        const uploaded = await uploadDocumentToServer(editReplacementFile, editDocType, editTitle, false);
+        if (uploaded.fileUrl) {
+          updatedFileUrl = uploaded.fileUrl;
+          updatedFileName = uploaded.fileName || editReplacementFile.name;
+          updatedFileSize = uploaded.fileSize || editReplacementFile.size;
+        }
+      }
+
+      const updatedDoc: UploadedDocument = {
+        ...editingDoc,
+        docTitle: editTitle.trim(),
+        docType: editDocType,
+        fileName: updatedFileName,
+        fileSize: updatedFileSize,
+        fileUrl: updatedFileUrl,
+      };
+
+      const nextDocs = documents.map(d => d.id === editingDoc.id ? updatedDoc : d);
+      onUpdateDocuments?.(nextDocs);
+      setEditingDoc(null);
+    } catch (err) {
+      setEditError('নথি আপডেট করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
+    } finally {
+      setIsEditUploading(false);
+    }
+  };
+
+  // Delete document handler
+  const handleDeleteDoc = (id: string) => {
+    const target = documents.find(d => d.id === id);
+    if (!target) return;
+    const confirmed = window.confirm(`আপনি কি নিশ্চিতভাবে "${target.docTitle}" নথিটি মুছে ফেলতে চান?`);
+    if (confirmed) {
+      const nextDocs = documents.filter(d => d.id !== id);
+      onUpdateDocuments?.(nextDocs);
+    }
+  };
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      {/* Header with Title and Add Button for Draftsman/Admin */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
           <ShieldCheck className="w-4 h-4 text-emerald-700" />
           <span>সংযুক্ত নথিপত্র ও ম্যাপসমূহ ({toBanglaNumber(documents.length)} টি নথি)</span>
         </h4>
-        <span className="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold">
-          অফিসিয়াল যাচাইযোগ্য
-        </span>
+
+        <div className="flex items-center gap-2">
+          {allowManage && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddModalOpen(true);
+                setUploadError(null);
+                setNewFile(null);
+              }}
+              className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ নতুন নথিপত্র / ম্যাপ যোগ করুন</span>
+            </button>
+          )}
+
+          <span className="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold">
+            {allowManage ? 'নক্সাকার সম্পাদনাসক্ষম' : 'অফিসিয়াল যাচাইযোগ্য'}
+          </span>
+        </div>
       </div>
 
       {documents.length === 0 ? (
-        <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-500">
-          এই আবেদনে কোনো অতিরিক্ত ফাইল বা নথিপত্র সংযুক্ত করা হয়নি।
+        <div className="p-5 bg-white border border-dashed border-slate-300 rounded-xl text-center text-xs text-slate-500 space-y-2">
+          <p>এই আবেদনে কোনো অতিরিক্ত ফাইল বা নথিপত্র সংযুক্ত করা হয়নি।</p>
+          {allowManage && (
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>এখানে প্রথম নথিপত্র বা ম্যাপ আপলোড করুন</span>
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -188,7 +376,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                     <button
                       type="button"
                       onClick={() => setSelectedDoc(doc)}
-                      className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold rounded-md border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer"
+                      className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold rounded-md border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <Eye className="w-3 h-3" />
                       <span>প্রিভিউ</span>
@@ -202,6 +390,28 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                     >
                       <Download className="w-3.5 h-3.5" />
                     </button>
+
+                    {allowManage && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleStartEdit(doc)}
+                          className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md border border-blue-200 transition-colors cursor-pointer"
+                          title="সম্পাদনা করুন (নাম/ফাইল পরিবর্তন)"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDoc(doc.id)}
+                          className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md border border-red-200 transition-colors cursor-pointer"
+                          title="মুছে ফেলুন"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -210,9 +420,224 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
         </div>
       )}
 
+      {/* Modal 1: Add New Document / Map */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-60 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-300 animate-in fade-in zoom-in duration-150">
+            <div className="bg-emerald-800 text-white px-5 py-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Map className="w-5 h-5 text-emerald-300" />
+                <h3 className="text-sm font-bold text-white">নতুন নথিপত্র বা ম্যাপ আপলোড ও সংযুক্তি</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="p-1 text-slate-300 hover:text-white rounded-lg hover:bg-emerald-900 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddDocument} className="p-5 space-y-4 text-xs">
+              {uploadError && (
+                <div className="p-3 bg-red-50 border border-red-300 text-red-800 rounded-lg flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                  <span>{uploadError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  নথিপত্র বা ম্যাপের ধরন <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={selectedDocType}
+                  onChange={(e) => setSelectedDocType(e.target.value)}
+                  className="w-full px-3 py-2 bg-white rounded-lg border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-emerald-500"
+                >
+                  {DRAFTSMAN_DOC_TYPES.map((dt) => (
+                    <option key={dt.key} value={dt.key}>
+                      {dt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedDocType === 'custom' && (
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    কাস্টম নথির নাম লিখুন <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customTitle}
+                    onChange={(e) => setCustomTitle(e.target.value)}
+                    placeholder="যেমন: সংশোধিত মৌজা ম্যাপের ডিজিটাল দাগ স্কেচ"
+                    className="w-full px-3 py-2 bg-white rounded-lg border border-slate-300 text-xs"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  ফাইল নির্বাচন করুন (PDF, JPG, PNG, WEBP) <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="file"
+                  required
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  onChange={(e) => setNewFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-700 hover:file:bg-emerald-800 file:text-white cursor-pointer border border-slate-300 rounded-lg p-1.5"
+                />
+                <span className="text-[10px] text-slate-500 mt-1 block">
+                  প্রতিটি ফাইলের সর্বোচ্চ সাইজ ১৫ MB পর্যন্ত সমর্থিত
+                </span>
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  disabled={isUploading}
+                  className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold cursor-pointer"
+                >
+                  বাতিল
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isUploading}
+                  className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-70 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>আপলোড হচ্ছে...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4" />
+                      <span>সংযুক্ত ও সংরক্ষণ করুন</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 2: Edit Existing Document / Replace File */}
+      {editingDoc && (
+        <div className="fixed inset-0 z-60 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-300 animate-in fade-in zoom-in duration-150">
+            <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-sm font-bold text-white">নথিপত্র বা ম্যাপ সম্পাদনা</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingDoc(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="p-5 space-y-4 text-xs">
+              {editError && (
+                <div className="p-3 bg-red-50 border border-red-300 text-red-800 rounded-lg flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                  <span>{editError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  নথির শিরোনাম / নাম <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-white rounded-lg border border-slate-300 text-xs font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  নথির ধরন নির্বাচন
+                </label>
+                <select
+                  value={editDocType}
+                  onChange={(e) => setEditDocType(e.target.value)}
+                  className="w-full px-3 py-2 bg-white rounded-lg border border-slate-300 text-xs"
+                >
+                  {DRAFTSMAN_DOC_TYPES.map((dt) => (
+                    <option key={dt.key} value={dt.key}>
+                      {dt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
+                <span className="text-[11px] text-slate-500 block">বর্তমান ফাইল:</span>
+                <span className="font-mono text-slate-800 font-bold block truncate">{editingDoc.fileName}</span>
+                <span className="text-[10px] text-slate-400 font-mono">সাইজ: {formatFileSize(editingDoc.fileSize)}</span>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">
+                  ফাইল প্রতিস্থাপন করুন (ঐচ্ছিক)
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  onChange={(e) => setEditReplacementFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-700 hover:file:bg-slate-800 file:text-white cursor-pointer border border-slate-300 rounded-lg p-1.5"
+                />
+                <span className="text-[10px] text-slate-500 mt-1 block">
+                  নতুন ফাইল দিলে পূর্ববর্তী ফাইলটি প্রতিস্থাপিত হবে
+                </span>
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingDoc(null)}
+                  disabled={isEditUploading}
+                  className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold cursor-pointer"
+                >
+                  বাতিল
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isEditUploading}
+                  className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-70 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  {isEditUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>সংরক্ষণ হচ্ছে...</span>
+                    </>
+                  ) : (
+                    <span>আপডেট সংরক্ষণ করুন</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Document Quick Preview Modal */}
       {selectedDoc && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-70 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-150">
             {/* Modal Header */}
             <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
