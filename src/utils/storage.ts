@@ -237,14 +237,41 @@ export function getStoredApplications(): DemarcationApplication[] {
   }
 }
 
+function safeSetLocalStorage(key: string, data: any[]) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (err: any) {
+    if (err && (err.name === 'QuotaExceededError' || err.code === 22 || err.code === 1014)) {
+      console.warn('[LocalStorage] QuotaExceededError detected, trimming heavy data URLs for local cache');
+      try {
+        const lightData = data.map((item) => {
+          if (!item || !item.documents || !Array.isArray(item.documents)) return item;
+          const lightDocs = item.documents.map((doc: any) => {
+            if (doc && doc.fileUrl && doc.fileUrl.startsWith('data:')) {
+              return {
+                ...doc,
+                fileUrl: '', // strip massive base64 for local storage cache while keeping metadata
+              };
+            }
+            return doc;
+          });
+          return { ...item, documents: lightDocs };
+        });
+        localStorage.setItem(key, JSON.stringify(lightData));
+      } catch (innerErr) {
+        console.error('[LocalStorage] Critical failure saving to local storage:', innerErr);
+      }
+    } else {
+      console.error('Error saving to localStorage:', err);
+    }
+  }
+}
+
 export function saveApplication(app: DemarcationApplication): DemarcationApplication[] {
   const current = getStoredApplications();
   const updated = [app, ...current.filter((item) => item.id !== app.id)];
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  } catch (err) {
-    console.error('Error saving application to localStorage:', err);
-  }
+  safeSetLocalStorage(STORAGE_KEY, updated);
+
   saveApplicationToApi(app, 'demarcation').catch((err) => {
     console.warn('[Hostinger MySQL] Application sync deferred:', err);
   });
@@ -261,11 +288,8 @@ export function updateApplication(id: string, updates: Partial<DemarcationApplic
     }
     return item;
   });
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  } catch (err) {
-    console.error('Error updating application in localStorage:', err);
-  }
+  safeSetLocalStorage(STORAGE_KEY, updated);
+
   if (updatedItem) {
     saveApplicationToApi(updatedItem, 'demarcation').catch((err) => {
       console.warn('[Hostinger MySQL] Application update sync deferred:', err);
@@ -273,6 +297,7 @@ export function updateApplication(id: string, updates: Partial<DemarcationApplic
   }
   return updated;
 }
+
 
 export function saveDraft(draft: ApplicationDraftData): boolean {
   try {
@@ -571,7 +596,7 @@ export function saveBuildingApplication(app: BuildingConstructionApplication): B
   try {
     const current = getBuildingApplications();
     const updated = [app, ...current.filter((item) => item.id !== app.id)];
-    localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(updated));
+    safeSetLocalStorage(BUILDING_APPS_STORAGE_KEY, updated);
     saveApplicationToApi(app, 'building').catch((err) => {
       console.warn('[Hostinger MySQL] Building application sync deferred:', err);
     });
@@ -593,7 +618,7 @@ export function updateBuildingApplication(updatedApp: BuildingConstructionApplic
     } else {
       updated = [updatedApp, ...current];
     }
-    localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(updated));
+    safeSetLocalStorage(BUILDING_APPS_STORAGE_KEY, updated);
     saveApplicationToApi(updatedApp, 'building').catch((err) => {
       console.warn('[Hostinger MySQL] Building application update sync deferred:', err);
     });
@@ -627,7 +652,7 @@ export function saveRoadCuttingApplication(app: RoadCuttingApplication): RoadCut
   try {
     const current = getRoadCuttingApplications();
     const updated = [app, ...current.filter((item) => item.id !== app.id)];
-    localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(updated));
+    safeSetLocalStorage(ROAD_CUTTING_APPS_STORAGE_KEY, updated);
     saveApplicationToApi(app, 'road_cutting').catch((err) => {
       console.warn('[Hostinger MySQL] Road cutting application sync deferred:', err);
     });
@@ -649,7 +674,7 @@ export function updateRoadCuttingApplication(updatedApp: RoadCuttingApplication)
     } else {
       updated = [updatedApp, ...current];
     }
-    localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(updated));
+    safeSetLocalStorage(ROAD_CUTTING_APPS_STORAGE_KEY, updated);
     saveApplicationToApi(updatedApp, 'road_cutting').catch((err) => {
       console.warn('[Hostinger MySQL] Road cutting application update sync deferred:', err);
     });

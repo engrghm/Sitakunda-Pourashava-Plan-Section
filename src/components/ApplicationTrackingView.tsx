@@ -40,8 +40,10 @@ import {
   saveRecentTrackingSearch,
   clearRecentTrackingSearches,
   removeRecentTrackingSearch,
+  saveApplication,
   RecentSearchItem
 } from '../utils/storage';
+import { searchApplicationApi } from '../utils/apiStorage';
 import { ApplicationQRCodeCard } from './ApplicationQRCodeCard';
 import { DocumentAttachmentsViewer } from './DocumentAttachmentsViewer';
 import { QRCodeScannerModal } from './QRCodeScannerModal';
@@ -71,6 +73,7 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
   const [printBuildingPermitModal, setPrintBuildingPermitModal] = useState<BuildingConstructionApplication | null>(null);
   const [printBuildingFormModal, setPrintBuildingFormModal] = useState<BuildingConstructionApplication | null>(null);
   const [hasSearched, setHasSearched] = useState<boolean>(false);
+  const [isSearchingServer, setIsSearchingServer] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [isQrScannerOpen, setIsQrScannerOpen] = useState<boolean>(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>(() => getRecentTrackingSearches());
@@ -83,43 +86,69 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
     }
   }, [initialTrackingId]);
 
-  const performSearch = (query: string) => {
+  const performSearch = async (query: string) => {
     const cleanQuery = query.trim();
     if (!cleanQuery) return;
 
     setHasSearched(true);
+    // 1. First check local storage for instant response
     const allApps = getStoredApplications();
-    const found = allApps.find(
+    let found = allApps.find(
       (app) =>
         app.id.toLowerCase() === cleanQuery.toLowerCase() ||
-        app.siteLocation.applicantMobile.includes(cleanQuery) ||
-        app.siteLocation.applicantNid.includes(cleanQuery)
+        (app.formNo && app.formNo.toLowerCase() === cleanQuery.toLowerCase()) ||
+        app.siteLocation?.applicantMobile?.includes(cleanQuery) ||
+        app.siteLocation?.applicantNid?.includes(cleanQuery)
+    );
+
+    const bApps = getBuildingApplications();
+    let foundB = bApps.find(
+      (app) =>
+        app.id.toLowerCase() === cleanQuery.toLowerCase() ||
+        (app.formNo && app.formNo.toLowerCase() === cleanQuery.toLowerCase()) ||
+        app.applicantMobile?.includes(cleanQuery) ||
+        (app.demarcationTrackingId && app.demarcationTrackingId.toLowerCase() === cleanQuery.toLowerCase())
+    );
+
+    const rcApps = getRoadCuttingApplications();
+    let foundRC = rcApps.find(
+      (app) =>
+        app.id.toLowerCase() === cleanQuery.toLowerCase() ||
+        (app.formNo && app.formNo.toLowerCase() === cleanQuery.toLowerCase()) ||
+        app.applicantPhone?.includes(cleanQuery)
     );
 
     setSearchedApp(found || null);
-
-    const bApps = getBuildingApplications();
-    const foundB = bApps.find(
-      (app) =>
-        app.id.toLowerCase() === cleanQuery.toLowerCase() ||
-        (app.formNo && app.formNo.toLowerCase() === cleanQuery.toLowerCase()) ||
-        app.applicantMobile.includes(cleanQuery) ||
-        (app.demarcationTrackingId && app.demarcationTrackingId.toLowerCase() === cleanQuery.toLowerCase())
-    );
     setSearchedBuildingApp(foundB || null);
-
-    const rcApps = getRoadCuttingApplications();
-    const foundRC = rcApps.find(
-      (app) =>
-        app.id.toLowerCase() === cleanQuery.toLowerCase() ||
-        (app.formNo && app.formNo.toLowerCase() === cleanQuery.toLowerCase()) ||
-        app.applicantPhone.includes(cleanQuery)
-    );
     setSearchedRoadCuttingApp(foundRC || null);
+
+    // 2. Query Hostinger MySQL database for real-time remote updates
+    setIsSearchingServer(true);
+    try {
+      const serverApp: any = await searchApplicationApi(cleanQuery);
+      if (serverApp && (serverApp.id || serverApp.trackingId)) {
+        if (serverApp.moduleType === 'building' || serverApp.buildingInfo || serverApp.structureType) {
+          foundB = serverApp;
+          setSearchedBuildingApp(serverApp);
+        } else if (serverApp.moduleType === 'road_cutting' || serverApp.roadInfo) {
+          foundRC = serverApp;
+          setSearchedRoadCuttingApp(serverApp);
+        } else {
+          found = serverApp;
+          setSearchedApp(serverApp);
+          // Cache in local storage for offline and subsequent fast access
+          saveApplication(serverApp);
+        }
+      }
+    } catch (err) {
+      console.warn('[Tracking Search] Error querying server DB:', err);
+    } finally {
+      setIsSearchingServer(false);
+    }
 
     // Save to recent tracking searches (keep last 3-5)
     const displayName = found 
-      ? found.siteLocation.applicantName 
+      ? (found.siteLocation?.applicantName || (found as any).applicantName)
       : foundB 
       ? foundB.applicantName 
       : foundRC 
@@ -141,6 +170,7 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
     );
     setRecentSearches(updated);
   };
+
 
   const handleSelectRecentSearch = (itemQuery: string) => {
     setSearchQuery(itemQuery);
@@ -287,10 +317,20 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
 
           <button
             type="submit"
-            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 text-sm sm:text-base"
+            disabled={isSearchingServer}
+            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 disabled:opacity-70 text-slate-950 font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 text-sm sm:text-base"
           >
-            <Search className="w-4 h-4" />
-            <span>স্ট্যাটাস দেখুন</span>
+            {isSearchingServer ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>যাচাই হচ্ছে...</span>
+              </>
+            ) : (
+              <>
+                <Search className="w-4 h-4" />
+                <span>স্ট্যাটাস দেখুন</span>
+              </>
+            )}
           </button>
         </form>
 

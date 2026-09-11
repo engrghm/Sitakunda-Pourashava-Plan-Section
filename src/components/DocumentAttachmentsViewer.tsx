@@ -82,15 +82,41 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
 
   const handleDownload = (doc: UploadedDocument) => {
     if (doc.fileUrl) {
-      const a = document.createElement('a');
-      a.href = doc.fileUrl;
-      a.download = doc.fileName || `${doc.docTitle}.pdf`;
-      if (!doc.fileUrl.startsWith('data:')) {
-        a.target = '_blank';
+      if (doc.fileUrl.startsWith('data:')) {
+        const a = document.createElement('a');
+        a.href = doc.fileUrl;
+        a.download = doc.fileName || `${doc.docTitle}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        // Fetch as blob for reliable cross-browser file download
+        fetch(doc.fileUrl)
+          .then((res) => {
+            if (!res.ok) throw new Error('Download failed');
+            return res.blob();
+          })
+          .then((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = doc.fileName || `${doc.docTitle}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          })
+          .catch(() => {
+            // Fallback: direct window open / anchor download
+            const a = document.createElement('a');
+            a.href = doc.fileUrl;
+            a.download = doc.fileName || `${doc.docTitle}.pdf`;
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          });
       }
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
     } else {
       const blob = new Blob([
         `সীতাকুণ্ড পৌরসভা - অনলাইন ডিমার্কেশন নথি\nআবেদন আইডি: ${applicationId}\nআবেদনকারী: ${applicantName}\nনথির নাম: ${doc.docTitle}\nফাইল: ${doc.fileName}\nতারিখ: ${doc.uploadDate}`
@@ -105,6 +131,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
       URL.revokeObjectURL(url);
     }
   };
+
 
   return (
     <div className="space-y-3">
@@ -231,7 +258,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
               {/* Visual Document Content / Real Preview */}
               <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-900/5 min-h-[260px] flex items-center justify-center">
                 {selectedDoc.fileUrl ? (
-                  selectedDoc.fileUrl.startsWith('data:image/') || selectedDoc.fileName.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+                  selectedDoc.fileUrl.startsWith('data:image/') || selectedDoc.fileName.match(/\.(jpg|jpeg|png|webp)$/i) || selectedDoc.fileUrl.match(/\.(jpg|jpeg|png|webp)($|\?)/i) ? (
                     <div className="p-4 flex flex-col items-center justify-center">
                       <img
                         src={selectedDoc.fileUrl}

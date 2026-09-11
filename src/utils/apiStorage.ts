@@ -9,6 +9,68 @@ import {
 const API_BASE = '/api';
 
 /**
+ * Compresses large images client-side before upload to save bandwidth & server storage.
+ * Leaves PDFs and smaller files unchanged.
+ */
+async function compressImageIfPossible(file: File): Promise<File> {
+  if (!file.type.startsWith('image/')) return file;
+  if (file.size < 600 * 1024) return file; // small enough already
+
+  try {
+    return await new Promise<File>((resolve) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.onload = () => {
+          const maxDim = 1920;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (blob && blob.size < file.size) {
+                const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+                  type: 'image/jpeg',
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
+              } else {
+                resolve(file);
+              }
+            },
+            'image/jpeg',
+            0.82
+          );
+        };
+        img.onerror = () => resolve(file);
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  } catch {
+    return file;
+  }
+}
+
+/**
  * Upload a document (PDF, JPG, PNG) to Hostinger's uploads directory.
  * Falls back to local object metadata if API is unavailable.
  */
@@ -42,7 +104,7 @@ export async function uploadDocumentToServer(
     console.warn('[Hostinger Upload] Error in uploadDocumentToServer:', err);
   }
 
-  // Ensure fileUrl is ALWAYS set with DataURL base64 if server upload was unavailable
+  // Ensure fileUrl is set with DataURL base64 if server upload was unavailable
   const dataUrl = await new Promise<string>((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => resolve((e.target?.result as string) || '');
@@ -68,8 +130,26 @@ export async function fetchApplicationsFromApi<T>(module: 'demarcation' | 'build
         return data as T[];
       }
     }
-  } catch {
-    // API not reachable, fallback to localStorage
+  } catch (err) {
+    console.warn(`[Hostinger MySQL] Could not fetch ${module} applications:`, err);
+  }
+  return null;
+}
+
+/**
+ * Search an application from Hostinger MySQL by Tracking ID, Mobile, NID, or Form No
+ */
+export async function searchApplicationApi<T = DemarcationApplication>(query: string): Promise<T | null> {
+  try {
+    const res = await fetch(`${API_BASE}/applications.php?tracking_id=${encodeURIComponent(query.trim())}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && (data.id || data.trackingId)) {
+        return data as T;
+      }
+    }
+  } catch (err) {
+    console.warn('[Hostinger MySQL] searchApplicationApi error:', err);
   }
   return null;
 }
@@ -80,7 +160,7 @@ export async function fetchApplicationsFromApi<T>(module: 'demarcation' | 'build
 export async function saveApplicationToApi(
   app: DemarcationApplication | BuildingConstructionApplication | RoadCuttingApplication,
   module: 'demarcation' | 'building' | 'road_cutting'
-): Promise<boolean> {
+): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
     const res = await fetch(`${API_BASE}/applications.php?module=${module}`, {
       method: 'POST',
@@ -90,10 +170,17 @@ export async function saveApplicationToApi(
       body: JSON.stringify({ ...app, moduleType: module }),
     });
 
-    return res.ok;
-  } catch (err) {
+    if (res.ok) {
+      const data = await res.json().catch(() => null);
+      return { success: true, data };
+    } else {
+      const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      console.warn('[Hostinger MySQL] Server rejected save:', errData);
+      return { success: false, error: errData.error || `HTTP ${res.status}` };
+    }
+  } catch (err: any) {
     console.warn('[Hostinger MySQL] Could not save to applications.php:', err);
-    return false;
+    return { success: false, error: err.message || 'Network error' };
   }
 }
 
@@ -162,19 +249,21 @@ export async function uploadFileToServer(file: File): Promise<{
   fileSize: number;
   error?: string;
 }> {
+  const preparedFile = await compressImageIfPossible(file);
+
   const toDataUrl = (): Promise<string> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => resolve((e.target?.result as string) || '');
       reader.onerror = () => resolve('');
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(preparedFile);
     });
   };
 
   // 1. First attempt: Standard multipart form data
   try {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', preparedFile);
 
     const res = await fetch(`${API_BASE}/upload.php`, {
       method: 'POST',
@@ -187,8 +276,8 @@ export async function uploadFileToServer(file: File): Promise<{
         return {
           success: true,
           fileUrl: data.fileUrl,
-          fileName: data.fileName || file.name,
-          fileSize: data.fileSize || file.size,
+          fileName: data.fileName || preparedFile.name,
+          fileSize: data.fileSize || preparedFile.size,
         };
       }
     }
@@ -204,7 +293,7 @@ export async function uploadFileToServer(file: File): Promise<{
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fileName: file.name,
+          fileName: preparedFile.name,
           fileData: dataUrl,
         }),
       });
@@ -215,8 +304,8 @@ export async function uploadFileToServer(file: File): Promise<{
           return {
             success: true,
             fileUrl: data.fileUrl,
-            fileName: data.fileName || file.name,
-            fileSize: data.fileSize || file.size,
+            fileName: data.fileName || preparedFile.name,
+            fileSize: data.fileSize || preparedFile.size,
           };
         }
       }
@@ -225,8 +314,8 @@ export async function uploadFileToServer(file: File): Promise<{
       return {
         success: true,
         fileUrl: dataUrl,
-        fileName: file.name,
-        fileSize: file.size,
+        fileName: preparedFile.name,
+        fileSize: preparedFile.size,
       };
     }
   } catch (err: any) {
@@ -238,8 +327,8 @@ export async function uploadFileToServer(file: File): Promise<{
   return {
     success: !!fallbackDataUrl,
     fileUrl: fallbackDataUrl,
-    fileName: file.name,
-    fileSize: file.size,
+    fileName: preparedFile.name,
+    fileSize: preparedFile.size,
   };
 }
 
@@ -256,49 +345,43 @@ export async function fetchPortalConfigFromApi<T = any>(customKey: string = 'por
       }
     }
   } catch (err) {
-    console.warn(`[Hostinger Settings] Could not fetch ${customKey}:`, err);
+    console.warn(`[Hostinger MySQL] Could not fetch settings (${customKey}):`, err);
   }
   return null;
 }
 
-function getCurrentOfficerSession(): { username: string; role?: string } | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = sessionStorage.getItem('sitakunda_admin_session_auth') || localStorage.getItem('sitakunda_admin_session_auth');
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Save portal and council configuration to Hostinger MySQL (Protected: Requires logged-in officer)
+ * Save portal configuration to Hostinger MySQL
  */
-export async function savePortalConfigToApi(config: any, customKey: string = 'portal_config'): Promise<boolean> {
-  const session = getCurrentOfficerSession();
-  const officerUser = session?.username || 'admin.sitakunda';
-  const officerRole = session?.role || 'super_admin';
-
+export async function savePortalConfigToApi<T = any>(config: T, customKey: string = 'portal_config'): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}/settings.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Officer-Username': officerUser,
       },
       body: JSON.stringify({
         key: customKey,
         data: config,
-        officer_username: officerUser,
-        officer_role: officerRole,
       }),
     });
     return res.ok;
   } catch (err) {
-    console.warn(`[Hostinger Settings] Could not save ${customKey} to server:`, err);
+    console.warn(`[Hostinger MySQL] Could not save settings (${customKey}):`, err);
     return false;
   }
 }
 
+/**
+ * Fetch council setup & officials config from Hostinger MySQL
+ */
+export async function fetchCouncilConfigFromApi<T = any>(): Promise<T | null> {
+  return fetchPortalConfigFromApi<T>('council_setup');
+}
 
+/**
+ * Save council setup & officials config to Hostinger MySQL
+ */
+export async function saveCouncilConfigToApi<T = any>(config: T): Promise<boolean> {
+  return savePortalConfigToApi<T>(config, 'council_setup');
+}

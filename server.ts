@@ -430,6 +430,98 @@ app.post(['/api/settings.php', '/api/settings'], (req, res) => {
   }
 });
 
+// 6. Applications endpoints for full local development parity
+const APPLICATIONS_FILE = path.join(DATA_DIR, 'applications_db.json');
+const getApplicationsList = (): any[] => {
+  try {
+    if (fs.existsSync(APPLICATIONS_FILE)) {
+      return JSON.parse(fs.readFileSync(APPLICATIONS_FILE, 'utf-8'));
+    }
+  } catch {}
+  return [];
+};
+
+const saveApplicationsList = (list: any[]) => {
+  fs.writeFileSync(APPLICATIONS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+};
+
+app.get(['/api/applications.php', '/api/applications'], (req, res) => {
+  try {
+    const { id, tracking_id, q, search, module: moduleType } = req.query;
+    const lookup = ((id || tracking_id || q || search) as string || '').trim().toLowerCase();
+    const list = getApplicationsList();
+
+    if (lookup) {
+      const found = list.find((item: any) => {
+        const itemId = (item.id || item.trackingId || '').toLowerCase();
+        const formNo = (item.formNo || '').toLowerCase();
+        const phone = (item.siteLocation?.applicantMobile || item.applicantMobile || item.applicantPhone || '').toLowerCase();
+        const nid = (item.siteLocation?.applicantNid || item.applicantNid || '').toLowerCase();
+        return itemId === lookup || formNo === lookup || phone.includes(lookup) || nid.includes(lookup);
+      });
+
+      if (found) {
+        return res.json(found);
+      } else {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+    }
+
+    if (moduleType) {
+      const filtered = list.filter((item: any) => (item.moduleType || 'demarcation') === moduleType);
+      return res.json(filtered);
+    }
+
+    res.json(list);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to query applications' });
+  }
+});
+
+app.post(['/api/applications.php', '/api/applications'], (req, res) => {
+  try {
+    const payload = req.body;
+    if (!payload || !payload.id) {
+      return res.status(400).json({ error: 'Missing application ID' });
+    }
+
+    const list = getApplicationsList();
+    const existingIndex = list.findIndex((item: any) => item.id === payload.id);
+    if (existingIndex >= 0) {
+      list[existingIndex] = { ...list[existingIndex], ...payload };
+    } else {
+      list.unshift(payload);
+    }
+
+    saveApplicationsList(list);
+    res.status(201).json({ success: true, id: payload.id, data: payload });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to save application' });
+  }
+});
+
+app.put(['/api/applications.php', '/api/applications'], (req, res) => {
+  try {
+    const payload = req.body;
+    if (!payload || !payload.id) {
+      return res.status(400).json({ error: 'Missing application ID' });
+    }
+
+    const list = getApplicationsList();
+    const existingIndex = list.findIndex((item: any) => item.id === payload.id);
+    if (existingIndex >= 0) {
+      list[existingIndex] = { ...list[existingIndex], ...payload };
+      saveApplicationsList(list);
+      return res.json({ success: true, id: payload.id, data: list[existingIndex] });
+    } else {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to update application' });
+  }
+});
+
+
 // Configure Vite integration as middleware in development or direct static in production
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

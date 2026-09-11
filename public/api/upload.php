@@ -2,11 +2,20 @@
 require_once __DIR__ . '/config.php';
 
 header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
-// Set PHP limits where supported
-@ini_set('upload_max_filesize', '20M');
-@ini_set('post_max_size', '25M');
-@ini_set('memory_limit', '128M');
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+// Set runtime limits where supported
+@ini_set('upload_max_filesize', '64M');
+@ini_set('post_max_size', '64M');
+@ini_set('memory_limit', '256M');
+@ini_set('max_execution_time', '300');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -21,14 +30,20 @@ if (!is_dir($uploadDir)) {
 @chmod($uploadDir, 0777);
 
 $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
-$maxSizeBytes = 15 * 1024 * 1024; // 15 MB maximum
+$maxSizeBytes = 30 * 1024 * 1024; // 30 MB maximum
+
+// Helper to determine root or subfolder base URL
+$scriptDir = dirname(dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+$basePath = ($scriptDir === '/' || $scriptDir === '\\' || $scriptDir === '.' || empty($scriptDir)) ? '' : rtrim(str_replace('\\', '/', $scriptDir), '/');
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
 // 1. Check if multipart/form-data file was received
 if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
     $file = $_FILES['file'];
     if ($file['size'] > $maxSizeBytes) {
         http_response_code(400);
-        echo json_encode(['error' => 'ফাইলের সাইজ ১৫ মেগাবাইটের বেশি হতে পারবে না।']);
+        echo json_encode(['error' => 'ফাইলের সাইজ ৩০ মেগাবাইটের বেশি হতে পারবে না।']);
         exit;
     }
 
@@ -42,19 +57,17 @@ if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
     }
 
     $cleanPrefix = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($originalName, PATHINFO_FILENAME));
-    $cleanPrefix = substr($cleanPrefix, 0, 30);
+    $cleanPrefix = substr($cleanPrefix, 0, 35);
     $uniqueName = 'doc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '_' . $cleanPrefix . '.' . $ext;
     $targetPath = $uploadDir . '/' . $uniqueName;
 
     if (!move_uploaded_file($file['tmp_name'], $targetPath) && !copy($file['tmp_name'], $targetPath)) {
         http_response_code(500);
-        echo json_encode(['error' => 'ফাইল সার্ভারে সংরক্ষণ করতে ব্যর্থ হয়েছে।']);
+        echo json_encode(['error' => 'ফাইল সার্ভারে সংরক্ষণ করতে ব্যর্থ হয়েছে। ফোল্ডার পারমিশন চেক করুন।']);
         exit;
     }
 
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $fileUrl = '/uploads/' . $uniqueName;
+    $fileUrl = $basePath . '/uploads/' . $uniqueName;
     $fullFileUrl = $protocol . $host . $fileUrl;
 
     echo json_encode([
@@ -88,19 +101,17 @@ if ($rawInput) {
         if ($binary !== false) {
             if (strlen($binary) > $maxSizeBytes) {
                 http_response_code(400);
-                echo json_encode(['error' => 'ফাইলের সাইজ ১৫ মেগাবাইটের বেশি হতে পারবে না।']);
+                echo json_encode(['error' => 'ফাইলের সাইজ ৩০ মেগাবাইটের বেশি হতে পারবে না।']);
                 exit;
             }
 
             $cleanPrefix = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($originalName, PATHINFO_FILENAME));
-            $cleanPrefix = substr($cleanPrefix, 0, 30);
+            $cleanPrefix = substr($cleanPrefix, 0, 35);
             $uniqueName = 'doc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '_' . $cleanPrefix . '.' . $ext;
             $targetPath = $uploadDir . '/' . $uniqueName;
 
             if (file_put_contents($targetPath, $binary) !== false) {
-                $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
-                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-                $fileUrl = '/uploads/' . $uniqueName;
+                $fileUrl = $basePath . '/uploads/' . $uniqueName;
                 $fullFileUrl = $protocol . $host . $fileUrl;
 
                 echo json_encode([
@@ -122,6 +133,8 @@ $errorCode = $_FILES['file']['error'] ?? 'NO_FILE';
 $errorMsg = 'No file uploaded or upload error occurred';
 if ($errorCode === UPLOAD_ERR_INI_SIZE || $errorCode === UPLOAD_ERR_FORM_SIZE) {
     $errorMsg = 'ফাইলের সাইজ সার্ভারের নির্ধারিত সীমার বেশি।';
+} elseif ($errorCode === UPLOAD_ERR_PARTIAL) {
+    $errorMsg = 'ফাইলটি সম্পূর্ণ আপলোড হয়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।';
 }
 http_response_code(400);
 echo json_encode(['error' => $errorMsg, 'code' => $errorCode]);

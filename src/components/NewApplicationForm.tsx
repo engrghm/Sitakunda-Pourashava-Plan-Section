@@ -23,7 +23,10 @@ import {
   BookmarkCheck,
   History,
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  Loader2,
+  Eye,
+  ExternalLink
 } from 'lucide-react';
 import { FormProgressBar } from './FormProgressBar';
 import { PaymentGatewayStep } from './PaymentGatewayStep';
@@ -51,14 +54,15 @@ import {
   hasSavedDraft,
   formatBanglaDate
 } from '../utils/storage';
-import { uploadDocumentToServer } from '../utils/apiStorage';
+import { uploadDocumentToServer, saveApplicationToApi } from '../utils/apiStorage';
 import { sendAutomatedStatusAlert } from '../utils/notificationService';
 
 interface NewApplicationFormProps {
   onApplicationSubmitted: (app: DemarcationApplication) => void;
 }
 
-const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
+const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB
+
 
 const toEnglishDigits = (str: string): string => {
   if (!str) return '';
@@ -229,6 +233,7 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
 
   // 5. Uploaded Documents
   const [uploadedDocs, setUploadedDocs] = useState<{ [key: string]: UploadedDocument }>({});
+  const [uploadingDocs, setUploadingDocs] = useState<{ [key: string]: boolean }>({});
   const [fileError, setFileError] = useState<string | null>(null);
 
   // 6. Payment Details (Mock Payment Gateway - Cash Counter)
@@ -238,6 +243,7 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
     amount: 100,
     status: 'unpaid',
   });
+
 
   // 7. Declaration
   const [declared, setDeclared] = useState<boolean>(false);
@@ -577,26 +583,35 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
     handleToggleApplicantSameAsFirstOwner(true);
   };
 
-  // File Upload with 2 MB Size Validation and Hostinger Server Storage
+  // File Upload with 15 MB Size Validation and Hostinger Server Storage
   const handleFileUpload = async (docKey: string, docTitle: string, isMandatory: boolean, file: File | null) => {
     setFileError(null);
     if (!file) return;
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      const errMsg = `ফাইলের সাইজ ২ MB-এর বেশি হতে পারবে না (বর্তমান সাইজ: ${sizeMB} MB)। অনুগ্রহ করে ফাইল সাইজ কমিয়ে পুনরায় আপলোড করুন।`;
+      const errMsg = `ফাইলের সাইজ ১৫ MB-এর বেশি হতে পারবে না (বর্তমান সাইজ: ${sizeMB} MB)। অনুগ্রহ করে ফাইল সাইজ কমিয়ে পুনরায় আপলোড করুন।`;
       setFileError(errMsg);
       alert(errMsg);
       return;
     }
 
-    const newDoc = await uploadDocumentToServer(file, docKey, docTitle, isMandatory);
-
-    setUploadedDocs((prev) => ({
-      ...prev,
-      [docKey]: newDoc,
-    }));
+    setUploadingDocs((prev) => ({ ...prev, [docKey]: true }));
+    try {
+      const newDoc = await uploadDocumentToServer(file, docKey, docTitle, isMandatory);
+      setUploadedDocs((prev) => ({
+        ...prev,
+        [docKey]: newDoc,
+      }));
+    } catch (err: any) {
+      const msg = 'ফাইলটি সার্ভারে সংরক্ষণ করা সম্ভব হয়নি। অনুগ্রহ করে ফাইল সাইজ ও ইন্টারনেট সংযোগ চেক করে পুনরায় চেষ্টা করুন।';
+      setFileError(msg);
+      alert(msg);
+    } finally {
+      setUploadingDocs((prev) => ({ ...prev, [docKey]: false }));
+    }
   };
+
 
   const handleRemoveDoc = (docKey: string) => {
     setUploadedDocs((prev) => {
@@ -1922,13 +1937,13 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
                 প্রয়োজনীয় কাগজপত্র আপলোড ও ফটোকপি (PDF/JPG/PNG)
               </h2>
               <p className="text-xs text-slate-600 font-normal">
-                প্রতিটি আপলোডকৃত ফাইলের সর্বোচ্চ সাইজ হবে ২ MB (PDF, JPG, JPEG, PNG সমর্থিত)
+                প্রতিটি আপলোডকৃত ফাইলের সর্বোচ্চ সাইজ হবে ১৫ MB (PDF, JPG, JPEG, PNG, WEBP সমর্থিত)
               </p>
             </div>
           </div>
 
-          <span className="text-xs bg-amber-100 text-amber-900 px-2.5 py-1 rounded-md font-semibold border border-amber-300">
-            সর্বোচ্চ সাইজ: ২ MB
+          <span className="text-xs bg-emerald-100 text-emerald-900 px-2.5 py-1 rounded-md font-semibold border border-emerald-300">
+            সর্বোচ্চ সাইজ: ১৫ MB
           </span>
         </div>
 
@@ -1943,6 +1958,7 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {REQUIRED_DOCUMENTS_LIST.map((docDef, index) => {
               const uploaded = uploadedDocs[docDef.key];
+              const isUploading = uploadingDocs[docDef.key];
               const banglaNum = toBanglaNumber(index + 1);
               const hasError = docDef.errorKey ? errors[docDef.errorKey] : undefined;
 
@@ -1974,27 +1990,46 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
                     </label>
                   </div>
 
-                  {uploaded ? (
-                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-300 p-2.5 rounded-lg text-xs">
+                  {isUploading ? (
+                    <div className="flex items-center gap-2 text-emerald-800 bg-emerald-50 border border-emerald-300 p-2.5 rounded-lg text-xs font-semibold animate-pulse">
+                      <Loader2 className="w-4 h-4 animate-spin text-emerald-600 shrink-0" />
+                      <span>সার্ভারে ফাইল আপলোড হচ্ছে... অনুগ্রহ করে অপেক্ষা করুন</span>
+                    </div>
+                  ) : uploaded ? (
+                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-300 p-2.5 rounded-lg text-xs gap-2">
                       <div className="flex items-center gap-2 text-emerald-900 font-medium truncate">
                         <FileCheck2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                        <span className="truncate">{uploaded.fileName}</span>
-                        <span className="text-emerald-700 font-mono">({(uploaded.fileSize / 1024).toFixed(0)} KB)</span>
+                        <span className="truncate font-semibold">{uploaded.fileName}</span>
+                        <span className="text-emerald-700 font-mono text-[11px] shrink-0">({(uploaded.fileSize / 1024).toFixed(0)} KB)</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveDoc(docDef.key)}
-                        className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded transition-colors"
-                        title="ফাইল মুছে ফেলুন"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {uploaded.fileUrl && (
+                          <a
+                            href={uploaded.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-white hover:bg-emerald-100 text-emerald-800 rounded border border-emerald-300 font-semibold transition-colors"
+                            title="ফাইলটি দেখুন"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>দেখুন</span>
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDoc(docDef.key)}
+                          className="text-red-600 hover:text-red-800 p-1 hover:bg-red-100 rounded transition-colors cursor-pointer"
+                          title="ফাইল মুছে ফেলুন"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div>
                       <input
                         type="file"
-                        accept={docDef.accept || '.pdf,.jpg,.jpeg,.png'}
+                        accept={docDef.accept || '.pdf,.jpg,.jpeg,.png,.webp'}
                         onChange={(e) =>
                           handleFileUpload(
                             docDef.key,
@@ -2018,6 +2053,7 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
           </div>
         </div>
       </div>
+
 
       {/* =========================================================================
           SECTION ৬: সরকারি ফি পরিশোধ (Mock Payment Gateway & Fee Collection)

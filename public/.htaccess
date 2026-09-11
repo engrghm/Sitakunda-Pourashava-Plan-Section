@@ -16,7 +16,33 @@
   RewriteRule ^ index.html [L]
 </IfModule>
 
+# Hostinger / Apache PHP upload and post size limits
+<IfModule mod_php7.c>
+  php_value upload_max_filesize 64M
+  php_value post_max_size 64M
+  php_value memory_limit 256M
+  php_value max_execution_time 300
+  php_value max_input_time 300
+</IfModule>
+
+<IfModule mod_php.c>
+  php_value upload_max_filesize 64M
+  php_value post_max_size 64M
+  php_value memory_limit 256M
+  php_value max_execution_time 300
+  php_value max_input_time 300
+</IfModule>
+
+# Enable proper MIME types for PDFs and images in uploads
+<IfModule mod_mime.c>
+  AddType application/pdf .pdf
+  AddType image/jpeg .jpg .jpeg
+  AddType image/png .png
+  AddType image/webp .webp
+</IfModule>
+
 # Enable Gzip compression for faster loading on Hostinger
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
 </IfModule>
+

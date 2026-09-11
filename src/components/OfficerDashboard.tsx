@@ -112,7 +112,7 @@ import {
   generateOfficialEmailTemplate, 
   EmailTemplate 
 } from '../utils/notificationService';
-import { uploadFileToServer } from '../utils/apiStorage';
+import { uploadFileToServer, fetchApplicationsFromApi } from '../utils/apiStorage';
 
 interface OfficerDashboardProps {
   onViewPrintA4: (app: DemarcationApplication) => void;
@@ -334,13 +334,64 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
     loadApplications();
   }, []);
 
-  const loadApplications = () => {
+  const loadApplications = async () => {
+    // 1. Initial immediate render from local cache
     const data = getStoredApplications();
     setApplications(data);
     const bData = getBuildingApplications();
     setBuildingApplications(bData);
     const rcData = getRoadCuttingApplications();
     setRoadCuttingApplications(rcData);
+
+    // 2. Fetch live data from Hostinger MySQL
+    try {
+      const [remoteDemarcation, remoteBuilding, remoteRoadCutting] = await Promise.all([
+        fetchApplicationsFromApi<DemarcationApplication>('demarcation'),
+        fetchApplicationsFromApi<BuildingConstructionApplication>('building'),
+        fetchApplicationsFromApi<RoadCuttingApplication>('road_cutting'),
+      ]);
+
+      if (remoteDemarcation && Array.isArray(remoteDemarcation) && remoteDemarcation.length > 0) {
+        const mergedMap = new Map<string, DemarcationApplication>();
+        data.forEach((app) => mergedMap.set(app.id, app));
+        remoteDemarcation.forEach((app) => mergedMap.set(app.id, app));
+        const merged = Array.from(mergedMap.values()).sort((a, b) => 
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
+        setApplications(merged);
+        try {
+          localStorage.setItem('sitakunda_demarcation_applications', JSON.stringify(merged));
+        } catch {}
+      }
+
+      if (remoteBuilding && Array.isArray(remoteBuilding) && remoteBuilding.length > 0) {
+        const mergedBMap = new Map<string, BuildingConstructionApplication>();
+        bData.forEach((app) => mergedBMap.set(app.id, app));
+        remoteBuilding.forEach((app) => mergedBMap.set(app.id, app));
+        const mergedB = Array.from(mergedBMap.values()).sort((a, b) => 
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
+        setBuildingApplications(mergedB);
+        try {
+          localStorage.setItem('sitakunda_building_applications', JSON.stringify(mergedB));
+        } catch {}
+      }
+
+      if (remoteRoadCutting && Array.isArray(remoteRoadCutting) && remoteRoadCutting.length > 0) {
+        const mergedRCMap = new Map<string, RoadCuttingApplication>();
+        rcData.forEach((app) => mergedRCMap.set(app.id, app));
+        remoteRoadCutting.forEach((app) => mergedRCMap.set(app.id, app));
+        const mergedRC = Array.from(mergedRCMap.values()).sort((a, b) => 
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
+        setRoadCuttingApplications(mergedRC);
+        try {
+          localStorage.setItem('sitakunda_road_cutting_applications', JSON.stringify(mergedRC));
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('[OfficerDashboard] Background sync error:', err);
+    }
   };
 
   // Login handler with multi-officer validation
