@@ -106,6 +106,75 @@ if ($method === 'POST') {
     ];
 
     $key = isset($payload['key']) ? trim($payload['key']) : 'portal_config';
+
+    // Extract any base64 images (such as council member photos or leader photo) to /uploads/
+    if (isset($payload['data']) && is_array($payload['data'])) {
+        $uploadDir = dirname(__DIR__) . '/uploads';
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0777, true);
+        }
+        @chmod($uploadDir, 0777);
+
+        $scriptDir = dirname(dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+        $basePath = ($scriptDir === '/' || $scriptDir === '\\' || $scriptDir === '.' || empty($scriptDir)) ? '' : rtrim(str_replace('\\', '/', $scriptDir), '/');
+
+        $extractPhoto = function($fileData, $origName) use ($uploadDir, $basePath) {
+            if (!$fileData || !is_string($fileData) || strpos($fileData, 'data:') !== 0 || strpos($fileData, ';base64,') === false) {
+                return null;
+            }
+            $parts = explode(';base64,', $fileData);
+            $meta = $parts[0];
+            $base64Data = $parts[1] ?? '';
+
+            $ext = 'jpg';
+            if (strpos($meta, 'image/png') !== false) {
+                $ext = 'png';
+            } elseif (strpos($meta, 'image/webp') !== false) {
+                $ext = 'webp';
+            } elseif (strpos($meta, 'pdf') !== false) {
+                $ext = 'pdf';
+            }
+
+            $binary = base64_decode($base64Data);
+            if ($binary === false || strlen($binary) === 0) {
+                return null;
+            }
+
+            $cleanPrefix = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($origName, PATHINFO_FILENAME));
+            $cleanPrefix = substr($cleanPrefix ?: 'photo', 0, 30);
+            $uniqueName = 'img_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '_' . $cleanPrefix . '.' . $ext;
+            $targetPath = $uploadDir . '/' . $uniqueName;
+
+            if (file_put_contents($targetPath, $binary) !== false) {
+                return $basePath . '/uploads/' . $uniqueName;
+            }
+            return null;
+        };
+
+        $sanitizeSettings = function(&$node) use (&$sanitizeSettings, $extractPhoto) {
+            if (!is_array($node)) return;
+            if (isset($node['imageUrl']) && is_string($node['imageUrl']) && strpos($node['imageUrl'], 'data:') === 0) {
+                $savedUrl = $extractPhoto($node['imageUrl'], $node['name'] ?? 'council_photo');
+                if ($savedUrl) $node['imageUrl'] = $savedUrl;
+            }
+            if (isset($node['leaderImageUrl']) && is_string($node['leaderImageUrl']) && strpos($node['leaderImageUrl'], 'data:') === 0) {
+                $savedUrl = $extractPhoto($node['leaderImageUrl'], 'administrator_photo');
+                if ($savedUrl) $node['leaderImageUrl'] = $savedUrl;
+            }
+            if (isset($node['fileUrl']) && is_string($node['fileUrl']) && strpos($node['fileUrl'], 'data:') === 0) {
+                $savedUrl = $extractPhoto($node['fileUrl'], $node['fileName'] ?? 'notice_file');
+                if ($savedUrl) $node['fileUrl'] = $savedUrl;
+            }
+            foreach ($node as &$sub) {
+                if (is_array($sub)) {
+                    $sanitizeSettings($sub);
+                }
+            }
+        };
+
+        $sanitizeSettings($payload['data']);
+    }
+
     $dataToSave = isset($payload['data']) ? json_encode($payload['data'], JSON_UNESCAPED_UNICODE) : $rawInput;
 
     try {

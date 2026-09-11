@@ -273,7 +273,7 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
                 <MunicipalityLogo size={42} />
                 <div>
                   <span className="text-xs font-semibold text-emerald-400 block tracking-wide">স্মার্ট সিটি ও ডিজিটাল গভর্নেন্স</span>
-                  <h3 className="text-lg sm:text-2xl font-bold text-white tracking-tight">{config.leaderTitle}</h3>
+                  <h3 className="text-lg sm:text-2xl font-bold text-white tracking-tight">{config.leaderTitle || 'প্রশাসকের বার্তা'}</h3>
                 </div>
               </div>
               <span className="bg-emerald-500/20 text-emerald-300 text-xs px-3.5 py-1 rounded-full border border-emerald-400/40 font-bold">
@@ -295,7 +295,7 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
                 </div>
                 <div className="mt-2.5 text-center">
                   <span className="inline-block bg-gradient-to-r from-emerald-600 to-teal-700 text-white text-xs font-bold px-4 py-1 rounded-full border border-emerald-400/50 shadow-md">
-                    পৌর প্রশাসক
+                    প্রশাসক
                   </span>
                 </div>
               </div>
@@ -322,6 +322,61 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* 2.9 Current Council & Officers Showcase Section (বর্তমান পরিষদ ও কর্মকর্তা পরিচিতি) */}
+      <section className="space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-2 border-b border-slate-200 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-700"></span>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                বর্তমান পরিষদ ও কর্মকর্তা পরিচিতি
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              সীতাকুণ্ড পৌরসভার সম্মানিত প্রশাসক, মেয়র প্যানেল, কাউন্সিলরবৃন্দ ও দায়িত্বপ্রাপ্ত কর্মকর্তাদের তালিকা
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onOpenCouncilCategory?.('administrator')}
+            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full border border-emerald-200 transition-colors flex items-center gap-1 cursor-pointer"
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>সকল প্রোফাইল দেখুন</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+          {COUNCIL_CATEGORIES_META.filter(cat => cat.category !== 'executive_officer').map((cat) => {
+            const memberCount = (config.councilMembers || []).filter(m => m.category === cat.category).length;
+            return (
+              <button
+                key={cat.category}
+                type="button"
+                onClick={() => onOpenCouncilCategory?.(cat.category)}
+                className="group bg-white rounded-2xl p-4 border border-slate-200 hover:border-emerald-600 hover:shadow-md transition-all text-left flex flex-col justify-between cursor-pointer"
+              >
+                <div>
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center font-bold text-sm mb-2.5 transition-colors">
+                    <span className="text-lg leading-none">›</span>
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-2">
+                    {cat.label}
+                  </h4>
+                </div>
+                <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400">{memberCount} জন</span>
+                  <span className="text-emerald-700 font-bold group-hover:translate-x-0.5 transition-transform">
+                    দেখুন &rarr;
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -631,62 +686,6 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
         </div>
       </section>
 
-
-
-      {/* 5.5 Current Council & Officers Showcase Section (বর্তমান পরিষদ) */}
-      <section className="space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-2 border-b border-slate-200 pb-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-700"></span>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                বর্তমান পরিষদ ও কর্মকর্তা পরিচিতি
-              </h2>
-            </div>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              সীতাকুণ্ড পৌরসভার সম্মানিত প্রশাসক, মেয়র প্যানেল, কাউন্সিলরবৃন্দ ও দায়িত্বপ্রাপ্ত কর্মকর্তাদের তালিকা
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => onOpenCouncilCategory?.('administrator')}
-            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full border border-emerald-200 transition-colors flex items-center gap-1 cursor-pointer"
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>সকল প্রোফাইল দেখুন</span>
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          {COUNCIL_CATEGORIES_META.filter(cat => cat.category !== 'executive_officer').map((cat) => {
-            const memberCount = (config.councilMembers || []).filter(m => m.category === cat.category).length;
-            return (
-              <button
-                key={cat.category}
-                type="button"
-                onClick={() => onOpenCouncilCategory?.(cat.category)}
-                className="group bg-white rounded-2xl p-4 border border-slate-200 hover:border-emerald-600 hover:shadow-md transition-all text-left flex flex-col justify-between cursor-pointer"
-              >
-                <div>
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center font-bold text-sm mb-2.5 transition-colors">
-                    <span className="text-lg leading-none">›</span>
-                  </div>
-                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-2">
-                    {cat.label}
-                  </h4>
-                </div>
-                <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400">{memberCount} জন</span>
-                  <span className="text-emerald-700 font-bold group-hover:translate-x-0.5 transition-transform">
-                    দেখুন &rarr;
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
 
       {/* 5.6 Notice & Tender Board Showcase Section (সর্বশেষ নোটিশ, অফিস আদেশ ও ই-দরপত্র) */}
       <section className="space-y-4">

@@ -214,9 +214,9 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
     'পৌরসভার যে কোনো সেবা সংক্রান্ত তথ্যের জন্য হেল্পলাইন নম্বর ০৩০২৮-৫৬০৪৪ অথবা ০১৬১৩-৬২৩২৭৬ এ যোগাযোগ করুন।'
   ],
 
-  leaderTitle: 'প্রশাসক / মেয়র মহোদয়ের বাণী',
+  leaderTitle: 'প্রশাসকের বার্তা',
   leaderName: 'মোহাম্মদ ফখরুল ইসলাম',
-  leaderDesignation: 'উপজেলা নির্বাহী অফিসার ও প্রশাসক, সীতাকুণ্ড পৌরসভা',
+  leaderDesignation: 'উপজেলা নির্বাহী অফিসার, সীতাকুণ্ড উপজেলা ও প্রশাসক, সীতাকুণ্ড পৌরসভা, চট্টগ্রাম',
   leaderMessage: 'স্মার্ট বাংলাদেশের রূপকল্প বাস্তবায়নে সীতাকুণ্ড পৌরসভাকে একটি আধুনিক, পরিবেশবান্ধব ও প্রযুক্তিনির্ভর ডিজিটাল নগর হিসেবে গড়ে তোলাই আমাদের লক্ষ্য। নাগরিকদের সরকারি সেবা দ্রুত, স্বচ্ছ ও দুর্নীতিমুক্ত উপায়ে সরাসরি পৌঁছে দিতে আমাদের এই সমন্বিত স্মার্ট পোর্টাল। পৌরবাসীর সক্রিয় সহযোগিতা ও উন্নয়নে আমরা অঙ্গীকারবদ্ধ।',
   leaderImageUrl: '/logo.png',
 
@@ -231,7 +231,7 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
       id: 'cm-admin-1',
       category: 'administrator',
       name: 'মোহাম্মদ ফখরুল ইসলাম',
-      designation: 'উপজেলা নির্বাহী অফিসার ও পৌর প্রশাসক',
+      designation: 'উপজেলা নির্বাহী অফিসার, সীতাকুণ্ড উপজেলা ও প্রশাসক, সীতাকুণ্ড পৌরসভা, চট্টগ্রাম',
       wardOrDepartment: 'পৌর প্রশাসন ও নির্বাহী শাখা',
       phone: '০৩০২৮-৫৬০৪৪',
       email: 'uno.sitakunda@mopa.gov.bd',
@@ -441,20 +441,40 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
   ]
 };
 
-const STORAGE_KEY = 'sitakunda_smart_portal_config_v3';
+const STORAGE_KEY = 'sitakunda_smart_portal_config_v4';
 
 export function getPortalConfig(): PortalConfig {
   if (typeof window === 'undefined') return DEFAULT_PORTAL_CONFIG;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    let raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      // Check for v3 fallback
+      raw = localStorage.getItem('sitakunda_smart_portal_config_v3');
+    }
     if (!raw) return DEFAULT_PORTAL_CONFIG;
     const parsed = JSON.parse(raw);
+
+    // Auto-migrate old strings to updated official designations
+    if (!parsed.leaderTitle || parsed.leaderTitle === 'প্রশাসক / মেয়র মহোদয়ের বাণী' || parsed.leaderTitle === 'প্রশাসক মহোদয়ের বাণী') {
+      parsed.leaderTitle = 'প্রশাসকের বার্তা';
+    }
+    if (!parsed.leaderDesignation || parsed.leaderDesignation === 'উপজেলা নির্বাহী অফিসার ও প্রশাসক, সীতাকুণ্ড পৌরসভা') {
+      parsed.leaderDesignation = 'উপজেলা নির্বাহী অফিসার, সীতাকুণ্ড উপজেলা ও প্রশাসক, সীতাকুণ্ড পৌরসভা, চট্টগ্রাম';
+    }
+
+    const members: CouncilMember[] = Array.isArray(parsed.councilMembers)
+      ? parsed.councilMembers.map((m: CouncilMember) => {
+          if (m.category === 'administrator' && (m.designation === 'উপজেলা নির্বাহী অফিসার ও পৌর প্রশাসক' || m.designation === 'উপজেলা নির্বাহী অফিসার ও প্রশাসক, সীতাকুণ্ড পৌরসভা')) {
+            return { ...m, designation: 'উপজেলা নির্বাহী অফিসার, সীতাকুণ্ড উপজেলা ও প্রশাসক, সীতাকুণ্ড পৌরসভা, চট্টগ্রাম' };
+          }
+          return m;
+        })
+      : DEFAULT_PORTAL_CONFIG.councilMembers;
+
     return {
       ...DEFAULT_PORTAL_CONFIG,
       ...parsed,
-      councilMembers: Array.isArray(parsed.councilMembers)
-        ? parsed.councilMembers
-        : DEFAULT_PORTAL_CONFIG.councilMembers,
+      councilMembers: members,
       emergencyNumbers: parsed.emergencyNumbers || DEFAULT_PORTAL_CONFIG.emergencyNumbers,
       servicesList: parsed.servicesList || DEFAULT_PORTAL_CONFIG.servicesList,
       marqueeNotices: parsed.marqueeNotices || DEFAULT_PORTAL_CONFIG.marqueeNotices,

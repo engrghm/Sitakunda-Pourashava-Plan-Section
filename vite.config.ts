@@ -67,6 +67,12 @@ function localBackendPlugin(): Plugin {
           if (obj.dataUrl && typeof obj.dataUrl === 'string' && obj.dataUrl.startsWith('data:')) {
             obj.dataUrl = extractBase64ToUploads(obj.dataUrl, obj.fileName || 'document');
           }
+          if (obj.imageUrl && typeof obj.imageUrl === 'string' && obj.imageUrl.startsWith('data:')) {
+            obj.imageUrl = extractBase64ToUploads(obj.imageUrl, obj.name || 'council_photo');
+          }
+          if (obj.leaderImageUrl && typeof obj.leaderImageUrl === 'string' && obj.leaderImageUrl.startsWith('data:')) {
+            obj.leaderImageUrl = extractBase64ToUploads(obj.leaderImageUrl, 'administrator_photo');
+          }
           Object.keys(obj).forEach(key => {
             if (typeof obj[key] === 'object') {
               sanitizePayloadDocuments(obj[key]);
@@ -260,6 +266,9 @@ function localBackendPlugin(): Plugin {
                   try { settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8')); } catch {}
                 }
                 const key = body.key || 'portal_config';
+                if (body.data) {
+                  sanitizePayloadDocuments(body.data);
+                }
                 settings[key] = body.data;
                 fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
                 res.setHeader('Content-Type', 'application/json');
