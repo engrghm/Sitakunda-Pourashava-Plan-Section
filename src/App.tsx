@@ -15,6 +15,7 @@ import { Schedule1ApplicationPrintA4 } from './components/Schedule1ApplicationPr
 import { RoadCuttingApplicationForm } from './components/RoadCuttingApplicationForm';
 import { RoadCuttingApplicationPrintA4 } from './components/RoadCuttingApplicationPrintA4';
 import { RoadCuttingSuccessView } from './components/RoadCuttingSuccessView';
+import { MediaGalleryView } from './components/MediaGalleryView';
 import { Footer } from './components/Footer';
 import { CouncilMembersModal } from './components/CouncilMembersModal';
 import { NoticesModal } from './components/NoticesModal';
@@ -24,7 +25,7 @@ import { PortalConfig, getPortalConfig, CouncilCategory, NoticeCategory } from '
 import { syncLegalDocumentsWithHostinger } from './utils/legalDocuments';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'apply' | 'track' | 'schedule1' | 'roadcutting' | 'admin'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'apply' | 'track' | 'schedule1' | 'roadcutting' | 'admin' | 'media'>('home');
   const [portalConfig, setPortalConfig] = useState<PortalConfig>(getPortalConfig);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [isCouncilModalOpen, setIsCouncilModalOpen] = useState(false);
@@ -280,6 +281,11 @@ export default function App() {
             onAuthChange={setIsAdminLoggedIn}
             onOpenCustomizer={handleOpenCustomizer}
           />
+        )}
+
+        {/* Tab 6: Photo & Video Gallery */}
+        {activeTab === 'media' && (
+          <MediaGalleryView onBackToHome={() => setActiveTab('home')} />
         )}
       </main>
 

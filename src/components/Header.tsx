@@ -14,15 +14,16 @@ import {
   ChevronDown,
   Users,
   Bell,
-  Layers
+  Layers,
+  Video
 } from 'lucide-react';
 import { MunicipalityLogo } from './MunicipalityLogo';
 import { PortalConfig, CouncilCategory, NoticeCategory } from '../utils/portalConfig';
 import { getPortalLanguage, setPortalLanguage, PortalLanguage } from '../utils/language';
 
 interface HeaderProps {
-  activeTab: 'home' | 'apply' | 'track' | 'schedule1' | 'roadcutting' | 'admin';
-  setActiveTab: (tab: 'home' | 'apply' | 'track' | 'schedule1' | 'roadcutting' | 'admin') => void;
+  activeTab: 'home' | 'apply' | 'track' | 'schedule1' | 'roadcutting' | 'admin' | 'media';
+  setActiveTab: (tab: 'home' | 'apply' | 'track' | 'schedule1' | 'roadcutting' | 'admin' | 'media') => void;
   isAdminLoggedIn: boolean;
   config: PortalConfig;
   onOpenCustomizer: () => void;
@@ -581,6 +582,24 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>ট্র্যাকিং</span>
                 {activeTab === 'track' && (
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full border border-white animate-pulse"></span>
+                )}
+              </button>
+
+              {/* গ্যালারি ও ভিডিও (Gallery & Video) */}
+              <button
+                id="nav-tab-media"
+                type="button"
+                onClick={() => setActiveTab('media')}
+                className={`relative flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-250 cursor-pointer ${
+                  activeTab === 'media'
+                    ? 'bg-gradient-to-br from-purple-700 to-indigo-700 text-white shadow-md scale-[1.02]'
+                    : 'text-slate-600 hover:bg-white hover:text-purple-800 hover:shadow-sm'
+                }`}
+              >
+                <Video className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${activeTab === 'media' ? 'text-white' : 'text-purple-600'}`} />
+                <span>গ্যালারি ও ভিডিও</span>
+                {activeTab === 'media' && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-purple-400 rounded-full border border-white animate-pulse"></span>
                 )}
               </button>
 

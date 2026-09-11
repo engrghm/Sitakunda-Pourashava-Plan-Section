@@ -49,7 +49,8 @@ import {
   Upload,
   FileDown,
   ArrowRight,
-  BookOpen
+  BookOpen,
+  Video
 } from 'lucide-react';
 import { MunicipalityLogo } from './MunicipalityLogo';
 import { ApplicationQRCodeCard } from './ApplicationQRCodeCard';
@@ -73,6 +74,7 @@ import { CsvModuleType } from '../utils/csvExportHelper';
 import { CouncilManagementPanel } from './CouncilManagementPanel';
 import { NoticeManagementPanel } from './NoticeManagementPanel';
 import { GazetteManagementPanel } from './GazetteManagementPanel';
+import { MediaManagementPanel } from './MediaManagementPanel';
 import { 
   DemarcationApplication, 
   BuildingConstructionApplication,
@@ -259,8 +261,8 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
   const [pwdChangeError, setPwdChangeError] = useState<string | null>(null);
   const [pwdChangeSuccess, setPwdChangeSuccess] = useState<string | null>(null);
 
-  // Active Dashboard Module: Demarcation, Schedule-1, Road Cutting, Council, Notices, or Gazettes
-  const [activeModule, setActiveModule] = useState<'demarcation' | 'schedule1' | 'roadcutting' | 'council' | 'notices' | 'gazettes'>('demarcation');
+  // Active Dashboard Module: Demarcation, Schedule-1, Road Cutting, Council, Notices, Gazettes, or Media Gallery
+  const [activeModule, setActiveModule] = useState<'demarcation' | 'schedule1' | 'roadcutting' | 'council' | 'notices' | 'gazettes' | 'media'>('demarcation');
   const [roadCuttingApplications, setRoadCuttingApplications] = useState<RoadCuttingApplication[]>([]);
   const [roadCuttingSearchQuery, setRoadCuttingSearchQuery] = useState<string>('');
   const [roadCuttingSelectedStatus, setRoadCuttingSelectedStatus] = useState<string>('all');
@@ -1637,6 +1639,20 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
         >
           <BookOpen className="w-4 h-4 text-emerald-500" />
           <span>৬. আইন ও গেজেট লাইব্রেরি (১০টি PDF আপলোড)</span>
+        </button>
+
+        <button
+          type="button"
+          id="module-tab-media"
+          onClick={() => setActiveModule('media')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeModule === 'media'
+              ? 'bg-purple-700 text-white shadow-sm ring-2 ring-purple-500/40'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Video className="w-4 h-4 text-purple-400" />
+          <span>৭. গ্যালারি ও ভিডিও ব্যবস্থাপনা</span>
         </button>
 
         {onOpenCustomizer && (
@@ -3162,6 +3178,18 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
           <GazetteManagementPanel
             onSuccessNotification={(msg) => {
               setSaveSuccessMsg(msg);
+              setTimeout(() => setSaveSuccessMsg(null), 4000);
+            }}
+          />
+        </div>
+      )}
+
+      {/* MODULE 7: Media, Photo & Video Gallery Management */}
+      {activeModule === 'media' && (
+        <div className="space-y-6 animate-fade-in">
+          <MediaManagementPanel
+            onMediaChanged={() => {
+              setSaveSuccessMsg('মিডিয়া গ্যালারি সফলভাবে আপডেট হয়েছে');
               setTimeout(() => setSaveSuccessMsg(null), 4000);
             }}
           />

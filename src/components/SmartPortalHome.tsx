@@ -62,6 +62,7 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
   const [quickTrackId, setQuickTrackId] = useState('');
   const [marqueePlaying, setMarqueePlaying] = useState(true);
   const [selectedServiceInfo, setSelectedServiceInfo] = useState<any | null>(null);
+  const [isBuildingPhotoModalOpen, setIsBuildingPhotoModalOpen] = useState(false);
 
   const handleQuickTrackSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,92 +102,159 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
           </div>
         )}
 
-        {/* 2. Hero Section */}
-        <section className="relative rounded-3xl overflow-hidden shadow-2xl border border-emerald-500/40 bg-gradient-to-br from-[#043328] via-[#064e3b] to-[#0f172a] text-white p-6 sm:p-10 lg:p-12">
-        {/* Background Decorative Rings & Watermark */}
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 rounded-full bg-teal-500/20 blur-3xl pointer-events-none"></div>
-        <div className="absolute right-6 bottom-6 opacity-15 pointer-events-none select-none hidden lg:block">
-          <MunicipalityLogo size={280} />
-        </div>
+        {/* 2. Hero Section: Split Layout with Municipal Complex Photo & Official Logo */}
+        <section className="relative rounded-3xl overflow-hidden shadow-2xl border border-emerald-500/40 bg-gradient-to-br from-[#043328] via-[#064e3b] to-[#0f172a] text-white p-6 sm:p-8 lg:p-10">
+          {/* Background Decorative Rings */}
+          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 rounded-full bg-teal-500/20 blur-3xl pointer-events-none"></div>
 
-        <div className="relative z-10 max-w-3xl space-y-6">
-          {/* Top Badge */}
-          <div className="inline-flex items-center gap-2 bg-emerald-950/80 border border-emerald-400/50 px-3.5 py-1.5 rounded-full text-xs font-bold text-emerald-300 shadow-sm">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
-            <span>{config.heroBadgeText}</span>
-          </div>
-
-          {/* Headline */}
-          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight sm:leading-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
-            {config.heroHeadline}
-          </h1>
-
-          {/* Subtitle */}
-          <p className="text-base sm:text-lg text-emerald-100/95 leading-relaxed font-normal max-w-2xl drop-shadow-sm">
-            {config.heroSubheadline}
-          </p>
-
-          {/* Instant Tracking Quick Search Box */}
-          <div className="bg-black/40 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-emerald-400/40 shadow-xl space-y-2">
-            <span className="text-xs sm:text-sm font-bold text-amber-300 flex items-center gap-1.5 drop-shadow-xs">
-              <Search className="w-3.5 h-3.5" />
-              <span>আপনার দাখিলকৃত আবেদনের লাইভ স্ট্যাটাস জানতে ট্র্যাকিং আইডি লিখুন:</span>
-            </span>
-            <form onSubmit={handleQuickTrackSubmit} className="flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  placeholder="উদাঃ SKM-2026-XXXX অথবা আবেদনকারীর মোবাইল নম্বর"
-                  value={quickTrackId}
-                  onChange={(e) => setQuickTrackId(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 rounded-xl bg-white text-slate-900 placeholder-slate-400 font-mono text-xs sm:text-sm font-bold border-2 border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/40 shadow-inner"
-                />
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* Left Column (7 cols): Headlines, Instant Tracking & Action Buttons */}
+            <div className="lg:col-span-7 space-y-5">
+              {/* Top Badge */}
+              <div className="inline-flex items-center gap-2 bg-emerald-950/80 border border-emerald-400/50 px-3.5 py-1.5 rounded-full text-xs font-bold text-emerald-300 shadow-sm">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>{config.heroBadgeText}</span>
               </div>
-              <button
-                type="submit"
-                className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Search className="w-4 h-4" />
-                <span>তাত্ক্ষণিক ট্র্যাকিং</span>
-              </button>
-            </form>
+
+              {/* Headline */}
+              <h1 className="text-2xl sm:text-4xl lg:text-4xl xl:text-5xl font-black tracking-tight leading-tight sm:leading-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+                {config.heroHeadline}
+              </h1>
+
+              {/* Subtitle */}
+              <p className="text-sm sm:text-base text-emerald-100/95 leading-relaxed font-normal max-w-2xl drop-shadow-sm">
+                {config.heroSubheadline}
+              </p>
+
+              {/* Instant Tracking Quick Search Box */}
+              <div className="bg-black/40 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-emerald-400/40 shadow-xl space-y-2">
+                <span className="text-xs sm:text-sm font-bold text-amber-300 flex items-center gap-1.5 drop-shadow-xs">
+                  <Search className="w-3.5 h-3.5" />
+                  <span>আপনার দাখিলকৃত আবেদনের লাইভ স্ট্যাটাস জানতে ট্র্যাকিং আইডি লিখুন:</span>
+                </span>
+                <form onSubmit={handleQuickTrackSubmit} className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      placeholder="উদাঃ SKM-2026-XXXX অথবা আবেদনকারীর মোবাইল নম্বর"
+                      value={quickTrackId}
+                      onChange={(e) => setQuickTrackId(e.target.value)}
+                      className="w-full pl-4 pr-10 py-3 rounded-xl bg-white text-slate-900 placeholder-slate-400 font-mono text-xs sm:text-sm font-bold border-2 border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/40 shadow-inner"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                  >
+                    <Search className="w-4 h-4" />
+                    <span>তাত্ক্ষণিক ট্র্যাকিং</span>
+                  </button>
+                </form>
+              </div>
+
+              {/* Quick Action Navigation Buttons */}
+              <div className="pt-1 flex flex-wrap gap-2.5 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('apply')}
+                  className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer hover:shadow-lg hover:scale-[1.02]"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>ডিমার্কেশন আবেদন</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('schedule1')}
+                  className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer hover:shadow-lg hover:scale-[1.02]"
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span>ইমারত অনুমোদন</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('roadcutting')}
+                  className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-white text-xs sm:text-sm font-bold border border-slate-600 shadow-md transition-all cursor-pointer hover:scale-[1.02]"
+                >
+                  <Construction className="w-4 h-4 text-amber-400" />
+                  <span>রাস্তা কর্তন অনুমোদন</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column (5 cols): Stunning Pourashava Bhaban & Logo Showcase */}
+            <div className="lg:col-span-5 flex justify-center">
+              <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} perspective={1000} scale={1.02} transitionSpeed={1200} className="w-full max-w-md lg:max-w-none">
+                <div 
+                  onClick={() => setIsBuildingPhotoModalOpen(true)}
+                  className="group relative rounded-3xl overflow-hidden shadow-2xl border-2 border-emerald-400/50 bg-slate-950 cursor-pointer ring-4 ring-emerald-500/20 hover:ring-emerald-400/50 transition-all duration-500"
+                  title="সীতাকুণ্ড পৌরসভা কার্যালয় ভবন ও মনোগ্রাম বড় করে দেখতে ক্লিক করুন"
+                >
+                  {/* Photo Frame */}
+                  <div className="relative aspect-16/10 sm:aspect-16/9 lg:aspect-4/3 w-full overflow-hidden bg-slate-900">
+                    <img
+                      src="/sitakunda-pourashava-bhaban.jpg"
+                      alt="সীতাকুণ্ড পৌরসভা কার্যালয় ভবন ও লোগো"
+                      className="w-full h-full object-cover object-center group-hover:scale-108 transition-transform duration-700 ease-out"
+                      loading="eager"
+                    />
+
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#04281f] via-slate-950/20 to-black/30 pointer-events-none group-hover:via-slate-950/10 transition-colors"></div>
+
+                    {/* Top Floating Badge Bar */}
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+                      {/* Logo + Municipality Name Badge */}
+                      <div className="flex items-center gap-2 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-emerald-400/40 shadow-lg">
+                        <div className="w-7 h-7 rounded-full bg-white p-0.5 shadow-xs overflow-hidden flex items-center justify-center shrink-0 ring-1 ring-emerald-500/40">
+                          <img src="/logo.png" alt="লোগো" className="w-full h-full object-contain" />
+                        </div>
+                        <div className="leading-tight">
+                          <span className="text-[11px] font-black text-white block">সীতাকুণ্ড পৌরসভা</span>
+                          <span className="text-[9px] text-emerald-300 font-medium block">সীতাকুণ্ড, চট্টগ্রাম</span>
+                        </div>
+                      </div>
+
+                      {/* Active Status Pill */}
+                      <span className="inline-flex items-center gap-1.5 bg-emerald-950/85 backdrop-blur-md text-emerald-300 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-400/40 shadow-md">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>কার্যালয় ভবন</span>
+                      </span>
+                    </div>
+
+                    {/* Bottom Caption Overlay */}
+                    <div className="absolute bottom-0 inset-x-0 p-3.5 sm:p-4 bg-gradient-to-t from-slate-950 via-slate-950/85 to-transparent space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-1.5 tracking-tight group-hover:text-emerald-300 transition-colors">
+                          <Building className="w-4 h-4 text-emerald-400" />
+                          <span>সীতাকুণ্ড পৌরসভা কার্যালয়</span>
+                        </h3>
+                        <span className="text-[10px] font-bold text-amber-300 bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 rounded-full">
+                          স্থাপিত: ১৯৯৮ খ্রিঃ
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-emerald-100/85 line-clamp-1 font-normal">
+                        নাগরিক সেবা ও ডিজিটাল প্ল্যাটফর্ম পরিচালনা কেন্দ্র
+                      </p>
+                      <div className="pt-1 flex items-center justify-between text-[10px] text-slate-300 border-t border-white/10">
+                        <span className="text-emerald-400 font-semibold">সীতাকুণ্ড, চট্টগ্রাম</span>
+                        <span className="inline-flex items-center gap-1 text-white font-bold group-hover:text-amber-300 transition-colors">
+                          <span>বড় করে দেখুন</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Tilt>
+            </div>
           </div>
-
-          {/* Quick Action Navigation Buttons */}
-          <div className="pt-2 flex flex-wrap gap-2.5 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => onNavigateTab('apply')}
-              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer hover:shadow-lg"
-            >
-              <FileText className="w-4 h-4" />
-              <span>ডিমার্কেশন আবেদন</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onNavigateTab('schedule1')}
-              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer hover:shadow-lg"
-            >
-              <Building2 className="w-4 h-4" />
-              <span>ইমারত অনুমোদন</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onNavigateTab('roadcutting')}
-              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-white text-xs sm:text-sm font-bold border border-slate-600 shadow-md transition-all cursor-pointer"
-            >
-              <Construction className="w-4 h-4 text-amber-400" />
-              <span>রাস্তা কর্তন অনুমোদন</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      </section>
+        </section>
       </div>
 
       {/* 2.8 Leadership & Message Section — Prominent Administrator Speech & Face View (স্মার্ট সিটি ও ডিজিটাল গভর্নেন্স) */}
@@ -872,6 +940,63 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
         </div>
       )}
 
+      {/* Building & Logo High-Resolution Lightbox Modal */}
+      {isBuildingPhotoModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fade-in"
+          onClick={() => setIsBuildingPhotoModalOpen(false)}
+        >
+          <div 
+            className="relative max-w-4xl w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-emerald-500/50 flex flex-col max-h-[92vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white flex items-center justify-between border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white p-0.5 shrink-0 shadow-md ring-2 ring-emerald-400">
+                  <img src="/logo.png" alt="সীতাকুণ্ড পৌরসভা লোগো" className="w-full h-full object-contain" />
+                </div>
+                <div>
+                  <h4 className="text-sm sm:text-base font-black text-white">সীতাকুণ্ড পৌরসভা কার্যালয় ভবন ও ক্যাম্পাস</h4>
+                  <p className="text-xs text-emerald-300">সীতাকুণ্ড, চট্টগ্রাম &bull; স্থাপিত : ১৯৯৮ খ্রিঃ</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBuildingPhotoModalOpen(false)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center border border-white/20 transition-all cursor-pointer text-sm font-bold shadow-md"
+                title="বন্ধ করুন"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Image View */}
+            <div className="relative flex-1 bg-black overflow-hidden flex items-center justify-center p-1 sm:p-2">
+              <img
+                src="/sitakunda-pourashava-bhaban.jpg"
+                alt="সীতাকুণ্ড পৌরসভা কার্যালয় ভবন"
+                className="w-full max-h-[70vh] object-contain rounded-xl"
+              />
+            </div>
+
+            {/* Modal Footer Info */}
+            <div className="p-3 sm:p-4 bg-slate-950 text-slate-300 text-xs flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-white/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>নাগরিক সেবা ও তথ্য প্রযুক্তি পরিচালনা কেন্দ্র &bull; সীতাকুণ্ড পৌরসভা</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBuildingPhotoModalOpen(false)}
+                className="px-4 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-xl transition-colors cursor-pointer text-xs"
+              >
+                বন্ধ করুন
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
