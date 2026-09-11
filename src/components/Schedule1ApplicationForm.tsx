@@ -2036,6 +2036,7 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
           {legalDocs.map((doc, idx) => {
             const Icon = doc.icon;
+            const hasFile = Boolean(doc.fileUrl && doc.fileUrl.trim());
             return (
               <div
                 key={doc.id}
@@ -2046,9 +2047,15 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${doc.badgeColor}`}>
                       {doc.category}
                     </span>
-                    <span className="text-[10px] text-emerald-800 font-bold bg-emerald-100/70 px-2 py-0.5 rounded-full border border-emerald-300">
-                      গেজেট PDF সংযুক্ত
-                    </span>
+                    {hasFile ? (
+                      <span className="text-[10px] text-emerald-800 font-bold bg-emerald-100/70 px-2 py-0.5 rounded-full border border-emerald-300">
+                        গেজেট PDF সংযুক্ত
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                        আইন ও ধারা নির্দেশিকা
+                      </span>
+                    )}
                   </div>
                   <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-start gap-1.5">
                     <Icon className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
@@ -2066,21 +2073,27 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                       setSelectedLegalDoc(doc.id);
                       setIsLegalModalOpen(true);
                     }}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs ${
+                      hasFile
+                        ? 'bg-emerald-800 hover:bg-emerald-900 text-white'
+                        : 'bg-white hover:bg-emerald-800 hover:text-white text-emerald-900 border border-emerald-300'
+                    }`}
                   >
                     <BookOpen className="w-3.5 h-3.5" />
-                    <span>আইন ও PDF দেখুন</span>
+                    <span>{hasFile ? 'আইন ও PDF দেখুন' : 'আইন ও ধারাসমূহ পড়ুন'}</span>
                   </button>
 
-                  <a
-                    href={doc.fileUrl}
-                    download={doc.fileName}
-                    className="flex items-center justify-center gap-1 px-3 py-2 bg-slate-100 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold transition-colors shadow-2xs"
-                    title={`${doc.title} ডাউনলোড করুন`}
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">ডাউনলোড</span>
-                  </a>
+                  {hasFile && (
+                    <a
+                      href={doc.fileUrl}
+                      download={doc.fileName}
+                      className="flex items-center justify-center gap-1 px-3 py-2 bg-slate-100 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold transition-colors shadow-2xs"
+                      title={`${doc.title} ডাউনলোড করুন`}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">ডাউনলোড</span>
+                    </a>
+                  )}
                 </div>
               </div>
             );

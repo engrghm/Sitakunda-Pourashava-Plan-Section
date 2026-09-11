@@ -147,26 +147,41 @@ export const BuildingLegalDocumentsModal: React.FC<BuildingLegalDocumentsModalPr
           </div>
 
           <div className="flex items-center gap-2">
-            <a
-              href={currentDoc.fileUrl}
-              download={currentDoc.fileName}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
-              title="মূল গেজেট PDF ফাইল ডাউনলোড করুন"
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">PDF ডাউনলোড</span>
-            </a>
+            {currentDoc.fileUrl ? (
+              <>
+                <a
+                  href={currentDoc.fileUrl}
+                  download={currentDoc.fileName}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
+                  title="মূল গেজেট PDF ফাইল ডাউনলোড করুন"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">PDF ডাউনলোড</span>
+                </a>
 
-            <a
-              href={currentDoc.fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all border border-white/20 cursor-pointer"
-              title="নতুন ট্যাবে PDF খুলুন"
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span className="hidden md:inline">নতুন ট্যাবে</span>
-            </a>
+                <a
+                  href={currentDoc.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all border border-white/20 cursor-pointer"
+                  title="নতুন ট্যাবে PDF খুলুন"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span className="hidden md:inline">নতুন ট্যাবে</span>
+                </a>
+              </>
+            ) : currentDoc.officialUrl ? (
+              <a
+                href={currentDoc.officialUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-white/10 hover:bg-white/20 text-emerald-200 rounded-xl text-xs font-bold transition-all border border-white/20 cursor-pointer"
+                title="সরকারি BDLaws পোর্টালে দেখুন"
+              >
+                <span>BDLaws পোর্টাল</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            ) : null}
 
             <button
               onClick={handlePrint}
@@ -393,81 +408,120 @@ export const BuildingLegalDocumentsModal: React.FC<BuildingLegalDocumentsModalPr
           {/* VIEW MODE 2: EMBEDDED PDF VIEWER */}
           {viewMode === 'pdf' && (
             <div className="w-full h-full flex flex-col space-y-3">
-              {/* PDF Control Status Bar */}
-              <div className="bg-white p-3.5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-                      {currentDoc.fileName}
-                    </h4>
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <span className="text-emerald-700 font-bold flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>ডিজিটাল গেজেট PDF সংযুক্ত</span>
-                      </span>
-                      {currentDoc.fileSize && (
-                        <span>• {Math.round(currentDoc.fileSize / 1024)} KB</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <a
-                    href={currentDoc.fileUrl}
-                    download={currentDoc.fileName}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>ডাউনলোড করুন</span>
-                  </a>
-
-                  <a
-                    href={currentDoc.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all border border-slate-200"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    <span>নতুন ট্যাবে খুলুন</span>
-                  </a>
-                </div>
-              </div>
-
-              {/* Embedded PDF iframe with object fallback */}
-              <div className="w-full h-[600px] bg-slate-200 rounded-2xl overflow-hidden border border-slate-300 shadow-inner relative flex flex-col">
-                <object
-                  data={`${currentDoc.fileUrl}#toolbar=1&navpanes=0&scrollbar=1`}
-                  type="application/pdf"
-                  className="w-full h-full min-h-[580px]"
-                >
-                  <iframe
-                    src={`${currentDoc.fileUrl}#toolbar=1&navpanes=0`}
-                    className="w-full h-full min-h-[580px] border-none"
-                    title={currentDoc.title}
-                  >
-                    <div className="p-8 text-center bg-white h-full flex flex-col items-center justify-center space-y-4">
-                      <AlertCircle className="w-10 h-10 text-amber-600" />
-                      <div>
-                        <h4 className="font-bold text-slate-900 text-sm">PDF সরাসরি প্রিভিউ করা যায়নি</h4>
-                        <p className="text-xs text-slate-600 mt-1">
-                          আপনার ব্রাউজার যদি ভেতরে PDF প্রদর্শন সমর্থন না করে, তবে নিচের বোতাম দিয়ে ফাইলটি সরাসরি ডাউনলোড বা নতুন ট্যাবে দেখতে পারেন।
-                        </p>
+              {currentDoc.fileUrl ? (
+                <>
+                  {/* PDF Control Status Bar */}
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                        <FileText className="w-4 h-4" />
                       </div>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                          {currentDoc.fileName}
+                        </h4>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                          <span className="text-emerald-700 font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>ডিজিটাল গেজেট PDF সংযুক্ত</span>
+                          </span>
+                          {currentDoc.fileSize && (
+                            <span>• {Math.round(currentDoc.fileSize / 1024)} KB</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
                       <a
                         href={currentDoc.fileUrl}
                         download={currentDoc.fileName}
-                        className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-md"
+                        className="flex items-center gap-1.5 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
                       >
-                        PDF ফাইল ডাউনলোড করুন
+                        <Download className="w-4 h-4" />
+                        <span>ডাউনলোড করুন</span>
+                      </a>
+
+                      <a
+                        href={currentDoc.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all border border-slate-200"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        <span>নতুন ট্যাবে খুলুন</span>
                       </a>
                     </div>
-                  </iframe>
-                </object>
-              </div>
+                  </div>
+
+                  {/* Embedded PDF iframe with object fallback */}
+                  <div className="w-full h-[600px] bg-slate-200 rounded-2xl overflow-hidden border border-slate-300 shadow-inner relative flex flex-col">
+                    <object
+                      data={`${currentDoc.fileUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                      type="application/pdf"
+                      className="w-full h-full min-h-[580px]"
+                    >
+                      <iframe
+                        src={`${currentDoc.fileUrl}#toolbar=1&navpanes=0`}
+                        className="w-full h-full min-h-[580px] border-none"
+                        title={currentDoc.title}
+                      >
+                        <div className="p-8 text-center bg-white h-full flex flex-col items-center justify-center space-y-4">
+                          <AlertCircle className="w-10 h-10 text-amber-600" />
+                          <div>
+                            <h4 className="font-bold text-slate-900 text-sm">PDF সরাসরি প্রিভিউ করা যায়নি</h4>
+                            <p className="text-xs text-slate-600 mt-1">
+                              নিচের বোতাম দিয়ে ফাইলটি সরাসরি ডাউনলোড বা নতুন ট্যাবে দেখতে পারেন।
+                            </p>
+                          </div>
+                          <a
+                            href={currentDoc.fileUrl}
+                            download={currentDoc.fileName}
+                            className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-md"
+                          >
+                            PDF ফাইল ডাউনলোড করুন
+                          </a>
+                        </div>
+                      </iframe>
+                    </object>
+                  </div>
+                </>
+              ) : (
+                <div className="w-full min-h-[420px] bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center space-y-4">
+                  <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center">
+                    <FileText className="w-8 h-8 text-amber-600" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h4 className="text-base sm:text-lg font-bold text-slate-900">
+                      এই গেজেটের কোনো স্ক্যানড PDF ফাইল এখনও আপলোড করা হয়নি
+                    </h4>
+                    <p className="text-xs text-slate-600 max-w-lg mx-auto leading-relaxed">
+                      পৌরসভা কর্তৃপক্ষ সরকারি গেজেট ফাইল আপলোড করলে তা সরাসরি এখানে দেখা ও ডাউনলোড করা যাবে। আপনি পাশের <strong>"আইন ও ধারাসমূহ"</strong> ট্যাবে সম্পূর্ণ বাংলায় সকল ধারা পড়তে পারেন।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('reader')}
+                      className="px-4 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      <span>আইন ও ধারাসমূহ পড়ুন</span>
+                    </button>
+                    {currentDoc.officialUrl && (
+                      <a
+                        href={currentDoc.officialUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all border border-slate-200 flex items-center gap-1.5"
+                      >
+                        <span>সরকারি BDLaws পোর্টালে দেখুন</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

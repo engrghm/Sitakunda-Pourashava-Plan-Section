@@ -26,6 +26,7 @@ import {
   getLegalDocuments, 
   uploadGazettePdf, 
   resetLegalDocument,
+  clearAllLegalDocuments,
   DEFAULT_LEGAL_DOCUMENTS
 } from '../utils/legalDocuments';
 import { getLegalDocIcon } from './BuildingLegalDocumentsModal';
@@ -109,12 +110,22 @@ export const GazetteManagementPanel: React.FC<GazetteManagementPanelProps> = ({
 
   // Handle document reset to default
   const handleReset = (docId: LegalDocId, title: string) => {
-    if (!window.confirm(`আপনি কি "${title}" এর আপলোডকৃত কাস্টম PDF মুছে ফেলে মূল সিস্টেমে ফিরতে চান?`)) {
+    if (!window.confirm(`আপনি কি "${title}" এর আপলোডকৃত কাস্টম PDF মুছে ফেলে খালি করতে চান?`)) {
       return;
     }
     resetLegalDocument(docId);
     reloadDocuments();
-    showNotification(`"${title}" এর কাস্টম PDF সফলভাবে মুছে ডিফল্ট লিংকে ফিরিয়ে দেওয়া হয়েছে।`);
+    showNotification(`"${title}" এর কাস্টম PDF সফলভাবে মুছে ফেলা হয়েছে।`);
+  };
+
+  // Handle clearing all uploaded custom PDFs
+  const handleClearAll = () => {
+    if (!window.confirm('আপনি কি এই প্যানেল হতে সকল আপলোডকৃত গেজেট PDF ফাইল মুছে ফেলে সম্পূর্ণ খালি করতে চান?')) {
+      return;
+    }
+    clearAllLegalDocuments();
+    reloadDocuments();
+    showNotification('১০টি অফিসিয়াল গেজেট ও আইন আপলোড প্যানেল হতে সকল PDF সফলভাবে মুছে ফেলা হয়েছে।');
   };
 
   // Filtered documents
@@ -129,7 +140,7 @@ export const GazetteManagementPanel: React.FC<GazetteManagementPanelProps> = ({
     );
   });
 
-  const customUploadsCount = documents.filter((d) => d.isCustom).length;
+  const customUploadsCount = documents.filter((d) => Boolean(d.fileUrl && d.fileUrl.trim())).length;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -186,16 +197,29 @@ export const GazetteManagementPanel: React.FC<GazetteManagementPanelProps> = ({
 
           <div className="flex items-center gap-3 shrink-0 flex-wrap">
             <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/15 text-center min-w-[120px]">
-              <span className="text-xs text-emerald-200 block font-semibold">লাইভ PDF সংযুক্ত</span>
+              <span className="text-xs text-emerald-200 block font-semibold">আপলোডকৃত PDF</span>
               <span className="text-2xl font-black text-amber-300 font-mono">
                 {toBanglaNumber(customUploadsCount)} / {toBanglaNumber(documents.length)}
               </span>
             </div>
 
+            {customUploadsCount > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="px-4 py-3 bg-red-600/90 hover:bg-red-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer border border-red-400/40"
+                title="সকল আপলোডকৃত PDF মুছে খালি করুন"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>সকল PDF বাদ দিন</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => {
-                if (documents.length > 0) setPreviewDoc(documents[0]);
+                const firstWithFile = documents.find((d) => Boolean(d.fileUrl && d.fileUrl.trim())) || documents[0];
+                setPreviewDoc(firstWithFile);
               }}
               className="px-4 py-3 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
             >
@@ -238,15 +262,15 @@ export const GazetteManagementPanel: React.FC<GazetteManagementPanelProps> = ({
         {filteredDocs.map((doc, idx) => {
           const Icon = getLegalDocIcon(doc.id);
           const isUploading = uploadingDocId === doc.id;
-          const isCustomActive = !!doc.isCustom;
+          const hasFile = Boolean(doc.fileUrl && doc.fileUrl.trim());
 
           return (
             <div
               key={doc.id}
               className={`bg-white rounded-3xl p-5 sm:p-6 border transition-all duration-300 flex flex-col justify-between shadow-xs hover:shadow-md relative overflow-hidden ${
-                isCustomActive 
+                hasFile 
                   ? 'border-emerald-400/80 ring-1 ring-emerald-500/20' 
-                  : 'border-slate-200 hover:border-emerald-300'
+                  : 'border-slate-200 hover:border-slate-300'
               }`}
             >
               {/* Top Row: Meta Badge, Year, and Status */}
@@ -261,14 +285,15 @@ export const GazetteManagementPanel: React.FC<GazetteManagementPanelProps> = ({
                     </span>
                   </div>
 
-                  {isCustomActive ? (
+                  {hasFile ? (
                     <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-0.5 rounded-full shrink-0">
                       <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
                       <span>লাইভ PDF সংযুক্ত</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-0.5 rounded-full shrink-0">
-                      <span>ডিফল্ট লিঙ্ক</span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full shrink-0">
+                      <AlertCircle className="w-3 h-3 text-amber-600" />
+                      <span>কোনো PDF সংযুক্ত নেই</span>
                     </span>
                   )}
                 </div>
@@ -289,25 +314,29 @@ export const GazetteManagementPanel: React.FC<GazetteManagementPanelProps> = ({
                 </div>
 
                 {/* File Status Box */}
-                <div className="mt-4 p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1 text-xs">
+                <div className="mt-4 p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5 text-xs">
                   <div className="flex items-center justify-between text-slate-700">
                     <span className="text-slate-500 flex items-center gap-1">
                       <FileText className="w-3.5 h-3.5 text-slate-400" />
                       <span>বর্তমান ফাইল:</span>
                     </span>
-                    <strong className="font-mono text-emerald-950 truncate max-w-[220px]" title={doc.fileName}>
-                      {doc.fileName}
-                    </strong>
+                    {hasFile ? (
+                      <strong className="font-mono text-emerald-950 truncate max-w-[220px]" title={doc.fileName}>
+                        {doc.fileName}
+                      </strong>
+                    ) : (
+                      <span className="text-slate-400 italic">কোনো PDF ফাইল আপলোড করা হয়নি</span>
+                    )}
                   </div>
 
-                  {doc.fileSize && (
+                  {hasFile && doc.fileSize && (
                     <div className="flex items-center justify-between text-slate-500 text-[11px]">
                       <span>সাইজ:</span>
                       <span className="font-mono">{(doc.fileSize / (1024 * 1024)).toFixed(2)} MB</span>
                     </div>
                   )}
 
-                  {doc.uploadedAt && (
+                  {hasFile && doc.uploadedAt && (
                     <div className="flex items-center justify-between text-slate-500 text-[11px]">
                       <span>আপলোড তারিখ:</span>
                       <span>{new Date(doc.uploadedAt).toLocaleDateString('bn-BD')}</span>
@@ -332,12 +361,14 @@ export const GazetteManagementPanel: React.FC<GazetteManagementPanelProps> = ({
                   }}
                 />
 
-                {/* Upload Button */}
+                {/* Upload / Change Button */}
                 <button
                   type="button"
                   disabled={isUploading}
                   onClick={() => fileInputRefs.current[doc.id]?.click()}
-                  className="flex-1 py-2.5 px-3.5 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className={`py-2.5 px-3.5 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 ${
+                    hasFile ? 'flex-1' : 'w-full'
+                  }`}
                   title="নতুন PDF ফাইল নির্বাচন করুন"
                 >
                   {isUploading ? (
@@ -348,39 +379,43 @@ export const GazetteManagementPanel: React.FC<GazetteManagementPanelProps> = ({
                   ) : (
                     <>
                       <Upload className="w-4 h-4" />
-                      <span>{isCustomActive ? 'PDF পরিবর্তন করুন' : 'PDF আপলোড করুন'}</span>
+                      <span>{hasFile ? 'PDF পরিবর্তন করুন' : 'PDF আপলোড করুন'}</span>
                     </>
                   )}
                 </button>
 
-                {/* Preview Button */}
-                <button
-                  type="button"
-                  onClick={() => setPreviewDoc(doc)}
-                  className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer border border-slate-200"
-                  title="PDF প্রিভিউ দেখুন"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>প্রিভিউ</span>
-                </button>
+                {/* Preview Button (Only if hasFile) */}
+                {hasFile && (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewDoc(doc)}
+                    className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer border border-slate-200"
+                    title="PDF প্রিভিউ দেখুন"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>প্রিভিউ</span>
+                  </button>
+                )}
 
-                {/* Direct Download Button */}
-                <a
-                  href={doc.fileUrl}
-                  download={doc.fileName}
-                  className="py-2.5 px-3 bg-white hover:bg-emerald-50 text-emerald-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer border border-emerald-300"
-                  title="ফাইল ডাউনলোড করুন"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                </a>
+                {/* Direct Download Button (Only if hasFile) */}
+                {hasFile && (
+                  <a
+                    href={doc.fileUrl}
+                    download={doc.fileName}
+                    className="py-2.5 px-3 bg-white hover:bg-emerald-50 text-emerald-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer border border-emerald-300"
+                    title="ফাইল ডাউনলোড করুন"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </a>
+                )}
 
-                {/* Reset to Default Button */}
-                {isCustomActive && (
+                {/* Reset to Default Button (Only if hasFile) */}
+                {hasFile && (
                   <button
                     type="button"
                     onClick={() => handleReset(doc.id, doc.title)}
                     className="py-2.5 px-2.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl text-xs font-bold transition-all cursor-pointer border border-red-200"
-                    title="কাস্টম PDF মুছে ডিফল্টে ফিরে যান"
+                    title="কাস্টম PDF মুছে খালি করুন"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                   </button>
@@ -412,24 +447,28 @@ export const GazetteManagementPanel: React.FC<GazetteManagementPanelProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                <a
-                  href={previewDoc.fileUrl}
-                  download={previewDoc.fileName}
-                  className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>ডাউনলোড</span>
-                </a>
+                {previewDoc.fileUrl && (
+                  <>
+                    <a
+                      href={previewDoc.fileUrl}
+                      download={previewDoc.fileName}
+                      className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>ডাউনলোড</span>
+                    </a>
 
-                <a
-                  href={previewDoc.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all border border-white/20 cursor-pointer"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>নতুন ট্যাবে</span>
-                </a>
+                    <a
+                      href={previewDoc.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all border border-white/20 cursor-pointer"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>নতুন ট্যাবে</span>
+                    </a>
+                  </>
+                )}
 
                 <button
                   onClick={() => setPreviewDoc(null)}
@@ -459,13 +498,25 @@ export const GazetteManagementPanel: React.FC<GazetteManagementPanelProps> = ({
               ))}
             </div>
 
-            {/* Embedded Iframe Body */}
-            <div className="flex-1 w-full min-h-[500px] bg-slate-200 relative">
-              <iframe
-                src={`${previewDoc.fileUrl}#toolbar=1&navpanes=0`}
-                className="w-full h-full min-h-[500px] border-none"
-                title={previewDoc.title}
-              />
+            {/* Embedded Iframe Body or Empty State */}
+            <div className="flex-1 w-full min-h-[500px] bg-slate-100 relative flex flex-col">
+              {previewDoc.fileUrl ? (
+                <iframe
+                  src={`${previewDoc.fileUrl}#toolbar=1&navpanes=0`}
+                  className="w-full h-full min-h-[500px] border-none"
+                  title={previewDoc.title}
+                />
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                    <FileText className="w-7 h-7" />
+                  </div>
+                  <h4 className="text-base font-bold text-slate-900">এই গেজেটের কোনো PDF আপলোড করা হয়নি</h4>
+                  <p className="text-xs text-slate-500 max-w-md">
+                    পৌরসভার মূল ফাইলটি আপলোড করতে সংশ্লিষ্ট গেজেট কার্ডের <strong>"PDF আপলোড করুন"</strong> বোতামে ক্লিক করুন।
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

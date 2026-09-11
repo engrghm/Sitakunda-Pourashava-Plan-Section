@@ -43,9 +43,8 @@ export const DEFAULT_LEGAL_DOCUMENTS: LegalDocumentItem[] = [
     category: 'গেজেট বিধিমালা',
     year: '১৯৯৬',
     description: 'বিধি ১-৩০, নকশা প্রণয়নকারীর যোগ্যতা, উন্মুক্ত স্থান (সেটব্যাক) ও তফসিল-২ সরকারি ফি তালিকা।',
-    fileUrl: '/documents/building-construction-rules-1996.pdf',
-    fileName: 'ইমারত_নির্মাণ_বিধিমালা_১৯৯৬.pdf',
-    fileSize: 310078,
+    fileUrl: '',
+    fileName: '',
     officialUrl: 'http://bdlaws.minlaw.gov.bd/act-254.html',
     gazetteNo: 'এস, আর, ও নং ১১২-আইন/৯৬ (১৯ মে ১৯৯৬)',
     authority: 'গৃহায়ন ও গণপূর্ত মন্ত্রণালয় | সীতাকুণ্ড পৌরসভা',
@@ -99,9 +98,8 @@ export const DEFAULT_LEGAL_DOCUMENTS: LegalDocumentItem[] = [
     category: 'মূল আইন',
     year: '১৯৫২',
     description: 'ধারা ১-২০, ৩ বৎসরের অনুমোদন মেয়াদ, অননুমোদিত নির্মাণ অপসারণ ও দণ্ডাদেশ সংক্রান্ত বিধানাবলী।',
-    fileUrl: '/documents/building-construction-act-1952.pdf',
-    fileName: 'ইমারত_নির্মাণ_আইন_১৯৫২.pdf',
-    fileSize: 308275,
+    fileUrl: '',
+    fileName: '',
     officialUrl: 'http://bdlaws.minlaw.gov.bd/act-254.html',
     gazetteNo: 'East Bengal Act No. II of 1953 (২১ মার্চ ১৯৫৩)',
     authority: 'আইন ও সংসদ বিষয়ক বিভাগ | গণপ্রজাতন্ত্রী বাংলাদেশ সরকার',
@@ -137,9 +135,8 @@ export const DEFAULT_LEGAL_DOCUMENTS: LegalDocumentItem[] = [
     category: 'পৌরসভা আইন',
     year: '২০০৯',
     description: 'পৌর এলাকায় ইমারত ও ভূমি নিয়ন্ত্রণ, মহাপরিকল্পনা, ২য় তফসিল ৩৫-৩৭ এবং ৩য় ও ৪র্থ তফসিল।',
-    fileUrl: '/documents/local-government-pourashava-act-2009.pdf',
-    fileName: 'স্থানীয়_সরকার_পৌরসভা_আইন_২০০৯.pdf',
-    fileSize: 308055,
+    fileUrl: '',
+    fileName: '',
     officialUrl: 'http://bdlaws.minlaw.gov.bd/act-1024.html',
     gazetteNo: '২০০৯ সনের ৫৮ নং আইন (৬ অক্টোবর ২০০৯)',
     authority: 'স্থানীয় সরকার বিভাগ | সীতাকুণ্ড পৌরসভা',
@@ -171,9 +168,8 @@ export const DEFAULT_LEGAL_DOCUMENTS: LegalDocumentItem[] = [
     category: 'পরিবেশ ও জলাধার',
     year: '২০০০',
     description: 'পৌর এলাকার খেলার মাঠ, উন্মুক্ত স্থান, উদ্যান ও প্রাকৃতিক জলাধারের শ্রেণী পরিবর্তন সংক্রান্ত বাধা-নিষেধ।',
-    fileUrl: '/documents/open-space-waterbody-act-2000.pdf',
-    fileName: 'উন্মুক্ত_স্থান_ও_জলাধার_সংরক্ষণ_আইন_২০০০.pdf',
-    fileSize: 307827,
+    fileUrl: '',
+    fileName: '',
     officialUrl: 'http://bdlaws.minlaw.gov.bd/act-839.html',
     gazetteNo: '২০০০ সনের ৩৬ নং আইন (১৮ সেপ্টেম্বর ২০০০)',
     authority: 'গৃহায়ন ও গণপূর্ত মন্ত্রণালয় | পরিবেশ অধিদপ্তর',
@@ -204,9 +200,8 @@ export const DEFAULT_LEGAL_DOCUMENTS: LegalDocumentItem[] = [
     category: 'অগ্নি নিরাপত্তা ও NOC',
     year: '২০০৩',
     description: 'বহুতল (৭+ তলা) ও বাণিজ্যিক ভবনের ফায়ার সার্ভিস ছাড়পত্র (NOC) ও জীবন-সম্পদ নিরাপত্তা বিধান।',
-    fileUrl: '/documents/fire-prevention-extinguishment-act-2003.pdf',
-    fileName: 'অগ্নি_প্রতিরোধ_ও_নির্বাপণ_আইন_২০০৩.pdf',
-    fileSize: 307846,
+    fileUrl: '',
+    fileName: '',
     officialUrl: 'http://bdlaws.minlaw.gov.bd/act-898.html',
     gazetteNo: '২০০৩ সনের ৭ নং আইন (২৪ মার্চ ২০০৩)',
     authority: 'স্বরাষ্ট্র মন্ত্রণালয় | ফায়ার সার্ভিস ও সিভিল ডিফেন্স অধিদপ্তর',
@@ -233,9 +228,8 @@ export const DEFAULT_LEGAL_DOCUMENTS: LegalDocumentItem[] = [
     category: 'পরিবেশ আইন',
     year: '১৯৯৫',
     description: 'পরিবেশ সংরক্ষণ, পরিবেশগত মান উন্নয়ন, দূষণ নিয়ন্ত্রণ ও পরিবেশগত ছাড়পত্র (ECC) সংক্রান্ত আইন।',
-    fileUrl: '/documents/bangladesh-environment-conservation-act-1995.pdf',
-    fileName: 'বাংলাদেশ_পরিবেশ_সংরক্ষণ_আইন_১৯৯৫.pdf',
-    fileSize: 307911,
+    fileUrl: '',
+    fileName: '',
     officialUrl: 'http://bdlaws.minlaw.gov.bd/act-791.html',
     gazetteNo: '১৯৯৫ সনের ১ নং আইন (১৬ ফেব্রুয়ারি ১৯৯৫)',
     authority: 'পরিবেশ, বন ও জলবায়ু পরিবর্তন মন্ত্রণালয় | পরিবেশ অধিদপ্তর',
@@ -267,9 +261,8 @@ export const DEFAULT_LEGAL_DOCUMENTS: LegalDocumentItem[] = [
     category: 'পরিবেশ বিধিমালা',
     year: '২০২৩',
     description: 'ইমারত, শিল্প ও উন্নয়ন প্রকল্পের পরিবেশগত অবস্থান ছাড়পত্র, পরিবেশগত প্রভাব নিরূপণ (EIA) ও বর্জ্য ব্যবস্থাপনা।',
-    fileUrl: '/documents/environment-conservation-rules-2023.pdf',
-    fileName: 'পরিবেশ_সংরক্ষণ_বিধিমালা_২০২৩.pdf',
-    fileSize: 307827,
+    fileUrl: '',
+    fileName: '',
     officialUrl: 'https://doe.portal.gov.bd',
     gazetteNo: 'এস, আর, ও নং ১৪-আইন/২০২৩ (১ জানুয়ারি ২০২৩)',
     authority: 'পরিবেশ অধিদপ্তর | গণপ্রজাতন্ত্রী বাংলাদেশ সরকার',
@@ -300,9 +293,8 @@ export const DEFAULT_LEGAL_DOCUMENTS: LegalDocumentItem[] = [
     category: 'মহাসড়ক ও সড়ক আইন',
     year: '২০২১',
     description: 'জাতীয়, আঞ্চলিক ও জেলা মহাসড়ক সংরক্ষণ, রাইট অব ওয়ে (ROW), সড়কের উভয়পাশে নির্মাণ সীমানা ও নিয়ন্ত্রণ।',
-    fileUrl: '/documents/highway-act-2021.pdf',
-    fileName: 'মহাসড়ক_আইন_২০২১.pdf',
-    fileSize: 307728,
+    fileUrl: '',
+    fileName: '',
     officialUrl: 'http://bdlaws.minlaw.gov.bd/act-1393.html',
     gazetteNo: '২০২১ সনের ৩৫ নং আইন (২৭ নভেম্বর ২০২১)',
     authority: 'সড়ক পরিবহন ও মহাসড়ক বিভাগ | সড়ক ও জনপথ অধিদপ্তর',
@@ -329,9 +321,8 @@ export const DEFAULT_LEGAL_DOCUMENTS: LegalDocumentItem[] = [
     category: 'জাতীয় বিল্ডিং কোড',
     year: '২০২০',
     description: 'বাংলাদেশ ন্যাশনাল বিল্ডিং কোড ২০২০ (পার্ট-১): সাধারণ ভবন নিয়ন্ত্রণ, প্রশাসনিক বিধান ও সাধারণ নির্দেশিকা।',
-    fileUrl: '/documents/bnbc-2020-part-01.pdf',
-    fileName: 'BNBC_2020_Part_01.pdf',
-    fileSize: 307957,
+    fileUrl: '',
+    fileName: '',
     officialUrl: 'https://mohpw.gov.bd',
     gazetteNo: 'বাংলাদেশ গেজেট অতিরিক্ত ২০২১ (S.R.O. No. 55-Law/2021)',
     authority: 'গৃহায়ন ও গণপূর্ত মন্ত্রণালয় | HBRI',
@@ -358,9 +349,8 @@ export const DEFAULT_LEGAL_DOCUMENTS: LegalDocumentItem[] = [
     category: 'জাতীয় বিল্ডিং কোড',
     year: '২০২০',
     description: 'বাংলাদেশ ন্যাশনাল বিল্ডিং কোড ২০২০ (পার্ট-২): স্ট্রাকচারাল ডিজাইন, লোড ও সিসমিক ডিজাইন, অগ্নি নিরাপত্তা।',
-    fileUrl: '/documents/bnbc-2020-part-02.pdf',
-    fileName: 'BNBC_2020_Part_02.pdf',
-    fileSize: 308084,
+    fileUrl: '',
+    fileName: '',
     officialUrl: 'https://mohpw.gov.bd',
     gazetteNo: 'বাংলাদেশ গেজেট অতিরিক্ত ২০২১ (S.R.O. No. 55-Law/2021)',
     authority: 'গৃহায়ন ও গণপূর্ত মন্ত্রণালয় | HBRI',
@@ -397,13 +387,13 @@ export function getLegalDocuments(): LegalDocumentItem[] {
     
     return DEFAULT_LEGAL_DOCUMENTS.map((def) => {
       const custom = customMap[def.id];
-      if (!custom) return def;
+      if (!custom || !custom.fileUrl) return def;
       return {
         ...def,
         ...custom,
-        fileUrl: custom.fileUrl || def.fileUrl,
-        fileName: custom.fileName || def.fileName,
-        isCustom: !!custom.fileUrl,
+        fileUrl: custom.fileUrl,
+        fileName: custom.fileName || 'custom_document.pdf',
+        isCustom: true,
       };
     });
   } catch (err) {
@@ -438,7 +428,7 @@ export function saveLegalDocument(docId: LegalDocId, updates: Partial<LegalDocum
 }
 
 /**
- * Reset a document back to default
+ * Reset a document back to default (remove custom uploaded file)
  */
 export function resetLegalDocument(docId: LegalDocId): boolean {
   if (typeof window === 'undefined') return false;
@@ -452,6 +442,21 @@ export function resetLegalDocument(docId: LegalDocId): boolean {
     return true;
   } catch (err) {
     console.error('Failed to reset legal document:', err);
+    return false;
+  }
+}
+
+/**
+ * Clear all uploaded custom legal documents and reset everything to clean default
+ */
+export function clearAllLegalDocuments(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    localStorage.removeItem(LEGAL_DOCS_STORAGE_KEY);
+    window.dispatchEvent(new Event('legal-documents-updated'));
+    return true;
+  } catch (err) {
+    console.error('Failed to clear legal documents:', err);
     return false;
   }
 }
