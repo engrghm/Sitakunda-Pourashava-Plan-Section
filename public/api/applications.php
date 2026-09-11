@@ -161,56 +161,88 @@ function handleGet($pdo) {
 }
 
 /**
- * Helper to extract any Base64 attachments in the application,
- * save them as real files in /uploads/, and replace the base64 URL with /uploads/...
+ * Helper to extract any Base64 attachments anywhere in the application,
+ * save them as real physical files in /uploads/, and replace the base64 URL with /uploads/...
  */
-function processAndExtractBase64Documents(&$payload) {
-    if (!isset($payload['documents']) || !is_array($payload['documents'])) {
-        return;
+function extractSingleBase64File($fileData, $origName, $uploadDir, $basePath) {
+    if (!$fileData || !is_string($fileData) || strpos($fileData, 'data:') !== 0 || strpos($fileData, ';base64,') === false) {
+        return null;
     }
+    $parts = explode(';base64,', $fileData);
+    $meta = $parts[0];
+    $base64Data = $parts[1] ?? '';
+
+    $ext = 'pdf';
+    if (strpos($meta, 'image/jpeg') !== false || strpos($meta, 'image/jpg') !== false) {
+        $ext = 'jpg';
+    } elseif (strpos($meta, 'image/png') !== false) {
+        $ext = 'png';
+    } elseif (strpos($meta, 'image/webp') !== false) {
+        $ext = 'webp';
+    }
+
+    $binary = base64_decode($base64Data);
+    if ($binary === false || strlen($binary) === 0) {
+        return null;
+    }
+
+    $cleanPrefix = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($origName, PATHINFO_FILENAME));
+    $cleanPrefix = substr($cleanPrefix ?: 'doc', 0, 30);
+    $uniqueName = 'doc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '_' . $cleanPrefix . '.' . $ext;
+    $targetPath = $uploadDir . '/' . $uniqueName;
+
+    if (file_put_contents($targetPath, $binary) !== false) {
+        return [
+            'fileUrl' => $basePath . '/uploads/' . $uniqueName,
+            'fileSize' => strlen($binary),
+            'fileName' => $cleanPrefix . '.' . $ext,
+        ];
+    }
+    return null;
+}
+
+function recursiveExtractBase64(&$data, $uploadDir, $basePath) {
+    if (!is_array($data)) return;
+
+    if (isset($data['fileUrl']) && is_string($data['fileUrl']) && strpos($data['fileUrl'], 'data:') === 0) {
+        $origName = $data['fileName'] ?? ($data['docTitle'] ?? 'document');
+        $res = extractSingleBase64File($data['fileUrl'], $origName, $uploadDir, $basePath);
+        if ($res) {
+            $data['fileUrl'] = $res['fileUrl'];
+            $data['fileSize'] = $res['fileSize'];
+        }
+    }
+    if (isset($data['dataUrl']) && is_string($data['dataUrl']) && strpos($data['dataUrl'], 'data:') === 0) {
+        $origName = $data['fileName'] ?? 'document';
+        $res = extractSingleBase64File($data['dataUrl'], $origName, $uploadDir, $basePath);
+        if ($res) {
+            $data['dataUrl'] = $res['fileUrl'];
+            if (!isset($data['fileUrl'])) {
+                $data['fileUrl'] = $res['fileUrl'];
+            }
+        }
+    }
+
+    foreach ($data as &$item) {
+        if (is_array($item)) {
+            recursiveExtractBase64($item, $uploadDir, $basePath);
+        }
+    }
+}
+
+function processAndExtractBase64Documents(&$payload) {
+    if (!is_array($payload)) return;
 
     $uploadDir = dirname(__DIR__) . '/uploads';
     if (!is_dir($uploadDir)) {
         @mkdir($uploadDir, 0777, true);
     }
+    @chmod($uploadDir, 0777);
 
     $scriptDir = dirname(dirname($_SERVER['SCRIPT_NAME'] ?? ''));
     $basePath = ($scriptDir === '/' || $scriptDir === '\\' || $scriptDir === '.' || empty($scriptDir)) ? '' : rtrim(str_replace('\\', '/', $scriptDir), '/');
 
-    foreach ($payload['documents'] as $key => &$doc) {
-        if (!is_array($doc)) continue;
-        $fileUrl = $doc['fileUrl'] ?? '';
-
-        if ($fileUrl && strpos($fileUrl, 'data:') === 0 && strpos($fileUrl, ';base64,') !== false) {
-            $parts = explode(';base64,', $fileUrl);
-            $meta = $parts[0];
-            $base64Data = $parts[1] ?? '';
-
-            $ext = 'pdf';
-            if (strpos($meta, 'image/jpeg') !== false || strpos($meta, 'image/jpg') !== false) {
-                $ext = 'jpg';
-            } elseif (strpos($meta, 'image/png') !== false) {
-                $ext = 'png';
-            } elseif (strpos($meta, 'image/webp') !== false) {
-                $ext = 'webp';
-            }
-
-            $binary = base64_decode($base64Data);
-            if ($binary !== false) {
-                $origName = $doc['fileName'] ?? ($doc['docTitle'] ?? 'document');
-                $cleanPrefix = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($origName, PATHINFO_FILENAME));
-                $cleanPrefix = substr($cleanPrefix, 0, 30);
-                $uniqueName = 'doc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '_' . $cleanPrefix . '.' . $ext;
-                $targetPath = $uploadDir . '/' . $uniqueName;
-
-                if (file_put_contents($targetPath, $binary) !== false) {
-                    $savedUrl = $basePath . '/uploads/' . $uniqueName;
-                    $doc['fileUrl'] = $savedUrl;
-                    $doc['fileSize'] = strlen($binary);
-                }
-            }
-        }
-    }
+    recursiveExtractBase64($payload, $uploadDir, $basePath);
 }
 
 function handlePost($pdo) {

@@ -357,7 +357,28 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
       if (remoteDemarcation && Array.isArray(remoteDemarcation) && remoteDemarcation.length > 0) {
         const mergedMap = new Map<string, DemarcationApplication>();
         data.forEach((app) => mergedMap.set(app.id, app));
-        remoteDemarcation.forEach((app) => mergedMap.set(app.id, app));
+        remoteDemarcation.forEach((remoteApp) => {
+          const localApp = mergedMap.get(remoteApp.id);
+          if (localApp && localApp.documents && localApp.documents.length > 0) {
+            const localDocMap = new Map<string, any>();
+            localApp.documents.forEach((d) => {
+              if (d && d.id && d.fileUrl) localDocMap.set(d.id, d);
+            });
+            const mergedDocs = (remoteApp.documents || []).map((d) => {
+              if ((!d.fileUrl || d.fileUrl === '') && localDocMap.has(d.id)) {
+                return { ...d, fileUrl: localDocMap.get(d.id).fileUrl };
+              }
+              return d;
+            });
+            const remoteDocIds = new Set(mergedDocs.map((d) => d.id));
+            localApp.documents.forEach((d) => {
+              if (!remoteDocIds.has(d.id)) mergedDocs.push(d);
+            });
+            mergedMap.set(remoteApp.id, { ...localApp, ...remoteApp, documents: mergedDocs });
+          } else {
+            mergedMap.set(remoteApp.id, remoteApp);
+          }
+        });
         const merged = Array.from(mergedMap.values()).sort((a, b) => 
           new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
         );

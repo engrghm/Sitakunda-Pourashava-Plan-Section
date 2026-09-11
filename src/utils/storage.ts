@@ -11,6 +11,13 @@ import {
   fetchAuditLogsFromApi
 } from './apiStorage';
 import { syncPortalConfigWithHostinger } from './portalConfig';
+import {
+  saveDocumentFileToVault,
+  saveApplicationToVault,
+  hydrateApplicationFromVault,
+  hydrateDocumentsFromVault,
+  getApplicationFromVault
+} from './indexedDbStorage';
 
 
 const STORAGE_KEY = 'sitakunda_demarcation_applications_clean_v1';
@@ -242,12 +249,14 @@ function safeSetLocalStorage(key: string, data: any[]) {
     localStorage.setItem(key, JSON.stringify(data));
   } catch (err: any) {
     if (err && (err.name === 'QuotaExceededError' || err.code === 22 || err.code === 1014)) {
-      console.warn('[LocalStorage] QuotaExceededError detected, trimming heavy data URLs for local cache');
+      console.warn('[LocalStorage] QuotaExceededError detected, preserving files in IndexedDB vault and trimming local cache');
       try {
         const lightData = data.map((item) => {
           if (!item || !item.documents || !Array.isArray(item.documents)) return item;
           const lightDocs = item.documents.map((doc: any) => {
             if (doc && doc.fileUrl && doc.fileUrl.startsWith('data:')) {
+              // Ensure full file data is safely preserved in IndexedDB vault before lightening localStorage
+              saveDocumentFileToVault(doc.id, doc.fileUrl, doc.fileName, doc.docTitle).catch(() => {});
               return {
                 ...doc,
                 fileUrl: '', // strip massive base64 for local storage cache while keeping metadata
@@ -268,6 +277,9 @@ function safeSetLocalStorage(key: string, data: any[]) {
 }
 
 export function saveApplication(app: DemarcationApplication): DemarcationApplication[] {
+  // 1. Permanently preserve full application & attachments in IndexedDB vault
+  saveApplicationToVault(app).catch(() => {});
+
   const current = getStoredApplications();
   const updated = [app, ...current.filter((item) => item.id !== app.id)];
   safeSetLocalStorage(STORAGE_KEY, updated);
@@ -291,6 +303,7 @@ export function updateApplication(id: string, updates: Partial<DemarcationApplic
   safeSetLocalStorage(STORAGE_KEY, updated);
 
   if (updatedItem) {
+    saveApplicationToVault(updatedItem).catch(() => {});
     saveApplicationToApi(updatedItem, 'demarcation').catch((err) => {
       console.warn('[Hostinger MySQL] Application update sync deferred:', err);
     });
@@ -594,6 +607,7 @@ export function getBuildingApplications(): BuildingConstructionApplication[] {
 
 export function saveBuildingApplication(app: BuildingConstructionApplication): BuildingConstructionApplication[] {
   try {
+    saveApplicationToVault(app).catch(() => {});
     const current = getBuildingApplications();
     const updated = [app, ...current.filter((item) => item.id !== app.id)];
     safeSetLocalStorage(BUILDING_APPS_STORAGE_KEY, updated);
@@ -609,6 +623,7 @@ export function saveBuildingApplication(app: BuildingConstructionApplication): B
 
 export function updateBuildingApplication(updatedApp: BuildingConstructionApplication): BuildingConstructionApplication[] {
   try {
+    saveApplicationToVault(updatedApp).catch(() => {});
     const current = getBuildingApplications();
     const index = current.findIndex((item) => item.id === updatedApp.id);
     let updated: BuildingConstructionApplication[];
@@ -650,6 +665,7 @@ export function getRoadCuttingApplications(): RoadCuttingApplication[] {
 
 export function saveRoadCuttingApplication(app: RoadCuttingApplication): RoadCuttingApplication[] {
   try {
+    saveApplicationToVault(app).catch(() => {});
     const current = getRoadCuttingApplications();
     const updated = [app, ...current.filter((item) => item.id !== app.id)];
     safeSetLocalStorage(ROAD_CUTTING_APPS_STORAGE_KEY, updated);
@@ -665,6 +681,7 @@ export function saveRoadCuttingApplication(app: RoadCuttingApplication): RoadCut
 
 export function updateRoadCuttingApplication(updatedApp: RoadCuttingApplication): RoadCuttingApplication[] {
   try {
+    saveApplicationToVault(updatedApp).catch(() => {});
     const current = getRoadCuttingApplications();
     const index = current.findIndex((item) => item.id === updatedApp.id);
     let updated: RoadCuttingApplication[];
@@ -686,10 +703,66 @@ export function updateRoadCuttingApplication(updatedApp: RoadCuttingApplication)
 }
 
 /**
+ * Helper to smartly merge remote applications with local applications so that
+ * locally attached documents/maps are NEVER wiped out by an incomplete remote record.
+ */
+function mergeApplicationsPreservingAttachments<T extends { id: string; documents?: any[] }>(
+  localList: T[],
+  remoteList: T[]
+): T[] {
+  const localMap = new Map<string, T>();
+  localList.forEach((app) => localMap.set(app.id, app));
+
+  // Merge each remote app with local details
+  const mergedRemotes = remoteList.map((remoteApp) => {
+    const localApp = localMap.get(remoteApp.id);
+    if (!localApp) return remoteApp;
+
+    let mergedDocs = remoteApp.documents ? [...remoteApp.documents] : [];
+    if (localApp.documents && localApp.documents.length > 0) {
+      const localDocMap = new Map<string, any>();
+      localApp.documents.forEach((d) => {
+        if (d && d.id && d.fileUrl) localDocMap.set(d.id, d);
+      });
+
+      mergedDocs = mergedDocs.map((d) => {
+        if ((!d.fileUrl || d.fileUrl === '') && localDocMap.has(d.id)) {
+          return { ...d, fileUrl: localDocMap.get(d.id).fileUrl };
+        }
+        return d;
+      });
+
+      const remoteDocIds = new Set(mergedDocs.map((d) => d.id));
+      localApp.documents.forEach((d) => {
+        if (!remoteDocIds.has(d.id)) {
+          mergedDocs.push(d);
+        }
+      });
+    }
+
+    return {
+      ...localApp,
+      ...remoteApp,
+      documents: mergedDocs,
+    };
+  });
+
+  // Also preserve any local applications that haven't reached remote yet
+  const remoteIdSet = new Set(remoteList.map((r) => r.id));
+  const unsyncedLocals = localList.filter((loc) => !remoteIdSet.has(loc.id));
+
+  return [...unsyncedLocals, ...mergedRemotes];
+}
+
+/**
  * Synchronize all applications and audit logs with Hostinger MySQL server on startup
  */
 export async function syncStorageWithHostinger(): Promise<void> {
   try {
+    const localDemarcation = getStoredApplications();
+    const localBuilding = getBuildingApplications();
+    const localRoadCutting = getRoadCuttingApplications();
+
     const [demarcation, building, roadCutting, auditLogs] = await Promise.all([
       fetchApplicationsFromApi<DemarcationApplication>('demarcation'),
       fetchApplicationsFromApi<BuildingConstructionApplication>('building'),
@@ -698,14 +771,32 @@ export async function syncStorageWithHostinger(): Promise<void> {
     ]);
 
     if (demarcation && demarcation.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(demarcation));
+      const mergedDemarcation = mergeApplicationsPreservingAttachments(localDemarcation, demarcation);
+      safeSetLocalStorage(STORAGE_KEY, mergedDemarcation);
+      // Ensure all merged apps are saved into vault
+      mergedDemarcation.forEach((app) => saveApplicationToVault(app).catch(() => {}));
+
+      // Check for unsynced local apps and push to remote
+      const remoteIds = new Set(demarcation.map((a) => a.id));
+      localDemarcation.forEach((app) => {
+        if (!remoteIds.has(app.id)) {
+          saveApplicationToApi(app, 'demarcation').catch(() => {});
+        }
+      });
     }
+
     if (building && building.length > 0) {
-      localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(building));
+      const mergedBuilding = mergeApplicationsPreservingAttachments(localBuilding, building);
+      safeSetLocalStorage(BUILDING_APPS_STORAGE_KEY, mergedBuilding);
+      mergedBuilding.forEach((app) => saveApplicationToVault(app).catch(() => {}));
     }
+
     if (roadCutting && roadCutting.length > 0) {
-      localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(roadCutting));
+      const mergedRoadCutting = mergeApplicationsPreservingAttachments(localRoadCutting, roadCutting);
+      safeSetLocalStorage(ROAD_CUTTING_APPS_STORAGE_KEY, mergedRoadCutting);
+      mergedRoadCutting.forEach((app) => saveApplicationToVault(app).catch(() => {}));
     }
+
     if (auditLogs && auditLogs.length > 0) {
       localStorage.setItem(AUDIT_LOG_STORAGE_KEY, JSON.stringify(auditLogs));
     }

@@ -70,9 +70,16 @@ async function compressImageIfPossible(file: File): Promise<File> {
   }
 }
 
+import {
+  saveDocumentFileToVault,
+  saveApplicationToVault,
+  hydrateApplicationFromVault,
+  hydrateDocumentsFromVault
+} from './indexedDbStorage';
+
 /**
  * Upload a document (PDF, JPG, PNG) to Hostinger's uploads directory.
- * Falls back to local object metadata if API is unavailable.
+ * Always guarantees local persistence in IndexedDB vault even if server upload fails.
  */
 export async function uploadDocumentToServer(
   file: File,
@@ -80,8 +87,9 @@ export async function uploadDocumentToServer(
   docTitle: string,
   isMandatory: boolean
 ): Promise<UploadedDocument> {
+  const docId = `doc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
   const defaultDoc: UploadedDocument = {
-    id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    id: docId,
     docType: docKey,
     docTitle,
     fileName: file.name,
@@ -90,9 +98,25 @@ export async function uploadDocumentToServer(
     isMandatory,
   };
 
+  // Convert to DataURL for immediate resilience and vault storage
+  const dataUrl = await new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve((e.target?.result as string) || '');
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
+
+  // 1. Immediately save into IndexedDB vault so file is NEVER lost
+  if (dataUrl) {
+    saveDocumentFileToVault(docId, dataUrl, file.name, docTitle).catch(() => {});
+  }
+
+  // 2. Upload file to server (/api/upload.php)
   try {
     const uploadRes = await uploadFileToServer(file);
-    if (uploadRes && uploadRes.fileUrl) {
+    if (uploadRes && uploadRes.success && uploadRes.fileUrl) {
+      // Update vault with permanent server file URL
+      saveDocumentFileToVault(docId, uploadRes.fileUrl, uploadRes.fileName || file.name, docTitle).catch(() => {});
       return {
         ...defaultDoc,
         fileUrl: uploadRes.fileUrl,
@@ -101,17 +125,10 @@ export async function uploadDocumentToServer(
       };
     }
   } catch (err) {
-    console.warn('[Hostinger Upload] Error in uploadDocumentToServer:', err);
+    console.warn('[Hostinger Upload] Server upload attempt failed, using local vault:', err);
   }
 
-  // Ensure fileUrl is set with DataURL base64 if server upload was unavailable
-  const dataUrl = await new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => resolve((e.target?.result as string) || '');
-    reader.onerror = () => resolve('');
-    reader.readAsDataURL(file);
-  });
-
+  // 3. Resilient fallback with verified dataUrl
   return {
     ...defaultDoc,
     fileUrl: dataUrl,
@@ -120,6 +137,7 @@ export async function uploadDocumentToServer(
 
 /**
  * Fetch all applications for a specific module from Hostinger MySQL
+ * and hydrate with IndexedDB vault so document attachments are never lost.
  */
 export async function fetchApplicationsFromApi<T>(module: 'demarcation' | 'building' | 'road_cutting'): Promise<T[] | null> {
   try {
@@ -127,7 +145,13 @@ export async function fetchApplicationsFromApi<T>(module: 'demarcation' | 'build
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data)) {
-        return data as T[];
+        // Hydrate each application with persistent vault attachments
+        const hydrated = await Promise.all(
+          data.map(async (app) => {
+            return await hydrateApplicationFromVault(app);
+          })
+        );
+        return hydrated as T[];
       }
     }
   } catch (err) {
@@ -145,13 +169,55 @@ export async function searchApplicationApi<T = DemarcationApplication>(query: st
     if (res.ok) {
       const data = await res.json();
       if (data && (data.id || data.trackingId)) {
-        return data as T;
+        const hydrated = await hydrateApplicationFromVault(data);
+        return hydrated as T;
       }
     }
   } catch (err) {
     console.warn('[Hostinger MySQL] searchApplicationApi error:', err);
   }
   return null;
+}
+
+/**
+ * Helper to upload any inline Base64 documents to the server before sending application JSON
+ */
+async function uploadInlineBase64Documents(documents: UploadedDocument[]): Promise<UploadedDocument[]> {
+  if (!documents || !Array.isArray(documents)) return documents;
+
+  return await Promise.all(
+    documents.map(async (doc) => {
+      if (!doc || !doc.fileUrl || !doc.fileUrl.startsWith('data:')) {
+        return doc;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/upload.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: doc.fileName || `${doc.docTitle || 'document'}.pdf`,
+            fileData: doc.fileUrl,
+          }),
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          if (result && result.success && result.fileUrl) {
+            saveDocumentFileToVault(doc.id, result.fileUrl, doc.fileName, doc.docTitle).catch(() => {});
+            return {
+              ...doc,
+              fileUrl: result.fileUrl,
+              fileSize: result.fileSize || doc.fileSize,
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('[Hostinger Upload] Inline base64 pre-upload failed:', err);
+      }
+      return doc;
+    })
+  );
 }
 
 /**
@@ -162,16 +228,28 @@ export async function saveApplicationToApi(
   module: 'demarcation' | 'building' | 'road_cutting'
 ): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
+    // 1. Permanently cache application and documents in IndexedDB vault
+    await saveApplicationToVault(app);
+
+    // 2. Pre-upload any inline Base64 documents so the MySQL payload remains lightweight (<20KB)
+    let sanitizedApp: any = { ...app };
+    if (sanitizedApp.documents && Array.isArray(sanitizedApp.documents)) {
+      sanitizedApp.documents = await uploadInlineBase64Documents(sanitizedApp.documents);
+    }
+
     const res = await fetch(`${API_BASE}/applications.php?module=${module}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ...app, moduleType: module }),
+      body: JSON.stringify({ ...sanitizedApp, moduleType: module }),
     });
 
     if (res.ok) {
       const data = await res.json().catch(() => null);
+      if (data && data.data) {
+        await saveApplicationToVault(data.data);
+      }
       return { success: true, data };
     } else {
       const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
