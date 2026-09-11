@@ -19,7 +19,7 @@ export async function uploadDocumentToServer(
   isMandatory: boolean
 ): Promise<UploadedDocument> {
   const defaultDoc: UploadedDocument = {
-    id: `doc-${Date.now()}`,
+    id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     docType: docKey,
     docTitle,
     fileName: file.name,
@@ -29,30 +29,31 @@ export async function uploadDocumentToServer(
   };
 
   try {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const res = await fetch(`${API_BASE}/upload.php`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.fileUrl) {
-        return {
-          ...defaultDoc,
-          fileUrl: data.fileUrl,
-          fileName: data.fileName || file.name,
-          fileSize: data.fileSize || file.size,
-        };
-      }
+    const uploadRes = await uploadFileToServer(file);
+    if (uploadRes && uploadRes.fileUrl) {
+      return {
+        ...defaultDoc,
+        fileUrl: uploadRes.fileUrl,
+        fileName: uploadRes.fileName || file.name,
+        fileSize: uploadRes.fileSize || file.size,
+      };
     }
   } catch (err) {
-    console.warn('[Hostinger Upload] Could not reach upload.php, storing metadata locally:', err);
+    console.warn('[Hostinger Upload] Error in uploadDocumentToServer:', err);
   }
 
-  return defaultDoc;
+  // Ensure fileUrl is ALWAYS set with DataURL base64 if server upload was unavailable
+  const dataUrl = await new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve((e.target?.result as string) || '');
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
+
+  return {
+    ...defaultDoc,
+    fileUrl: dataUrl,
+  };
 }
 
 /**
@@ -161,6 +162,16 @@ export async function uploadFileToServer(file: File): Promise<{
   fileSize: number;
   error?: string;
 }> {
+  const toDataUrl = (): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve((e.target?.result as string) || '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // 1. First attempt: Standard multipart form data
   try {
     const formData = new FormData();
     formData.append('file', file);
@@ -179,39 +190,54 @@ export async function uploadFileToServer(file: File): Promise<{
           fileName: data.fileName || file.name,
           fileSize: data.fileSize || file.size,
         };
-      } else if (data.error) {
-        return {
-          success: false,
-          fileUrl: '',
-          fileName: file.name,
-          fileSize: file.size,
-          error: data.error,
-        };
       }
-    } else {
-      const errJson = await res.json().catch(() => ({}));
+    }
+  } catch (err) {
+    console.warn('[Hostinger Upload] Multipart upload error, trying base64 fallback:', err);
+  }
+
+  // 2. Second attempt: Base64 JSON payload
+  try {
+    const dataUrl = await toDataUrl();
+    if (dataUrl) {
+      const res = await fetch(`${API_BASE}/upload.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileData: dataUrl,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.fileUrl) {
+          return {
+            success: true,
+            fileUrl: data.fileUrl,
+            fileName: data.fileName || file.name,
+            fileSize: data.fileSize || file.size,
+          };
+        }
+      }
+
+      // 3. Resilient fallback: Return the local DataURL so user is never blocked
       return {
-        success: false,
-        fileUrl: '',
+        success: true,
+        fileUrl: dataUrl,
         fileName: file.name,
         fileSize: file.size,
-        error: errJson.error || `সার্ভার এরর: ${res.status}`,
       };
     }
   } catch (err: any) {
-    console.warn('[Hostinger Upload] File upload network error:', err);
-    return {
-      success: false,
-      fileUrl: '',
-      fileName: file.name,
-      fileSize: file.size,
-      error: err?.message || 'সার্ভারে সংযোগ করা যায়নি',
-    };
+    console.warn('[Hostinger Upload] Base64 upload fallback error:', err);
   }
 
+  // Final fallback
+  const fallbackDataUrl = await toDataUrl();
   return {
-    success: false,
-    fileUrl: '',
+    success: !!fallbackDataUrl,
+    fileUrl: fallbackDataUrl,
     fileName: file.name,
     fileSize: file.size,
   };

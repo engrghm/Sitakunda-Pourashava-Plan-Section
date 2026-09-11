@@ -60,24 +60,42 @@ export const NoticeManagementPanel: React.FC<NoticeManagementPanelProps> = ({
     if (!file) return;
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
       alert('অনুগ্রহ করে শুধুমাত্র PDF ফাইল আপলোড করুন');
+      e.target.value = '';
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      alert('ফাইলের সাইজ ১০ MB এর বেশি হতে পারবে না');
+    if (file.size > 15 * 1024 * 1024) {
+      alert('ফাইলের সাইজ ১৫ MB এর বেশি হতে পারবে না');
+      e.target.value = '';
       return;
     }
+
     setPdfUploading(true);
     try {
       const res = await uploadFileToServer(file);
-      if (res.success && res.fileUrl) {
+      if (res && res.fileUrl) {
         setFormData(prev => ({ ...prev, fileUrl: res.fileUrl }));
       } else {
-        alert(res.error || 'ফাইল সার্ভারে আপলোড করতে সমস্যা হয়েছে।');
+        // Fallback to FileReader DataURL
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (reader.result) {
+            setFormData(prev => ({ ...prev, fileUrl: reader.result as string }));
+          }
+        };
+        reader.readAsDataURL(file);
       }
     } catch {
-      alert('ফাইল আপলোড করতে সমস্যা হয়েছে');
+      // Resilient fallback
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (reader.result) {
+          setFormData(prev => ({ ...prev, fileUrl: reader.result as string }));
+        }
+      };
+      reader.readAsDataURL(file);
     } finally {
       setPdfUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -472,12 +490,19 @@ export const NoticeManagementPanel: React.FC<NoticeManagementPanelProps> = ({
               {/* PDF File Upload */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  <span className="flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /> PDF সংযুক্ত ফাইল (সর্বোচ্চ ৫ MB)</span>
+                  <span className="flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /> PDF সংযুক্ত ফাইল (সর্বোচ্চ ১৫ MB)</span>
                 </label>
                 {formData.fileUrl ? (
                   <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
                     <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="text-xs text-emerald-800 font-medium flex-1 truncate">পিডিএফ সংযুক্ত হয়েছে ✓</span>
+                    <span className="text-xs text-emerald-800 font-medium flex-1 truncate">পিডিএফ সফলভাবে সংযুক্ত হয়েছে ✓</span>
+                    <button
+                      type="button"
+                      onClick={() => window.open(formData.fileUrl, '_blank')}
+                      className="text-xs bg-white text-emerald-700 hover:bg-emerald-100 border border-emerald-300 px-2 py-1 rounded font-semibold cursor-pointer"
+                    >
+                      প্রিভিউ
+                    </button>
                     <button
                       type="button"
                       onClick={() => setFormData(prev => ({ ...prev, fileUrl: '' }))}

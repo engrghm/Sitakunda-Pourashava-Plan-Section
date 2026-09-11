@@ -37,7 +37,8 @@ const defaultAttachments = (): Attachment[] => [
   { id: '8', label: 'ওয়ারিশান সনদপত্র এর ফটোকপি (প্রযোজ্য ক্ষেত্রে)', required: false, uploaded: false, copies: 1 },
   { id: '9', label: 'অনাপত্তি পত্র (দাগের অন্যান্য মালিকগণের) এর ফটোকপি (প্রযোজ্য ক্ষেত্রে)', required: false, uploaded: false, copies: 1 },
   { id: '10', label: 'হোল্ডিং কর পরিশোধের হালনাগাদ রশিদের ফটোকপি (প্রযোজ্য ক্ষেত্রে)', required: false, uploaded: false, copies: 1 },
-  { id: '11', label: 'আয়কর ই-রিটার্ন সার্টিফিকেট', required: false, uploaded: false, copies: 1 }
+  { id: '11', label: 'আয়কর ই-রিটার্ন সার্টিফিকেট', required: false, uploaded: false, copies: 1 },
+  { id: '12', label: 'অন্যান্য কাগজপত্র (Others) এর ফটোকপি (ঐচ্ছিক)', required: false, uploaded: false, copies: 1 }
 ];
 
 export default function FormPortal({ onSuccess }: FormPortalProps) {
@@ -116,10 +117,13 @@ export default function FormPortal({ onSuccess }: FormPortalProps) {
 
   // Checklist / Attachments
   const [attachments, setAttachments] = useState<Attachment[]>(() => {
+    const defaults = defaultAttachments();
     if (draft?.attachments && Array.isArray(draft.attachments)) {
-      return draft.attachments;
+      const existingIds = new Set(draft.attachments.map((a: any) => a.id));
+      const missing = defaults.filter(d => !existingIds.has(d.id));
+      return [...draft.attachments, ...missing];
     }
-    return defaultAttachments();
+    return defaults;
   });
 
   // Applicant contact
@@ -336,7 +340,8 @@ export default function FormPortal({ onSuccess }: FormPortalProps) {
               uploaded: true,
               fileName: file.name,
               fileSize: `${(file.size / 1024).toFixed(1)} KB`,
-              fileData: reader.result as string
+              fileData: reader.result as string,
+              fileUrl: reader.result as string
             };
           }
           return att;

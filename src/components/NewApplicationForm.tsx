@@ -153,6 +153,12 @@ const REQUIRED_DOCUMENTS_LIST: DocumentConfig[] = [
     isMandatory: false,
     accept: '.pdf,.jpg,.jpeg,.png',
   },
+  {
+    key: 'others',
+    title: 'অন্যান্য কাগজপত্র (Others) এর ফটোকপি',
+    isMandatory: false,
+    accept: '.pdf,.jpg,.jpeg,.png',
+  },
 ];
 
 export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplicationSubmitted }) => {

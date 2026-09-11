@@ -92,62 +92,75 @@ function handleGet($pdo) {
 }
 
 function handlePost($pdo) {
-    $rawInput = file_get_contents('php://input');
-    $payload = json_decode($rawInput, true);
+    try {
+        $rawInput = file_get_contents('php://input');
+        $payload = json_decode($rawInput, true);
 
-    if (!$payload || !isset($payload['id'])) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Invalid application payload']);
-        return;
+        if (!$payload || !isset($payload['id'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid application payload']);
+            return;
+        }
+
+        $id = $payload['id'];
+        $moduleType = isset($payload['moduleType']) ? $payload['moduleType'] : (isset($_GET['module']) ? $_GET['module'] : 'demarcation');
+        $formNo = isset($payload['formNo']) ? $payload['formNo'] : (isset($payload['formNumber']) ? $payload['formNumber'] : null);
+        $trackingId = isset($payload['trackingId']) ? $payload['trackingId'] : (isset($payload['id']) ? $payload['id'] : $id);
+        
+        // Extract applicant info across Demarcation, Building, and Road Cutting modules
+        $applicantName = null;
+        $applicantPhone = null;
+        if (isset($payload['applicant']) && is_array($payload['applicant'])) {
+            $applicantName = $payload['applicant']['nameBangla'] ?? $payload['applicant']['nameEnglish'] ?? null;
+            $applicantPhone = $payload['applicant']['mobile'] ?? null;
+        } elseif (isset($payload['siteLocation']) && is_array($payload['siteLocation'])) {
+            $applicantName = $payload['siteLocation']['applicantName'] ?? null;
+            $applicantPhone = $payload['siteLocation']['applicantMobile'] ?? null;
+        } elseif (isset($payload['applicantName'])) {
+            $applicantName = $payload['applicantName'];
+            $applicantPhone = $payload['applicantMobile'] ?? $payload['applicantPhone'] ?? null;
+        } elseif (isset($payload['generalInfo']) && is_array($payload['generalInfo'])) {
+            $applicantName = $payload['generalInfo']['applicantNameBangla'] ?? null;
+            $applicantPhone = $payload['generalInfo']['applicantMobile'] ?? null;
+        }
+
+        // Fallback to first owner if name still empty
+        if (!$applicantName && isset($payload['owners']) && is_array($payload['owners']) && count($payload['owners']) > 0) {
+            $applicantName = $payload['owners'][0]['name'] ?? null;
+        }
+
+        $status = $payload['status'] ?? 'submitted';
+        $dataJson = json_encode($payload, JSON_UNESCAPED_UNICODE);
+
+        $sql = "INSERT INTO applications (id, module_type, form_no, tracking_id, applicant_name, applicant_phone, status, data, created_at)
+                VALUES (:id, :module_type, :form_no, :tracking_id, :applicant_name, :applicant_phone, :status, :data, NOW())
+                ON DUPLICATE KEY UPDATE
+                    form_no = VALUES(form_no),
+                    tracking_id = VALUES(tracking_id),
+                    applicant_name = VALUES(applicant_name),
+                    applicant_phone = VALUES(applicant_phone),
+                    status = VALUES(status),
+                    data = VALUES(data),
+                    updated_at = NOW()";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':id' => $id,
+            ':module_type' => $moduleType,
+            ':form_no' => $formNo,
+            ':tracking_id' => $trackingId,
+            ':applicant_name' => $applicantName,
+            ':applicant_phone' => $applicantPhone,
+            ':status' => $status,
+            ':data' => $dataJson,
+        ]);
+
+        http_response_code(201);
+        echo json_encode(['success' => true, 'id' => $id, 'data' => $payload], JSON_UNESCAPED_UNICODE);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
     }
-
-    $id = $payload['id'];
-    $moduleType = isset($payload['moduleType']) ? $payload['moduleType'] : (isset($_GET['module']) ? $_GET['module'] : 'demarcation');
-    $formNo = isset($payload['formNo']) ? $payload['formNo'] : (isset($payload['formNumber']) ? $payload['formNumber'] : null);
-    $trackingId = isset($payload['trackingId']) ? $payload['trackingId'] : (isset($payload['id']) ? $payload['id'] : $id);
-    
-    // Extract applicant info
-    $applicantName = null;
-    $applicantPhone = null;
-    if (isset($payload['applicant']) && is_array($payload['applicant'])) {
-        $applicantName = $payload['applicant']['nameBangla'] ?? $payload['applicant']['nameEnglish'] ?? null;
-        $applicantPhone = $payload['applicant']['mobile'] ?? null;
-    } elseif (isset($payload['applicantName'])) {
-        $applicantName = $payload['applicantName'];
-        $applicantPhone = $payload['applicantMobile'] ?? $payload['applicantPhone'] ?? null;
-    } elseif (isset($payload['generalInfo']) && is_array($payload['generalInfo'])) {
-        $applicantName = $payload['generalInfo']['applicantNameBangla'] ?? null;
-        $applicantPhone = $payload['generalInfo']['applicantMobile'] ?? null;
-    }
-
-    $status = $payload['status'] ?? 'submitted';
-    $dataJson = json_encode($payload, JSON_UNESCAPED_UNICODE);
-
-    $sql = "INSERT INTO applications (id, module_type, form_no, tracking_id, applicant_name, applicant_phone, status, data, created_at)
-            VALUES (:id, :module_type, :form_no, :tracking_id, :applicant_name, :applicant_phone, :status, :data, NOW())
-            ON DUPLICATE KEY UPDATE
-                form_no = VALUES(form_no),
-                tracking_id = VALUES(tracking_id),
-                applicant_name = VALUES(applicant_name),
-                applicant_phone = VALUES(applicant_phone),
-                status = VALUES(status),
-                data = VALUES(data),
-                updated_at = NOW()";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([
-        ':id' => $id,
-        ':module_type' => $moduleType,
-        ':form_no' => $formNo,
-        ':tracking_id' => $trackingId,
-        ':applicant_name' => $applicantName,
-        ':applicant_phone' => $applicantPhone,
-        ':status' => $status,
-        ':data' => $dataJson,
-    ]);
-
-    http_response_code(201);
-    echo json_encode(['success' => true, 'id' => $id, 'data' => $payload], JSON_UNESCAPED_UNICODE);
 }
 
 function handlePut($pdo) {

@@ -58,6 +58,13 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
         icon: FileCheck,
       };
     }
+    if (type.includes('other') || title.includes('অন্যান্য') || title.includes('Others')) {
+      return {
+        label: 'অন্যান্য কাগজপত্র (Others)',
+        bg: 'bg-purple-50 text-purple-800 border-purple-200',
+        icon: FileText,
+      };
+    }
     return {
       label: 'সংযুক্ত নথি',
       bg: 'bg-slate-50 text-slate-800 border-slate-200',
@@ -74,12 +81,16 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
   };
 
   const handleDownload = (doc: UploadedDocument) => {
-    // If real file URL or data URL exists, trigger download; otherwise simulate download with text report
-    if (doc.fileUrl && doc.fileUrl.startsWith('data:')) {
+    if (doc.fileUrl) {
       const a = document.createElement('a');
       a.href = doc.fileUrl;
-      a.download = doc.fileName;
+      a.download = doc.fileName || `${doc.docTitle}.pdf`;
+      if (!doc.fileUrl.startsWith('data:')) {
+        a.target = '_blank';
+      }
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
     } else {
       const blob = new Blob([
         `সীতাকুণ্ড পৌরসভা - অনলাইন ডিমার্কেশন নথি\nআবেদন আইডি: ${applicationId}\nআবেদনকারী: ${applicantName}\nনথির নাম: ${doc.docTitle}\nফাইল: ${doc.fileName}\nতারিখ: ${doc.uploadDate}`
@@ -88,7 +99,9 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
       const a = document.createElement('a');
       a.href = url;
       a.download = doc.fileName.endsWith('.txt') ? doc.fileName : `${doc.fileName}.txt`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
   };
@@ -215,10 +228,39 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                 </div>
               </div>
 
-              {/* Visual Simulated Document Content / Image View */}
-              <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center bg-slate-50/50 flex flex-col items-center justify-center min-h-[220px]">
-                {selectedDoc.docTitle.includes('ম্যাপ') || selectedDoc.docTitle.includes('নক্সা') ? (
-                  <div className="space-y-3 w-full">
+              {/* Visual Document Content / Real Preview */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-900/5 min-h-[260px] flex items-center justify-center">
+                {selectedDoc.fileUrl ? (
+                  selectedDoc.fileUrl.startsWith('data:image/') || selectedDoc.fileName.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+                    <div className="p-4 flex flex-col items-center justify-center">
+                      <img
+                        src={selectedDoc.fileUrl}
+                        alt={selectedDoc.docTitle}
+                        className="max-h-[420px] max-w-full object-contain rounded-lg shadow-sm"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-[450px] flex flex-col">
+                      <iframe
+                        src={selectedDoc.fileUrl}
+                        title={selectedDoc.docTitle}
+                        className="w-full flex-1 border-0"
+                      />
+                      <div className="bg-slate-100 p-2 text-center text-xs border-t border-slate-200">
+                        <a
+                          href={selectedDoc.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-700 font-bold hover:underline inline-flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>পিডিএফ নতুন ট্যাবে বড় করে দেখুন</span>
+                        </a>
+                      </div>
+                    </div>
+                  )
+                ) : selectedDoc.docTitle.includes('ম্যাপ') || selectedDoc.docTitle.includes('নক্সা') ? (
+                  <div className="p-8 text-center space-y-3 w-full">
                     <div className="w-full h-44 bg-emerald-950/5 rounded-lg border border-emerald-200 flex flex-col items-center justify-center p-4 relative overflow-hidden">
                       <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#059669_1px,transparent_1px)] [background-size:16px_16px]"></div>
                       <Map className="w-12 h-12 text-emerald-700 mb-2" />
@@ -231,7 +273,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="p-8 text-center space-y-3">
                     <FileText className="w-12 h-12 text-blue-600 mx-auto" />
                     <div>
                       <h4 className="text-sm font-bold text-slate-800">{selectedDoc.docTitle}</h4>
