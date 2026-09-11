@@ -27,7 +27,8 @@ import {
   Building2,
   AlertTriangle,
   Compass,
-  Construction
+  Construction,
+  Loader2
 } from 'lucide-react';
 import { DemarcationApplication, RoadCuttingApplication, BuildingConstructionApplication } from '../types';
 import { 
@@ -43,7 +44,7 @@ import {
   saveApplication,
   RecentSearchItem
 } from '../utils/storage';
-import { searchApplicationApi } from '../utils/apiStorage';
+import { searchApplicationApi, fetchApplicationsFromApi } from '../utils/apiStorage';
 import { ApplicationQRCodeCard } from './ApplicationQRCodeCard';
 import { DocumentAttachmentsViewer } from './DocumentAttachmentsViewer';
 import { QRCodeScannerModal } from './QRCodeScannerModal';
@@ -51,6 +52,72 @@ import { RoadCuttingApplicationPrintA4 } from './RoadCuttingApplicationPrintA4';
 import { BuildingApprovalPermitPrintA4 } from './BuildingApprovalPermitPrintA4';
 import { Schedule1ApplicationPrintA4 } from './Schedule1ApplicationPrintA4';
 
+const toEnglishDigits = (str: string): string => {
+  if (!str) return '';
+  const banglaDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+  return String(str).replace(/[০-৯]/g, (d) => {
+    const idx = banglaDigits.indexOf(d);
+    return idx >= 0 ? idx.toString() : d;
+  });
+};
+
+const matchApp = (app: any, query: string, queryEn: string, digitsOnly: string): boolean => {
+  if (!app) return false;
+  const id = (app.id || '').toLowerCase();
+  const trackingId = (app.trackingId || '').toLowerCase();
+  const formNo = (app.formNo || '').toLowerCase();
+  const certNo = (app.certificateNo || app.engineerApproval?.certificateNo || '').toLowerCase();
+
+  const qLower = query.toLowerCase();
+  const qEnLower = queryEn.toLowerCase();
+
+  // 1. Direct equality matches
+  if (id === qLower || id === qEnLower) return true;
+  if (trackingId && (trackingId === qLower || trackingId === qEnLower)) return true;
+  if (formNo && (formNo === qLower || formNo === qEnLower)) return true;
+  if (certNo && (certNo === qLower || certNo === qEnLower)) return true;
+
+  // 2. Substring matches on ID / Tracking ID / Form No
+  if (qEnLower.length >= 4) {
+    if (id.includes(qEnLower)) return true;
+    if (trackingId && trackingId.includes(qEnLower)) return true;
+    if (formNo && formNo.includes(qEnLower)) return true;
+    if (certNo && certNo.includes(qEnLower)) return true;
+  }
+
+  // 3. Mobile phone matches
+  const mobiles: string[] = [
+    app.siteLocation?.applicantMobile,
+    app.applicantMobile,
+    app.applicantPhone,
+    app.mobile,
+  ].filter(Boolean).map(m => toEnglishDigits(m).replace(/[^0-9]/g, ''));
+
+  if (digitsOnly && digitsOnly.length >= 6) {
+    for (const mob of mobiles) {
+      if (mob.includes(digitsOnly) || digitsOnly.includes(mob)) return true;
+      const mobNorm = mob.replace(/^880|^0/, '');
+      const queryNorm = digitsOnly.replace(/^880|^0/, '');
+      if (mobNorm && queryNorm && (mobNorm.includes(queryNorm) || queryNorm.includes(mobNorm))) {
+        return true;
+      }
+    }
+  }
+
+  // 4. NID matches
+  const nids: string[] = [
+    app.siteLocation?.applicantNid,
+    app.applicantNid,
+  ].filter(Boolean).map(n => toEnglishDigits(n).replace(/[^0-9]/g, ''));
+
+  if (digitsOnly && digitsOnly.length >= 8) {
+    for (const nid of nids) {
+      if (nid.includes(digitsOnly) || digitsOnly.includes(nid)) return true;
+    }
+  }
+
+  return false;
+};
 
 interface ApplicationTrackingViewProps {
   initialTrackingId?: string;
@@ -78,6 +145,51 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
   const [isQrScannerOpen, setIsQrScannerOpen] = useState<boolean>(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>(() => getRecentTrackingSearches());
 
+  // Background sync applications from server so any device can track immediately
+  useEffect(() => {
+    const syncRemote = async () => {
+      try {
+        const [dApps, bApps, rcApps] = await Promise.all([
+          fetchApplicationsFromApi<DemarcationApplication>('demarcation'),
+          fetchApplicationsFromApi<BuildingConstructionApplication>('building'),
+          fetchApplicationsFromApi<RoadCuttingApplication>('road_cutting'),
+        ]);
+
+        if (dApps && Array.isArray(dApps) && dApps.length > 0) {
+          const current = getStoredApplications();
+          const map = new Map<string, DemarcationApplication>();
+          current.forEach(a => map.set(a.id, a));
+          dApps.forEach(a => map.set(a.id, a));
+          try {
+            localStorage.setItem('sitakunda_demarcation_applications_clean_v1', JSON.stringify(Array.from(map.values())));
+          } catch {}
+        }
+        if (bApps && Array.isArray(bApps) && bApps.length > 0) {
+          const currentB = getBuildingApplications();
+          const mapB = new Map<string, BuildingConstructionApplication>();
+          currentB.forEach(a => mapB.set(a.id, a));
+          bApps.forEach(a => mapB.set(a.id, a));
+          try {
+            localStorage.setItem('sitakunda_building_applications_clean_v1', JSON.stringify(Array.from(mapB.values())));
+          } catch {}
+        }
+        if (rcApps && Array.isArray(rcApps) && rcApps.length > 0) {
+          const currentRC = getRoadCuttingApplications();
+          const mapRC = new Map<string, RoadCuttingApplication>();
+          currentRC.forEach(a => mapRC.set(a.id, a));
+          rcApps.forEach(a => mapRC.set(a.id, a));
+          try {
+            localStorage.setItem('sitakunda_road_cutting_applications_clean_v1', JSON.stringify(Array.from(mapRC.values())));
+          } catch {}
+        }
+      } catch (err) {
+        console.warn('[Tracking View] Remote sync error:', err);
+      }
+    };
+
+    syncRemote();
+  }, []);
+
   // Auto search if initialTrackingId provided
   useEffect(() => {
     if (initialTrackingId) {
@@ -91,32 +203,18 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
     if (!cleanQuery) return;
 
     setHasSearched(true);
+    const cleanQueryEn = toEnglishDigits(cleanQuery);
+    const digitsOnly = cleanQueryEn.replace(/[^0-9]/g, '');
+
     // 1. First check local storage for instant response
     const allApps = getStoredApplications();
-    let found = allApps.find(
-      (app) =>
-        app.id.toLowerCase() === cleanQuery.toLowerCase() ||
-        (app.formNo && app.formNo.toLowerCase() === cleanQuery.toLowerCase()) ||
-        app.siteLocation?.applicantMobile?.includes(cleanQuery) ||
-        app.siteLocation?.applicantNid?.includes(cleanQuery)
-    );
+    let found = allApps.find((app) => matchApp(app, cleanQuery, cleanQueryEn, digitsOnly));
 
     const bApps = getBuildingApplications();
-    let foundB = bApps.find(
-      (app) =>
-        app.id.toLowerCase() === cleanQuery.toLowerCase() ||
-        (app.formNo && app.formNo.toLowerCase() === cleanQuery.toLowerCase()) ||
-        app.applicantMobile?.includes(cleanQuery) ||
-        (app.demarcationTrackingId && app.demarcationTrackingId.toLowerCase() === cleanQuery.toLowerCase())
-    );
+    let foundB = bApps.find((app) => matchApp(app, cleanQuery, cleanQueryEn, digitsOnly));
 
     const rcApps = getRoadCuttingApplications();
-    let foundRC = rcApps.find(
-      (app) =>
-        app.id.toLowerCase() === cleanQuery.toLowerCase() ||
-        (app.formNo && app.formNo.toLowerCase() === cleanQuery.toLowerCase()) ||
-        app.applicantPhone?.includes(cleanQuery)
-    );
+    let foundRC = rcApps.find((app) => matchApp(app, cleanQuery, cleanQueryEn, digitsOnly));
 
     setSearchedApp(found || null);
     setSearchedBuildingApp(foundB || null);
@@ -125,7 +223,12 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
     // 2. Query Hostinger MySQL database for real-time remote updates
     setIsSearchingServer(true);
     try {
-      const serverApp: any = await searchApplicationApi(cleanQuery);
+      // Query server with both cleanQuery and cleanQueryEn
+      let serverApp: any = await searchApplicationApi(cleanQueryEn);
+      if (!serverApp && cleanQuery !== cleanQueryEn) {
+        serverApp = await searchApplicationApi(cleanQuery);
+      }
+
       if (serverApp && (serverApp.id || serverApp.trackingId)) {
         if (serverApp.moduleType === 'building' || serverApp.buildingInfo || serverApp.structureType) {
           foundB = serverApp;
@@ -136,8 +239,39 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
         } else {
           found = serverApp;
           setSearchedApp(serverApp);
-          // Cache in local storage for offline and subsequent fast access
           saveApplication(serverApp);
+        }
+      } else if (!found && !foundB && !foundRC) {
+        // Fallback: If not found yet, fetch remote modules to search comprehensive list
+        const [remoteD, remoteB, remoteRC] = await Promise.all([
+          fetchApplicationsFromApi<DemarcationApplication>('demarcation'),
+          fetchApplicationsFromApi<BuildingConstructionApplication>('building'),
+          fetchApplicationsFromApi<RoadCuttingApplication>('road_cutting'),
+        ]);
+
+        if (remoteD && Array.isArray(remoteD)) {
+          const matchD = remoteD.find((app) => matchApp(app, cleanQuery, cleanQueryEn, digitsOnly));
+          if (matchD) {
+            found = matchD;
+            setSearchedApp(matchD);
+            saveApplication(matchD);
+          }
+        }
+
+        if (remoteB && Array.isArray(remoteB)) {
+          const matchB = remoteB.find((app) => matchApp(app, cleanQuery, cleanQueryEn, digitsOnly));
+          if (matchB) {
+            foundB = matchB;
+            setSearchedBuildingApp(matchB);
+          }
+        }
+
+        if (remoteRC && Array.isArray(remoteRC)) {
+          const matchRC = remoteRC.find((app) => matchApp(app, cleanQuery, cleanQueryEn, digitsOnly));
+          if (matchRC) {
+            foundRC = matchRC;
+            setSearchedRoadCuttingApp(matchRC);
+          }
         }
       }
     } catch (err) {

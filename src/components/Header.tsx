@@ -13,7 +13,8 @@ import {
   Clock,
   ChevronDown,
   Users,
-  Bell
+  Bell,
+  Layers
 } from 'lucide-react';
 import { MunicipalityLogo } from './MunicipalityLogo';
 import { PortalConfig, CouncilCategory, NoticeCategory } from '../utils/portalConfig';
@@ -42,11 +43,14 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectNoticeCategory,
   onOpenProjects,
   onOpenComplaints,
-  onOpenOthers
+  onOpenOthers,
+  onOpenCitizenServiceInfo
 }) => {
   const [councilDropdownOpen, setCouncilDropdownOpen] = React.useState(false);
+  const [servicesDropdownOpen, setServicesDropdownOpen] = React.useState(false);
   const [noticeDropdownOpen, setNoticeDropdownOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const servicesDropdownRef = React.useRef<HTMLDivElement>(null);
   const noticeDropdownRef = React.useRef<HTMLDivElement>(null);
 
   // Close dropdowns on click outside
@@ -54,6 +58,9 @@ export const Header: React.FC<HeaderProps> = ({
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setCouncilDropdownOpen(false);
+      }
+      if (servicesDropdownRef.current && !servicesDropdownRef.current.contains(e.target as Node)) {
+        setServicesDropdownOpen(false);
       }
       if (noticeDropdownRef.current && !noticeDropdownRef.current.contains(e.target as Node)) {
         setNoticeDropdownOpen(false);
@@ -239,6 +246,206 @@ export const Header: React.FC<HeaderProps> = ({
                       <span className="text-emerald-700 font-bold text-sm">›</span>
                       <span>উদ্যোক্তা ও অন্যান্য</span>
                     </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Services Dropdown (সেবাসমূহ ▾) */}
+              <div className="relative" ref={servicesDropdownRef}>
+                <button
+                  id="nav-dropdown-services"
+                  type="button"
+                  onClick={() => setServicesDropdownOpen(!servicesDropdownOpen)}
+                  className={`relative flex items-center gap-1 px-3 sm:px-3.5 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-250 cursor-pointer ${
+                    servicesDropdownOpen || ['apply', 'schedule1', 'roadcutting'].includes(activeTab)
+                      ? 'bg-emerald-800 text-white shadow-md'
+                      : 'text-slate-700 hover:bg-white hover:text-emerald-800 hover:shadow-sm'
+                  }`}
+                  aria-expanded={servicesDropdownOpen}
+                >
+                  <Layers className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>সেবাসমূহ</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${servicesDropdownOpen ? 'rotate-180 text-white' : 'text-slate-400'}`} />
+                </button>
+
+                {/* Dropdown Menu - Styled with rich categorized municipal services */}
+                {servicesDropdownOpen && (
+                  <div className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 bg-white rounded-xl shadow-2xl border border-emerald-600/20 py-2 z-50 animate-fade-in text-slate-800 divide-y divide-slate-100">
+                    <div className="px-3.5 py-2 bg-emerald-50/70 rounded-t-lg">
+                      <p className="text-[10px] font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 text-emerald-600" />
+                        <span>সীতাকুণ্ড পৌরসভা নাগরিক ই-সেবাসমূহ</span>
+                      </p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        অনলাইন আবেদন, সরকারি অনুমোদন ও নাগরিক সেবা
+                      </p>
+                    </div>
+
+                    {/* Group 1: অনলাইন আবেদন ও পারমিট */}
+                    <div className="py-1">
+                      <div className="px-3.5 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                        ডিজিটাল আবেদন ও পারমিট সেবা
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServicesDropdownOpen(false);
+                          setActiveTab('apply');
+                        }}
+                        className={`w-full text-left px-3.5 py-2 text-xs font-medium hover:bg-emerald-50 flex items-start gap-2.5 transition-colors cursor-pointer ${
+                          activeTab === 'apply' ? 'bg-emerald-50 text-emerald-900 font-bold' : 'text-slate-700 hover:text-emerald-800'
+                        }`}
+                      >
+                        <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <FileText className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-900">ভূমি ডিমার্কেশন ও সঠিকতা যাচাই</span>
+                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">৳ ১০০/-</span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 block truncate">মৌজা নকশা ও খতিয়ান অনুযায়ী জমির সীমানা পরিমাপ</span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServicesDropdownOpen(false);
+                          setActiveTab('schedule1');
+                        }}
+                        className={`w-full text-left px-3.5 py-2 text-xs font-medium hover:bg-emerald-50 flex items-start gap-2.5 transition-colors cursor-pointer ${
+                          activeTab === 'schedule1' ? 'bg-emerald-50 text-emerald-900 font-bold' : 'text-slate-700 hover:text-emerald-800'
+                        }`}
+                      >
+                        <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <Building2 className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-900">ইমারত নির্মাণ অনুমোদন (তফসিল-১)</span>
+                            <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded">তফসিল-১</span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 block truncate">ভবনের নকশা Lay-out Plan অনুমোদন ও পারমিট সনদ</span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServicesDropdownOpen(false);
+                          setActiveTab('roadcutting');
+                        }}
+                        className={`w-full text-left px-3.5 py-2 text-xs font-medium hover:bg-emerald-50 flex items-start gap-2.5 transition-colors cursor-pointer ${
+                          activeTab === 'roadcutting' ? 'bg-emerald-50 text-emerald-900 font-bold' : 'text-slate-700 hover:text-emerald-800'
+                        }`}
+                      >
+                        <div className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <Construction className="w-3.5 h-3.5 text-amber-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-900">রাস্তা কর্তন ও মেরামত অনুমতি</span>
+                            <span className="text-[10px] bg-slate-100 text-slate-700 font-bold px-1.5 py-0.2 rounded">অনুমতি</span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 block truncate">গ্যাস, বিদ্যুৎ ও খাবার পানির পাইপলাইন কর্তন পারমিট</span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServicesDropdownOpen(false);
+                          setActiveTab('track');
+                        }}
+                        className={`w-full text-left px-3.5 py-2 text-xs font-medium hover:bg-emerald-50 flex items-start gap-2.5 transition-colors cursor-pointer ${
+                          activeTab === 'track' ? 'bg-teal-50 text-teal-900 font-bold' : 'text-slate-700 hover:text-teal-800'
+                        }`}
+                      >
+                        <div className="w-6 h-6 rounded-md bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <Search className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-900">আবেদন লাইভ ট্র্যাকিং ও QR যাচাই</span>
+                            <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-1.5 py-0.2 rounded">ফ্রি</span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 block truncate">আইডি বা মোবাইল নম্বর দিয়ে তাৎক্ষণিক লাইভ স্ট্যাটাস</span>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Group 2: অন্যান্য পৌর নাগরিক সেবা */}
+                    <div className="py-1">
+                      <div className="px-3.5 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                        পৌর নাগরিক ও রাজস্ব সেবা
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServicesDropdownOpen(false);
+                          onOpenCitizenServiceInfo?.('tradelicense');
+                        }}
+                        className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 hover:text-emerald-800 hover:bg-emerald-50 flex items-center justify-between transition-colors cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="text-emerald-600 font-bold">›</span>
+                          <span>ই-ট্রেড লাইসেন্স ও নবায়ন সেবা</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400">তথ্য</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServicesDropdownOpen(false);
+                          onOpenCitizenServiceInfo?.('holding');
+                        }}
+                        className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 hover:text-emerald-800 hover:bg-emerald-50 flex items-center justify-between transition-colors cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="text-emerald-600 font-bold">›</span>
+                          <span>পৌর হোল্ডিং ট্যাক্স ও এসেসমেন্ট</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400">তথ্য</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServicesDropdownOpen(false);
+                          onOpenCitizenServiceInfo?.('certificate');
+                        }}
+                        className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 hover:text-emerald-800 hover:bg-emerald-50 flex items-center justify-between transition-colors cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="text-emerald-600 font-bold">›</span>
+                          <span>নাগরিকত্ব, চারিত্রিক ও ওয়ারিশান সনদ</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400">তথ্য</span>
+                      </button>
+                    </div>
+
+                    {/* Footer: View all services button */}
+                    <div className="p-2 bg-slate-50 rounded-b-xl">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServicesDropdownOpen(false);
+                          setActiveTab('home');
+                          setTimeout(() => {
+                            const el = document.getElementById('services-section');
+                            if (el) el.scrollIntoView({ behavior: 'smooth' });
+                          }, 100);
+                        }}
+                        className="w-full py-2 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                      >
+                        <span>সকল ডিজিটাল নাগরিক সেবা ড্যাশবোর্ড</span>
+                        <span className="text-sm leading-none">&rarr;</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

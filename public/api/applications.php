@@ -63,6 +63,12 @@ switch ($method) {
         break;
 }
 
+function toEnglishDigitsPhp($str) {
+    $banglaDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    $englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    return str_replace($banglaDigits, $englishDigits, (string)$str);
+}
+
 function handleGet($pdo) {
     $id = isset($_GET['id']) ? trim($_GET['id']) : null;
     $trackingId = isset($_GET['tracking_id']) ? trim($_GET['tracking_id']) : null;
@@ -72,15 +78,39 @@ function handleGet($pdo) {
     $lookup = $id ?: ($trackingId ?: $query);
 
     if ($lookup) {
-        // 1. Direct match on ID, Tracking ID, Form No, or Applicant Phone
+        $lookupRaw = trim($lookup);
+        $lookupEn = toEnglishDigitsPhp($lookupRaw);
+        $cleanDigits = preg_replace('/[^0-9]/', '', $lookupEn);
+        if (substr($cleanDigits, 0, 2) === '88') {
+            $cleanDigits = substr($cleanDigits, 2);
+        }
+
+        // 1. Direct and LIKE match across columns
         $sql = "SELECT data FROM applications 
-                WHERE id = :lookup 
-                   OR tracking_id = :lookup 
-                   OR form_no = :lookup 
-                   OR applicant_phone = :lookup 
-                LIMIT 1";
+                WHERE id = :raw 
+                   OR tracking_id = :raw 
+                   OR form_no = :raw 
+                   OR applicant_phone = :raw 
+                   OR id = :en 
+                   OR tracking_id = :en 
+                   OR form_no = :en 
+                   OR applicant_phone = :en";
+        
+        $params = [
+            ':raw' => $lookupRaw,
+            ':en' => $lookupEn,
+        ];
+
+        if ($cleanDigits && strlen($cleanDigits) >= 5) {
+            $sql .= " OR applicant_phone LIKE :phoneLike OR id LIKE :digitsLike OR form_no LIKE :digitsLike";
+            $params[':phoneLike'] = '%' . $cleanDigits . '%';
+            $params[':digitsLike'] = '%' . $cleanDigits . '%';
+        }
+
+        $sql .= " ORDER BY created_at DESC LIMIT 1";
+
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([':lookup' => $lookup]);
+        $stmt->execute($params);
         $row = $stmt->fetch();
         
         if ($row) {
@@ -88,11 +118,14 @@ function handleGet($pdo) {
             return;
         }
 
-        // 2. Fallback search inside JSON data
-        $likeQuery = '%' . $lookup . '%';
-        $sqlFallback = "SELECT data FROM applications WHERE data LIKE :likeQuery ORDER BY created_at DESC LIMIT 1";
+        // 2. Fallback search inside JSON data (by both raw and English digits)
+        $likeQueryRaw = '%' . $lookupRaw . '%';
+        $likeQueryEn = '%' . $lookupEn . '%';
+        $sqlFallback = "SELECT data FROM applications 
+                        WHERE data LIKE :likeRaw OR data LIKE :likeEn 
+                        ORDER BY created_at DESC LIMIT 1";
         $stmtFallback = $pdo->prepare($sqlFallback);
-        $stmtFallback->execute([':likeQuery' => $likeQuery]);
+        $stmtFallback->execute([':likeRaw' => $likeQueryRaw, ':likeEn' => $likeQueryEn]);
         $fallbackRow = $stmtFallback->fetch();
         if ($fallbackRow) {
             echo $fallbackRow['data'];
@@ -100,7 +133,7 @@ function handleGet($pdo) {
         }
 
         http_response_code(404);
-        echo json_encode(['error' => 'Application not found', 'lookup' => $lookup]);
+        echo json_encode(['error' => 'Application not found', 'lookup' => $lookupRaw, 'lookupEn' => $lookupEn]);
         return;
     }
 

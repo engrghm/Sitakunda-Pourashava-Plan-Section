@@ -189,8 +189,76 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
       </section>
       </div>
 
+      {/* 2.8 Leadership & Message Section — Prominent Administrator Speech & Face View (স্মার্ট সিটি ও ডিজিটাল গভর্নেন্স) */}
+      <section>
+        {/* Mayor / Administrator Speech Card — Full Width */}
+        <div className="bg-gradient-to-br from-[#043328] via-[#064e3b] to-[#0f172a] text-white rounded-3xl p-6 sm:p-8 lg:p-10 shadow-xl border border-emerald-500/40 relative overflow-hidden">
+          {/* Subtle Background Watermark */}
+          <div className="absolute right-0 bottom-0 opacity-5 pointer-events-none translate-x-8 translate-y-8">
+            <MunicipalityLogo size={260} />
+          </div>
+
+          <div className="space-y-6 relative z-10">
+            {/* Header bar of the card */}
+            <div className="flex items-center justify-between border-b border-emerald-800/80 pb-3.5">
+              <div className="flex items-center gap-3">
+                <MunicipalityLogo size={42} />
+                <div>
+                  <span className="text-xs font-semibold text-emerald-400 block tracking-wide">স্মার্ট সিটি ও ডিজিটাল গভর্নেন্স</span>
+                  <h3 className="text-lg sm:text-2xl font-bold text-white tracking-tight">{config.leaderTitle}</h3>
+                </div>
+              </div>
+              <span className="bg-emerald-500/20 text-emerald-300 text-xs px-3.5 py-1 rounded-full border border-emerald-400/40 font-bold">
+                সীতাকুণ্ড পৌরসভা
+              </span>
+            </div>
+
+            {/* Main content: Large Face Photo + Official Speech */}
+            <div className="flex flex-col md:flex-row gap-6 lg:gap-8 items-center md:items-start">
+              {/* Prominent High-Visibility Official Photo Box */}
+              <div className="relative shrink-0 flex flex-col items-center">
+                <div className="w-36 h-44 sm:w-48 sm:h-56 lg:w-52 lg:h-60 rounded-3xl bg-slate-800/90 border-3 border-emerald-400 overflow-hidden shadow-2xl ring-4 ring-emerald-500/25 flex items-center justify-center group">
+                  <img
+                    src={config.leaderImageUrl || '/logo.png'}
+                    alt={config.leaderName}
+                    className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                    onError={(e: any) => { e.target.src = '/logo.png'; }}
+                  />
+                </div>
+                <div className="mt-2.5 text-center">
+                  <span className="inline-block bg-gradient-to-r from-emerald-600 to-teal-700 text-white text-xs font-bold px-4 py-1 rounded-full border border-emerald-400/50 shadow-md">
+                    পৌর প্রশাসক
+                  </span>
+                </div>
+              </div>
+
+              {/* Official Statement & Designation Box */}
+              <div className="flex-1 space-y-4 text-center md:text-left">
+                <div className="relative">
+                  <span className="text-emerald-500/30 text-5xl sm:text-6xl font-serif absolute -top-4 -left-3 select-none pointer-events-none">“</span>
+                  <p className="text-sm sm:text-base text-slate-200 leading-relaxed italic bg-black/30 p-5 sm:p-6 rounded-2xl border border-white/10 shadow-inner relative z-10 font-normal">
+                    "{config.leaderMessage}"
+                  </p>
+                </div>
+
+                <div className="space-y-1 pt-1">
+                  <h4 className="text-xl sm:text-2xl font-black text-white tracking-tight">{config.leaderName}</h4>
+                  <p className="text-sm sm:text-base text-emerald-300 font-semibold">{config.leaderDesignation}</p>
+                  <p className="text-xs text-slate-400">সীতাকুণ্ড পৌরসভা কার্যালয়, চট্টগ্রাম</p>
+                  
+                  <div className="inline-flex items-center gap-2 mt-2 bg-emerald-950/70 border border-emerald-500/30 px-3.5 py-1 rounded-full text-xs text-emerald-200 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 3. Core Services Spotlight Grid */}
-      <section className="space-y-4">
+      <section id="services-section" className="space-y-4 scroll-mt-24">
         <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-2 border-b border-slate-200 pb-3">
           <div>
             <div className="flex items-center gap-2">
@@ -495,73 +563,7 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
         </div>
       </section>
 
-      {/* 5. Leadership & Message Section — Prominent Administrator Speech & Face View */}
-      <section>
-        {/* Mayor / Administrator Speech Card — Full Width */}
-        <div className="bg-gradient-to-br from-[#043328] via-[#064e3b] to-[#0f172a] text-white rounded-3xl p-6 sm:p-8 lg:p-10 shadow-xl border border-emerald-500/40 relative overflow-hidden">
-          {/* Subtle Background Watermark */}
-          <div className="absolute right-0 bottom-0 opacity-5 pointer-events-none translate-x-8 translate-y-8">
-            <MunicipalityLogo size={260} />
-          </div>
 
-          <div className="space-y-6 relative z-10">
-            {/* Header bar of the card */}
-            <div className="flex items-center justify-between border-b border-emerald-800/80 pb-3.5">
-              <div className="flex items-center gap-3">
-                <MunicipalityLogo size={42} />
-                <div>
-                  <span className="text-xs font-semibold text-emerald-400 block tracking-wide">স্মার্ট সিটি ও ডিজিটাল গভর্নেন্স</span>
-                  <h3 className="text-lg sm:text-2xl font-bold text-white tracking-tight">{config.leaderTitle}</h3>
-                </div>
-              </div>
-              <span className="bg-emerald-500/20 text-emerald-300 text-xs px-3.5 py-1 rounded-full border border-emerald-400/40 font-bold">
-                সীতাকুণ্ড পৌরসভা
-              </span>
-            </div>
-
-            {/* Main content: Large Face Photo + Official Speech */}
-            <div className="flex flex-col md:flex-row gap-6 lg:gap-8 items-center md:items-start">
-              {/* Prominent High-Visibility Official Photo Box */}
-              <div className="relative shrink-0 flex flex-col items-center">
-                <div className="w-36 h-44 sm:w-48 sm:h-56 lg:w-52 lg:h-60 rounded-3xl bg-slate-800/90 border-3 border-emerald-400 overflow-hidden shadow-2xl ring-4 ring-emerald-500/25 flex items-center justify-center group">
-                  <img
-                    src={config.leaderImageUrl || '/logo.png'}
-                    alt={config.leaderName}
-                    className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
-                    onError={(e: any) => { e.target.src = '/logo.png'; }}
-                  />
-                </div>
-                <div className="mt-2.5 text-center">
-                  <span className="inline-block bg-gradient-to-r from-emerald-600 to-teal-700 text-white text-xs font-bold px-4 py-1 rounded-full border border-emerald-400/50 shadow-md">
-                    পৌর প্রশাসক
-                  </span>
-                </div>
-              </div>
-
-              {/* Official Statement & Designation Box */}
-              <div className="flex-1 space-y-4 text-center md:text-left">
-                <div className="relative">
-                  <span className="text-emerald-500/30 text-5xl sm:text-6xl font-serif absolute -top-4 -left-3 select-none pointer-events-none">“</span>
-                  <p className="text-sm sm:text-base text-slate-200 leading-relaxed italic bg-black/30 p-5 sm:p-6 rounded-2xl border border-white/10 shadow-inner relative z-10 font-normal">
-                    "{config.leaderMessage}"
-                  </p>
-                </div>
-
-                <div className="space-y-1 pt-1">
-                  <h4 className="text-xl sm:text-2xl font-black text-white tracking-tight">{config.leaderName}</h4>
-                  <p className="text-sm sm:text-base text-emerald-300 font-semibold">{config.leaderDesignation}</p>
-                  <p className="text-xs text-slate-400">সীতাকুণ্ড পৌরসভা কার্যালয়, চট্টগ্রাম</p>
-                  
-                  <div className="inline-flex items-center gap-2 mt-2 bg-emerald-950/70 border border-emerald-500/30 px-3.5 py-1 rounded-full text-xs text-emerald-200 font-medium">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* 5.5 Current Council & Officers Showcase Section (বর্তমান পরিষদ) */}
       <section className="space-y-4">
