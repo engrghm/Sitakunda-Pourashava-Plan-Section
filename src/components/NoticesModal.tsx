@@ -200,6 +200,18 @@ export const NoticesModal: React.FC<NoticesModalProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    {notice.fileUrl && (
+                      <a
+                        href={notice.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-colors inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                        title="সংযুক্ত কপি দেখুন বা ডাউনলোড করুন"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>{notice.fileUrl.match(/\.(jpg|jpeg|png|webp)$/i) || notice.fileUrl.startsWith('data:image/') ? 'ছবি দেখুন' : 'PDF কপি'}</span>
+                      </a>
+                    )}
                     <button
                       type="button"
                       onClick={() => setSelectedNoticeForDetail(notice)}
@@ -234,7 +246,7 @@ export const NoticesModal: React.FC<NoticesModalProps> = ({
       {/* Notice Detail Single View Modal */}
       {selectedNoticeForDetail && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-          <div className="bg-white w-full max-w-2xl rounded-3xl p-6 shadow-2xl border border-slate-200 space-y-4">
+          <div className="bg-white w-full max-w-2xl rounded-3xl p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between border-b border-slate-100 pb-3">
               <div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border mb-2 inline-block ${getCategoryBadge(selectedNoticeForDetail.category).color}`}>
@@ -258,9 +270,50 @@ export const NoticesModal: React.FC<NoticesModalProps> = ({
               <span>প্রকাশের তারিখ: {selectedNoticeForDetail.publishDate}</span>
             </div>
 
-            <div className="text-xs sm:text-sm text-slate-700 leading-relaxed space-y-2 py-2 bg-slate-50 p-4 rounded-2xl border border-slate-100 whitespace-pre-wrap">
-              {selectedNoticeForDetail.description || 'বিস্তারিত বিবরণ সংযুক্ত ফাইলে উল্লেখ রয়েছে।'}
-            </div>
+            {selectedNoticeForDetail.description && (
+              <div className="text-xs sm:text-sm text-slate-700 leading-relaxed py-2 bg-slate-50 p-4 rounded-2xl border border-slate-100 whitespace-pre-wrap">
+                {selectedNoticeForDetail.description}
+              </div>
+            )}
+
+            {/* Attached file preview if present */}
+            {selectedNoticeForDetail.fileUrl && (
+              <div className="border border-slate-200 rounded-2xl p-3 bg-slate-50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-emerald-600" />
+                    <span>সংযুক্ত অফিসিয়াল কপি (PDF / ফটো):</span>
+                  </span>
+                  <a
+                    href={selectedNoticeForDetail.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-emerald-700 font-bold hover:underline inline-flex items-center gap-1"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>নতুন উইন্ডোতে খুলুন / ডাউনলোড</span>
+                  </a>
+                </div>
+
+                {selectedNoticeForDetail.fileUrl.startsWith('data:image/') || selectedNoticeForDetail.fileUrl.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+                  <div className="flex justify-center bg-white rounded-xl p-2 border border-slate-200 overflow-hidden max-h-[360px]">
+                    <img
+                      src={selectedNoticeForDetail.fileUrl}
+                      alt={selectedNoticeForDetail.title}
+                      className="max-h-[340px] object-contain rounded-lg"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full h-80 bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <iframe
+                      src={selectedNoticeForDetail.fileUrl}
+                      title={selectedNoticeForDetail.title}
+                      className="w-full h-full border-0"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2">
               <button

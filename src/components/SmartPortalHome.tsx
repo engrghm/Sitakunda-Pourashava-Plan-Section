@@ -699,7 +699,7 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
                         className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-colors"
                       >
                         <Download className="w-3.5 h-3.5" />
-                        <span>PDF দেখুন</span>
+                        <span>{notice.fileUrl.match(/\.(jpg|jpeg|png|webp)$/i) || notice.fileUrl.startsWith('data:image/') ? 'ছবি দেখুন' : 'কপি দেখুন'}</span>
                       </a>
                     ) : (
                       <span className="text-[11px] text-slate-400 italic">সংযুক্তি নেই</span>

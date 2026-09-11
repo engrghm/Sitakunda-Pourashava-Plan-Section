@@ -55,11 +55,17 @@ export const NoticeManagementPanel: React.FC<NoticeManagementPanelProps> = ({
   });
   const [pdfUploading, setPdfUploading] = useState(false);
 
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-      alert('অনুগ্রহ করে শুধুমাত্র PDF ফাইল আপলোড করুন');
+
+    const allowedExts = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const isPdf = file.type === 'application/pdf' || ext === 'pdf';
+    const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp'].includes(ext);
+
+    if (!isPdf && !isImage) {
+      alert('অনুগ্রহ করে শুধুমাত্র PDF অথবা ইমেজ ফাইল (JPG, PNG, WEBP) আপলোড করুন');
       e.target.value = '';
       return;
     }
@@ -487,27 +493,33 @@ export const NoticeManagementPanel: React.FC<NoticeManagementPanelProps> = ({
                 />
               </div>
 
-              {/* PDF File Upload */}
+              {/* PDF or Photo File Upload */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  <span className="flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /> PDF সংযুক্ত ফাইল (সর্বোচ্চ ১৫ MB)</span>
+                  <span className="flex items-center gap-1.5"><Paperclip className="w-3.5 h-3.5 text-emerald-600" /> নোটিশের কপি / সংযুক্তি (PDF বা ছবি, সর্বোচ্চ ১৫ MB)</span>
                 </label>
                 {formData.fileUrl ? (
                   <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                    <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="text-xs text-emerald-800 font-medium flex-1 truncate">পিডিএফ সফলভাবে সংযুক্ত হয়েছে ✓</span>
+                    {formData.fileUrl.startsWith('data:image/') || formData.fileUrl.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+                      <img src={formData.fileUrl} alt="Notice preview" className="w-8 h-8 object-cover rounded shrink-0 border border-emerald-300" />
+                    ) : (
+                      <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                    )}
+                    <span className="text-xs text-emerald-800 font-medium flex-1 truncate">
+                      ফাইল (PDF/ছবি) সফলভাবে সংযুক্ত হয়েছে ✓
+                    </span>
                     <button
                       type="button"
                       onClick={() => window.open(formData.fileUrl, '_blank')}
-                      className="text-xs bg-white text-emerald-700 hover:bg-emerald-100 border border-emerald-300 px-2 py-1 rounded font-semibold cursor-pointer"
+                      className="text-xs bg-white text-emerald-700 hover:bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-lg font-semibold cursor-pointer"
                     >
-                      প্রিভিউ
+                      প্রিভিউ দেখুন
                     </button>
                     <button
                       type="button"
                       onClick={() => setFormData(prev => ({ ...prev, fileUrl: '' }))}
                       className="text-red-500 hover:text-red-700 p-1 rounded-lg hover:bg-red-50 cursor-pointer"
-                      title="পিডিএফ সরান"
+                      title="ফাইল সরান"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -516,19 +528,19 @@ export const NoticeManagementPanel: React.FC<NoticeManagementPanelProps> = ({
                   <label className="flex items-center justify-center gap-2 w-full px-3 py-3 text-xs border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/50 transition-colors">
                     <input
                       type="file"
-                      accept=".pdf,application/pdf"
-                      onChange={handlePdfUpload}
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"
+                      onChange={handleFileUpload}
                       className="sr-only"
                     />
                     {pdfUploading ? (
                       <span className="text-slate-500 flex items-center gap-2">
                         <Upload className="w-4 h-4 animate-bounce text-emerald-600" />
-                        লোড হচ্ছে...
+                        আপলোড ও প্রক্রিয়াকরণ হচ্ছে...
                       </span>
                     ) : (
                       <span className="text-slate-500 flex items-center gap-2">
                         <Upload className="w-4 h-4 text-emerald-600" />
-                        PDF ফাইল বেছুন বা এখানে ড্র্যাগ করুন
+                        PDF ফাইল বা ছবি (JPG/PNG) বাছাই করুন বা এখানে ড্র্যাগ করুন
                       </span>
                     )}
                   </label>
