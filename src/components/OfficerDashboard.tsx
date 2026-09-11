@@ -112,6 +112,7 @@ import {
   generateOfficialEmailTemplate, 
   EmailTemplate 
 } from '../utils/notificationService';
+import { uploadFileToServer } from '../utils/apiStorage';
 
 interface OfficerDashboardProps {
   onViewPrintA4: (app: DemarcationApplication) => void;
@@ -4087,16 +4088,26 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                           type="file"
                           accept="application/pdf,.pdf"
                           className="hidden"
-                          onChange={(event) => {
+                          onChange={async (event) => {
                             const file = event.target.files?.[0];
                             if (!file) return;
-                            if (file.type !== 'application/pdf' || file.size > 4 * 1024 * 1024) {
-                              setSaveSuccessMsg('শুধু ৪ MB পর্যন্ত PDF ফাইল আপলোড করা যাবে।');
+                            if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                              setSaveSuccessMsg('শুধুমাত্র PDF ফাইল আপলোড করা যাবে।');
                               return;
                             }
-                            const reader = new FileReader();
-                            reader.onload = () => setDemarcationPdf({ fileName: file.name, dataUrl: String(reader.result), uploadedAt: new Date().toISOString() });
-                            reader.readAsDataURL(file);
+                            if (file.size > 10 * 1024 * 1024) {
+                              setSaveSuccessMsg('শুধু ১০ MB পর্যন্ত PDF ফাইল আপলোড করা যাবে।');
+                              return;
+                            }
+                            setSaveSuccessMsg('PDF সার্ভারে আপলোড হচ্ছে...');
+                            const res = await uploadFileToServer(file);
+                            if (res.success && res.fileUrl) {
+                              setDemarcationPdf({ fileName: file.name, dataUrl: res.fileUrl, uploadedAt: new Date().toISOString() });
+                              setSaveSuccessMsg('ডিমার্কেশন PDF সফলভাবে সার্ভারে আপলোড হয়েছে!');
+                              setTimeout(() => setSaveSuccessMsg(null), 4000);
+                            } else {
+                              setSaveSuccessMsg('PDF আপলোড করতে সমস্যা হয়েছে: ' + (res.error || 'সার্ভার ত্রুটি'));
+                            }
                           }}
                         />
                       </label>

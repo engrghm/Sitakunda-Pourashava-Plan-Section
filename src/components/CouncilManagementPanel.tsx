@@ -26,7 +26,7 @@ import {
   getPortalConfig,
   savePortalConfig
 } from '../utils/portalConfig';
-import { uploadImageToServer } from '../utils/apiStorage';
+import { uploadImageToServer, savePortalConfigToApi } from '../utils/apiStorage';
 import { getOfficerSession } from '../utils/storage';
 
 interface CouncilManagementPanelProps {
@@ -192,7 +192,7 @@ export const CouncilManagementPanel: React.FC<CouncilManagementPanelProps> = ({
     }
   };
 
-  const saveUpdatedMembers = (newMembers: CouncilMember[]) => {
+  const saveUpdatedMembers = async (newMembers: CouncilMember[]) => {
     const currentConf = getPortalConfig();
     const updatedConf = {
       ...currentConf,
@@ -202,8 +202,14 @@ export const CouncilManagementPanel: React.FC<CouncilManagementPanelProps> = ({
     setConfig(updatedConf);
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
+
+    const apiSuccess = await savePortalConfigToApi(updatedConf);
     if (onSuccessNotification) {
-      onSuccessNotification('বর্তমান পরিষদ তথ্য সফলভাবে সংরক্ষিত হয়েছে');
+      if (apiSuccess) {
+        onSuccessNotification('বর্তমান পরিষদ তথ্য সার্ভার ডাটাবেজে সফলভাবে সংরক্ষিত হয়েছে');
+      } else {
+        onSuccessNotification('বর্তমান পরিষদ তথ্য সফলভাবে সংরক্ষিত হয়েছে');
+      }
     }
   };
 

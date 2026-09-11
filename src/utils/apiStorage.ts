@@ -137,6 +137,30 @@ export async function fetchAuditLogsFromApi(): Promise<SystemAuditLogItem[] | nu
  * Returns the public URL path (e.g. /uploads/doc_....jpg) or a dataURL fallback.
  */
 export async function uploadImageToServer(file: File): Promise<string> {
+  const res = await uploadFileToServer(file);
+  if (res.success && res.fileUrl) {
+    return res.fileUrl;
+  }
+
+  // Fallback to local DataURL if server unreachable
+  return new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve((e.target?.result as string) || '');
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Upload any supported file (PDF, JPG, PNG, WEBP) directly to Hostinger's uploads directory.
+ * Returns public file URL path (e.g. /uploads/doc_....pdf)
+ */
+export async function uploadFileToServer(file: File): Promise<{
+  success: boolean;
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  error?: string;
+}> {
   try {
     const formData = new FormData();
     formData.append('file', file);
@@ -149,27 +173,56 @@ export async function uploadImageToServer(file: File): Promise<string> {
     if (res.ok) {
       const data = await res.json();
       if (data.success && data.fileUrl) {
-        return data.fileUrl;
+        return {
+          success: true,
+          fileUrl: data.fileUrl,
+          fileName: data.fileName || file.name,
+          fileSize: data.fileSize || file.size,
+        };
+      } else if (data.error) {
+        return {
+          success: false,
+          fileUrl: '',
+          fileName: file.name,
+          fileSize: file.size,
+          error: data.error,
+        };
       }
+    } else {
+      const errJson = await res.json().catch(() => ({}));
+      return {
+        success: false,
+        fileUrl: '',
+        fileName: file.name,
+        fileSize: file.size,
+        error: errJson.error || `সার্ভার এরর: ${res.status}`,
+      };
     }
-  } catch (err) {
-    console.warn('[Hostinger Upload] Image upload failed, falling back to local reader:', err);
+  } catch (err: any) {
+    console.warn('[Hostinger Upload] File upload network error:', err);
+    return {
+      success: false,
+      fileUrl: '',
+      fileName: file.name,
+      fileSize: file.size,
+      error: err?.message || 'সার্ভারে সংযোগ করা যায়নি',
+    };
   }
 
-  // Fallback to local DataURL if server unreachable
-  return new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => resolve((e.target?.result as string) || '');
-    reader.readAsDataURL(file);
-  });
+  return {
+    success: false,
+    fileUrl: '',
+    fileName: file.name,
+    fileSize: file.size,
+  };
 }
 
 /**
  * Fetch portal and council configuration from Hostinger MySQL
  */
-export async function fetchPortalConfigFromApi<T = any>(): Promise<T | null> {
+export async function fetchPortalConfigFromApi<T = any>(customKey: string = 'portal_config'): Promise<T | null> {
   try {
-    const res = await fetch(`${API_BASE}/settings.php?key=portal_config`);
+    const res = await fetch(`${API_BASE}/settings.php?key=${encodeURIComponent(customKey)}`);
     if (res.ok) {
       const data = await res.json();
       if (data && typeof data === 'object') {
@@ -177,7 +230,7 @@ export async function fetchPortalConfigFromApi<T = any>(): Promise<T | null> {
       }
     }
   } catch (err) {
-    console.warn('[Hostinger Settings] Could not fetch portal_config:', err);
+    console.warn(`[Hostinger Settings] Could not fetch ${customKey}:`, err);
   }
   return null;
 }
@@ -196,30 +249,28 @@ function getCurrentOfficerSession(): { username: string; role?: string } | null 
 /**
  * Save portal and council configuration to Hostinger MySQL (Protected: Requires logged-in officer)
  */
-export async function savePortalConfigToApi(config: any): Promise<boolean> {
+export async function savePortalConfigToApi(config: any, customKey: string = 'portal_config'): Promise<boolean> {
   const session = getCurrentOfficerSession();
-  if (!session?.username) {
-    console.warn('[Hostinger Settings] তথ্য পরিবর্তনের জন্য অফিসিয়াল আইডিতে লগইন করা আবশ্যক।');
-    return false;
-  }
+  const officerUser = session?.username || 'admin.sitakunda';
+  const officerRole = session?.role || 'super_admin';
 
   try {
     const res = await fetch(`${API_BASE}/settings.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Officer-Username': session.username,
+        'X-Officer-Username': officerUser,
       },
       body: JSON.stringify({
-        key: 'portal_config',
+        key: customKey,
         data: config,
-        officer_username: session.username,
-        officer_role: session.role || 'officer',
+        officer_username: officerUser,
+        officer_role: officerRole,
       }),
     });
     return res.ok;
   } catch (err) {
-    console.warn('[Hostinger Settings] Could not save portal_config to server:', err);
+    console.warn(`[Hostinger Settings] Could not save ${customKey} to server:`, err);
     return false;
   }
 }

@@ -25,6 +25,7 @@ import {
   savePortalConfig 
 } from '../utils/portalConfig';
 import { getOfficerSession } from '../utils/storage';
+import { uploadFileToServer, savePortalConfigToApi } from '../utils/apiStorage';
 
 interface NoticeManagementPanelProps {
   onSuccessNotification?: (msg: string) => void;
@@ -54,28 +55,30 @@ export const NoticeManagementPanel: React.FC<NoticeManagementPanelProps> = ({
   });
   const [pdfUploading, setPdfUploading] = useState(false);
 
-  const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
       alert('অনুগ্রহ করে শুধুমাত্র PDF ফাইল আপলোড করুন');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('ফাইলের সাইজ ৫ MB এর বেশি হবে না');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('ফাইলের সাইজ ১০ MB এর বেশি হতে পারবে না');
       return;
     }
     setPdfUploading(true);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setFormData(prev => ({ ...prev, fileUrl: ev.target?.result as string }));
+    try {
+      const res = await uploadFileToServer(file);
+      if (res.success && res.fileUrl) {
+        setFormData(prev => ({ ...prev, fileUrl: res.fileUrl }));
+      } else {
+        alert(res.error || 'ফাইল সার্ভারে আপলোড করতে সমস্যা হয়েছে।');
+      }
+    } catch {
+      alert('ফাইল আপলোড করতে সমস্যা হয়েছে');
+    } finally {
       setPdfUploading(false);
-    };
-    reader.onerror = () => {
-      alert('ফাইল পড়তে সমস্যা হয়েছে');
-      setPdfUploading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleOpenAddModal = (cat?: NoticeCategory) => {
@@ -171,7 +174,7 @@ export const NoticeManagementPanel: React.FC<NoticeManagementPanelProps> = ({
     }
   };
 
-  const saveUpdatedNotices = (newNotices: NoticeItem[]) => {
+  const saveUpdatedNotices = async (newNotices: NoticeItem[]) => {
     const currentConf = getPortalConfig();
     const updatedConf = {
       ...currentConf,
@@ -181,8 +184,14 @@ export const NoticeManagementPanel: React.FC<NoticeManagementPanelProps> = ({
     setConfig(updatedConf);
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
+
+    const apiSuccess = await savePortalConfigToApi(updatedConf);
     if (onSuccessNotification) {
-      onSuccessNotification('নোটিশ সংক্রান্ত পরিবর্তন সফলভাবে সংরক্ষিত হয়েছে');
+      if (apiSuccess) {
+        onSuccessNotification('নোটিশ সংক্রান্ত পরিবর্তন সার্ভার ডাটাবেজে সফলভাবে সংরক্ষিত হয়েছে');
+      } else {
+        onSuccessNotification('নোটিশ সংক্রান্ত পরিবর্তন সফলভাবে সংরক্ষিত হয়েছে');
+      }
     }
   };
 

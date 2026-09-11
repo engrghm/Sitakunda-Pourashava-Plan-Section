@@ -21,6 +21,7 @@ import { NoticesModal } from './components/NoticesModal';
 import { DemarcationApplication, BuildingConstructionApplication, RoadCuttingApplication } from './types';
 import { getOfficerSession, syncStorageWithHostinger } from './utils/storage';
 import { PortalConfig, getPortalConfig, CouncilCategory, NoticeCategory } from './utils/portalConfig';
+import { syncLegalDocumentsWithHostinger } from './utils/legalDocuments';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'apply' | 'track' | 'schedule1' | 'roadcutting' | 'admin'>('home');
@@ -46,6 +47,7 @@ export default function App() {
   // Sync with Hostinger MySQL Database on portal mount
   useEffect(() => {
     syncStorageWithHostinger().catch(() => {});
+    syncLegalDocumentsWithHostinger().catch(() => {});
   }, []);
 
   // Sync portal config when updated in localStorage or from customizer modal
@@ -194,6 +196,10 @@ export default function App() {
             onOpenCouncilCategory={(cat) => {
               setSelectedCouncilCategory(cat);
               setIsCouncilModalOpen(true);
+            }}
+            onOpenNoticeCategory={(cat) => {
+              setSelectedNoticeCategory(cat);
+              setIsNoticeModalOpen(true);
             }}
           />
         )}

@@ -4,6 +4,29 @@ require_once __DIR__ . '/config.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $pdo = getDbConnection();
+
+// Ensure applications table exists
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `applications` (
+          `id` VARCHAR(64) NOT NULL,
+          `module_type` VARCHAR(32) NOT NULL DEFAULT 'demarcation',
+          `form_no` VARCHAR(64) NULL,
+          `tracking_id` VARCHAR(64) NOT NULL,
+          `applicant_name` VARCHAR(255) NULL,
+          `applicant_phone` VARCHAR(32) NULL,
+          `status` VARCHAR(64) NOT NULL DEFAULT 'submitted',
+          `data` LONGTEXT NOT NULL,
+          `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (`id`),
+          INDEX `idx_tracking` (`tracking_id`),
+          INDEX `idx_module` (`module_type`),
+          INDEX `idx_status` (`status`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+} catch (Exception $e) {}
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($method) {

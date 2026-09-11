@@ -25,12 +25,16 @@ import {
   Layers,
   MapPin,
   AlertTriangle,
-  Activity
+  Activity,
+  Bell,
+  Download,
+  Tag
 } from 'lucide-react';
-import { PortalConfig, CouncilCategory, COUNCIL_CATEGORIES_META } from '../utils/portalConfig';
+import { PortalConfig, CouncilCategory, COUNCIL_CATEGORIES_META, NoticeCategory, NOTICE_CATEGORIES_META } from '../utils/portalConfig';
 import { MunicipalityLogo } from './MunicipalityLogo';
 import { 
   toBanglaNumber, 
+  formatBanglaDate,
   getStoredApplications, 
   getBuildingApplications,
   getRoadCuttingApplications 
@@ -44,6 +48,7 @@ interface SmartPortalHomeProps {
   onSearchTracking: (trackId: string) => void;
   onOpenCustomizer: () => void;
   onOpenCouncilCategory?: (category: CouncilCategory) => void;
+  onOpenNoticeCategory?: (category: NoticeCategory) => void;
 }
 
 export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
@@ -52,6 +57,7 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
   onSearchTracking,
   onOpenCustomizer,
   onOpenCouncilCategory,
+  onOpenNoticeCategory,
 }) => {
   const [quickTrackId, setQuickTrackId] = useState('');
   const [marqueePlaying, setMarqueePlaying] = useState(true);
@@ -610,6 +616,109 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
             );
           })}
         </div>
+      </section>
+
+      {/* 5.6 Notice & Tender Board Showcase Section (সর্বশেষ নোটিশ, অফিস আদেশ ও ই-দরপত্র) */}
+      <section className="space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-2 border-b border-slate-200 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                সর্বশেষ নোটিশ, অফিস আদেশ ও ই-দরপত্র
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              সীতাকুণ্ড পৌরসভার প্রশাসনিক বিজ্ঞপ্তি, অফিস আদেশ এবং দরপত্র সংক্রান্ত সর্বশেষ তথ্যাবলী
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onOpenNoticeCategory?.('notice')}
+              className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full border border-emerald-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              <span>সকল নোটিশ দেখুন</span>
+            </button>
+          </div>
+        </div>
+
+        {(!config.noticesList || config.noticesList.length === 0) ? (
+          <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center text-slate-500 text-sm">
+            আপাতত কোনো প্রকাশিত নোটিশ বা দরপত্র নেই।
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {config.noticesList.slice(0, 6).map((notice) => {
+              const meta = NOTICE_CATEGORIES_META.find(c => c.category === notice.category) || {
+                label: 'নোটিশ',
+                color: 'bg-emerald-50 text-emerald-800 border-emerald-300'
+              };
+
+              return (
+                <div
+                  key={notice.id}
+                  className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all flex flex-col justify-between group"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${meta.color}`}>
+                        {meta.label}
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-slate-400" />
+                        {formatBanglaDate(notice.publishDate)}
+                      </span>
+                    </div>
+
+                    {notice.memoNo && (
+                      <div className="text-[11px] text-slate-500 font-mono line-clamp-1">
+                        স্মারক: {notice.memoNo}
+                      </div>
+                    )}
+
+                    <h4 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-2 leading-snug">
+                      {notice.title}
+                    </h4>
+
+                    {notice.description && (
+                      <p className="text-xs text-slate-600 line-clamp-2 font-normal leading-relaxed">
+                        {notice.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                    {notice.fileUrl ? (
+                      <a
+                        href={notice.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>PDF দেখুন</span>
+                      </a>
+                    ) : (
+                      <span className="text-[11px] text-slate-400 italic">সংযুক্তি নেই</span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => onOpenNoticeCategory?.(notice.category)}
+                      className="text-xs font-semibold text-slate-600 hover:text-emerald-700 flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <span>বিস্তারিত</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* 6. Live Municipal Statistics Counter — Dynamic counts from real applications */}

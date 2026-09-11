@@ -17,6 +17,79 @@ app.use(express.json({ limit: '50mb' }));
 app.use('/documents', express.static(path.join(process.cwd(), 'public', 'documents')));
 app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 
+// Local upload handler for /api/upload.php and /api/upload
+app.post(['/api/upload.php', '/api/upload'], (req, res) => {
+  const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  const chunks: Buffer[] = [];
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', () => {
+    try {
+      const buffer = Buffer.concat(chunks);
+      const contentType = req.headers['content-type'] || '';
+      
+      let fileName = `doc_${Date.now()}.pdf`;
+      let fileBuffer = buffer;
+
+      if (contentType.includes('multipart/form-data')) {
+        const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+        const boundary = boundaryMatch ? (boundaryMatch[1] || boundaryMatch[2]) : '';
+        if (boundary) {
+          const boundaryBuf = Buffer.from('--' + boundary);
+          const parts: Buffer[] = [];
+          let start = buffer.indexOf(boundaryBuf);
+          while (start !== -1) {
+            const next = buffer.indexOf(boundaryBuf, start + boundaryBuf.length);
+            if (next !== -1) {
+              parts.push(buffer.subarray(start + boundaryBuf.length, next));
+              start = next;
+            } else {
+              break;
+            }
+          }
+
+          for (const part of parts) {
+            const headerEnd = part.indexOf(Buffer.from('\r\n\r\n'));
+            if (headerEnd !== -1) {
+              const headerStr = part.subarray(0, headerEnd).toString('utf-8');
+              const fnMatch = headerStr.match(/filename="([^"]+)"/i);
+              if (fnMatch) {
+                fileName = fnMatch[1];
+                let body = part.subarray(headerEnd + 4);
+                if (body.length >= 2 && body.subarray(-2).toString() === '\r\n') {
+                  body = body.subarray(0, body.length - 2);
+                }
+                fileBuffer = body;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      const ext = path.extname(fileName) || '.pdf';
+      const cleanPrefix = path.basename(fileName, ext).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 25);
+      const uniqueName = `doc_${Date.now()}_${cleanPrefix}${ext}`;
+      const targetPath = path.join(uploadsDir, uniqueName);
+
+      fs.writeFileSync(targetPath, fileBuffer);
+      const fileUrl = `/uploads/${uniqueName}`;
+      res.json({
+        success: true,
+        fileUrl,
+        fileName,
+        fileSize: fileBuffer.length,
+        uploadedAt: new Date().toISOString()
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Upload error' });
+    }
+  });
+});
+
 // Official Gazette PDF Upload endpoint
 app.post('/api/upload-gazette', (req, res) => {
   try {
@@ -325,6 +398,36 @@ app.get('/api/db-schemas', (req, res) => {
       code: 'export const LandApplicationModel = mongoose.model("LandApplication", LandApplicationSchema);'
     }
   ]);
+});
+
+// 5. Portal settings endpoints for local Node development
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const getSettingsMap = (): Record<string, any> => {
+  try {
+    if (fs.existsSync(SETTINGS_FILE)) {
+      return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
+    }
+  } catch {}
+  return {};
+};
+
+app.get(['/api/settings.php', '/api/settings'], (req, res) => {
+  const key = (req.query.key as string) || 'portal_config';
+  const settings = getSettingsMap();
+  res.json(settings[key] || null);
+});
+
+app.post(['/api/settings.php', '/api/settings'], (req, res) => {
+  try {
+    const { key, data } = req.body || {};
+    const settingKey = key || 'portal_config';
+    const settings = getSettingsMap();
+    settings[settingKey] = data;
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+    res.json({ success: true, updated_at: new Date().toISOString() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to save settings' });
+  }
 });
 
 // Configure Vite integration as middleware in development or direct static in production

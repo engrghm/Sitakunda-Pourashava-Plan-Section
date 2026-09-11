@@ -4,6 +4,32 @@ require_once __DIR__ . '/config.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $pdo = getDbConnection();
+
+// Ensure audit_logs table exists
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `audit_logs` (
+          `id` VARCHAR(64) NOT NULL,
+          `timestamp` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          `officer_username` VARCHAR(128) NOT NULL,
+          `officer_name` VARCHAR(255) NULL,
+          `officer_role` VARCHAR(64) NULL,
+          `officer_designation` VARCHAR(255) NULL,
+          `action_type` VARCHAR(64) NOT NULL,
+          `action_title` VARCHAR(255) NOT NULL,
+          `target_id` VARCHAR(64) NULL,
+          `applicant_name` VARCHAR(255) NULL,
+          `details` TEXT NULL,
+          `ip_address` VARCHAR(64) NULL,
+          `metadata` LONGTEXT NULL,
+          PRIMARY KEY (`id`),
+          INDEX `idx_officer` (`officer_username`),
+          INDEX `idx_target` (`target_id`),
+          INDEX `idx_timestamp` (`timestamp`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+} catch (Exception $e) {}
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {

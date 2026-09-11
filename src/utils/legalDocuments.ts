@@ -1,3 +1,5 @@
+import { uploadFileToServer, savePortalConfigToApi, fetchPortalConfigFromApi } from './apiStorage';
+
 export type LegalDocId = 
   | 'rules1996' 
   | 'act1952' 
@@ -410,6 +412,8 @@ export function saveLegalDocument(docId: LegalDocId, updates: Partial<LegalDocum
 
     localStorage.setItem(LEGAL_DOCS_STORAGE_KEY, JSON.stringify(customMap));
     window.dispatchEvent(new Event('legal-documents-updated'));
+    // Sync with MySQL database
+    savePortalConfigToApi(customMap, 'legal_documents').catch(() => {});
     return true;
   } catch (err) {
     console.error('Failed to save legal document:', err);
@@ -429,6 +433,7 @@ export function resetLegalDocument(docId: LegalDocId): boolean {
     delete customMap[docId];
     localStorage.setItem(LEGAL_DOCS_STORAGE_KEY, JSON.stringify(customMap));
     window.dispatchEvent(new Event('legal-documents-updated'));
+    savePortalConfigToApi(customMap, 'legal_documents').catch(() => {});
     return true;
   } catch (err) {
     console.error('Failed to reset legal document:', err);
@@ -444,6 +449,7 @@ export function clearAllLegalDocuments(): boolean {
   try {
     localStorage.removeItem(LEGAL_DOCS_STORAGE_KEY);
     window.dispatchEvent(new Event('legal-documents-updated'));
+    savePortalConfigToApi({}, 'legal_documents').catch(() => {});
     return true;
   } catch (err) {
     console.error('Failed to clear legal documents:', err);
@@ -452,7 +458,22 @@ export function clearAllLegalDocuments(): boolean {
 }
 
 /**
- * Upload Gazette PDF to server (Node Express or Hostinger PHP) with Base64 fallback
+ * Sync legal documents with Hostinger MySQL Database
+ */
+export async function syncLegalDocumentsWithHostinger(): Promise<void> {
+  try {
+    const remote = await fetchPortalConfigFromApi<Record<string, Partial<LegalDocumentItem>>>('legal_documents');
+    if (remote && typeof remote === 'object') {
+      localStorage.setItem(LEGAL_DOCS_STORAGE_KEY, JSON.stringify(remote));
+      window.dispatchEvent(new Event('legal-documents-updated'));
+    }
+  } catch (err) {
+    console.warn('[Hostinger LegalDocs Sync] Error:', err);
+  }
+}
+
+/**
+ * Upload Gazette PDF to server (Hostinger PHP or Node Express)
  */
 export async function uploadGazettePdf(
   docId: LegalDocId,
@@ -462,77 +483,62 @@ export async function uploadGazettePdf(
   const fileName = file.name;
   const fileSize = file.size;
 
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onerror = () => {
-      resolve({ success: false, fileUrl: '', fileName, fileSize, error: 'ফাইল পড়তে ব্যর্থ হয়েছে' });
-    };
+  // 1. First upload directly to server uploads folder via /api/upload.php
+  const uploadRes = await uploadFileToServer(file);
+  let savedUrl = '';
+  if (uploadRes.success && uploadRes.fileUrl) {
+    savedUrl = uploadRes.fileUrl;
+  }
 
-    reader.onload = async (e) => {
-      const dataUrl = e.target?.result as string;
-
-      let savedUrl = dataUrl; // default fallback
-
-      // Try Node Express endpoint /api/upload-gazette
-      try {
-        const res = await fetch('/api/upload-gazette', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            docId,
-            fileName,
-            fileData: dataUrl
-          }),
-        });
-
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.fileUrl) {
-            savedUrl = json.fileUrl;
-          }
-        }
-      } catch {
-        // Local server upload unavailable, will persist dataUrl in localStorage
-      }
-
-      // Also attempt Hostinger upload.php if available
-      if (savedUrl === dataUrl) {
-        try {
-          const formData = new FormData();
-          formData.append('file', file);
-          const phpRes = await fetch('/api/upload.php', {
-            method: 'POST',
-            body: formData,
-          });
-          if (phpRes.ok) {
-            const phpJson = await phpRes.json();
-            if (phpJson.success && phpJson.fileUrl) {
-              savedUrl = phpJson.fileUrl;
-            }
-          }
-        } catch {
-          // Fallback remains dataUrl
+  // 2. Secondary fallback for local express server
+  if (!savedUrl) {
+    try {
+      const dataUrl = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result as string);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      const expressRes = await fetch('/api/upload-gazette', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ docId, fileName, fileData: dataUrl }),
+      });
+      if (expressRes.ok) {
+        const json = await expressRes.json();
+        if (json.success && json.fileUrl) {
+          savedUrl = json.fileUrl;
         }
       }
+    } catch {
+      // ignore
+    }
+  }
 
-      // Save to client storage
-      saveLegalDocument(docId, {
-        fileUrl: savedUrl,
-        fileName,
-        fileSize,
-        uploadedAt: new Date().toISOString(),
-        uploadedBy,
-        isCustom: true,
-      });
-
-      resolve({
-        success: true,
-        fileUrl: savedUrl,
-        fileName,
-        fileSize,
-      });
+  if (!savedUrl) {
+    return {
+      success: false,
+      fileUrl: '',
+      fileName,
+      fileSize,
+      error: uploadRes.error || 'ফাইল সার্ভারে সংরক্ষণ করা যায়নি। অনুগ্রহ করে সার্ভার ও ডাটাবেজ সংযোগ যাচাই করুন।',
     };
+  }
 
-    reader.readAsDataURL(file);
+  // Save to client storage and sync to MySQL
+  saveLegalDocument(docId, {
+    fileUrl: savedUrl,
+    fileName,
+    fileSize,
+    uploadedAt: new Date().toISOString(),
+    uploadedBy,
+    isCustom: true,
   });
+
+  return {
+    success: true,
+    fileUrl: savedUrl,
+    fileName,
+    fileSize,
+  };
 }
