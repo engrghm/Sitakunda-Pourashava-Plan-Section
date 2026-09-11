@@ -2046,7 +2046,9 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${doc.badgeColor}`}>
                       {doc.category}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-mono">{doc.year}</span>
+                    <span className="text-[10px] text-emerald-800 font-bold bg-emerald-100/70 px-2 py-0.5 rounded-full border border-emerald-300">
+                      গেজেট PDF সংযুক্ত
+                    </span>
                   </div>
                   <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-start gap-1.5">
                     <Icon className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
@@ -2064,20 +2066,20 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                       setSelectedLegalDoc(doc.id);
                       setIsLegalModalOpen(true);
                     }}
-                    className="flex-1 flex items-center justify-center gap-1 py-2 bg-white hover:bg-emerald-700 hover:text-white text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
                   >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>PDF দেখুন</span>
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>আইন ও PDF দেখুন</span>
                   </button>
 
                   <a
                     href={doc.fileUrl}
                     download={doc.fileName}
-                    className="flex items-center justify-center gap-1 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs"
+                    className="flex items-center justify-center gap-1 px-3 py-2 bg-slate-100 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold transition-colors shadow-2xs"
                     title={`${doc.title} ডাউনলোড করুন`}
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>ডাউনলোড</span>
+                    <span className="hidden sm:inline">ডাউনলোড</span>
                   </a>
                 </div>
               </div>
