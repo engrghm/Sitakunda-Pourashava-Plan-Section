@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { MunicipalityLogo } from './MunicipalityLogo';
 import { PortalConfig, CouncilCategory, NoticeCategory } from '../utils/portalConfig';
+import { getPortalLanguage, setPortalLanguage, PortalLanguage } from '../utils/language';
 
 interface HeaderProps {
   activeTab: 'home' | 'apply' | 'track' | 'schedule1' | 'roadcutting' | 'admin';
@@ -46,12 +47,25 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenOthers,
   onOpenCitizenServiceInfo
 }) => {
+  const [currentLang, setCurrentLang] = React.useState<PortalLanguage>(() => getPortalLanguage());
   const [councilDropdownOpen, setCouncilDropdownOpen] = React.useState(false);
   const [servicesDropdownOpen, setServicesDropdownOpen] = React.useState(false);
   const [noticeDropdownOpen, setNoticeDropdownOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const servicesDropdownRef = React.useRef<HTMLDivElement>(null);
   const noticeDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Live Updating Time Clock
+  const [currentLiveTime, setCurrentLiveTime] = React.useState<string>(() => {
+    return new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+  });
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentLiveTime(new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Close dropdowns on click outside
   React.useEffect(() => {
@@ -92,18 +106,59 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline text-emerald-400/70">|</span>
             <span className="hidden sm:inline text-emerald-200/80 font-medium">স্থানীয় সরকার বিভাগ</span>
             <span className="hidden md:inline text-emerald-400/70">|</span>
-            <span className="hidden md:inline-flex items-center gap-1 text-emerald-200/80">
-              <Clock className="w-3 h-3 text-amber-400" />
+            <span className="hidden md:inline-flex items-center gap-1 text-emerald-200/90 font-medium">
+              <Clock className="w-3 h-3 text-amber-400 animate-pulse shrink-0" />
               <span>{banglaDateToday}</span>
+              <span className="text-emerald-400/60 mx-1">•</span>
+              <span className="font-mono text-amber-300 font-bold tracking-wider">{currentLiveTime}</span>
             </span>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4 text-emerald-200/90 text-[10px] sm:text-xs flex-wrap justify-center">
-
+          <div className="flex items-center gap-2.5 sm:gap-3.5 text-emerald-200/90 text-[10px] sm:text-xs flex-wrap justify-center">
             <span className="flex items-center gap-1 hover:text-white transition-colors cursor-default">
               <PhoneCall className="w-3 h-3 text-emerald-400" />
               <span className="font-mono font-bold">{config.helplinePhone}</span>
             </span>
+
+            <span className="text-emerald-600/80 hidden xs:inline">|</span>
+
+            {/* Language Switcher (বাংলা | English) */}
+            <div className="inline-flex items-center bg-emerald-950/90 border border-emerald-500/40 rounded-lg p-0.5 shadow-2xs">
+              <span className="pl-1.5 pr-1 text-emerald-400 flex items-center">
+                <Globe className="w-3 h-3" />
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentLang('bn');
+                  setPortalLanguage('bn');
+                }}
+                className={`px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
+                  currentLang === 'bn'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-emerald-300 hover:text-white hover:bg-emerald-850'
+                }`}
+                title="বাংলা সংস্করণ"
+              >
+                বাংলা
+              </button>
+              <span className="text-emerald-500/50 text-[10px] px-0.5">/</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentLang('en');
+                  setPortalLanguage('en');
+                }}
+                className={`px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
+                  currentLang === 'en'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-emerald-300 hover:text-white hover:bg-emerald-850'
+                }`}
+                title="English Version"
+              >
+                English
+              </button>
+            </div>
           </div>
         </div>
       </div>

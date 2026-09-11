@@ -890,6 +890,159 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
           </div>
 
           {/* =========================================================================
+              পৌর কর্তৃপক্ষের মূল্যায়ন/প্রত্যয়ন :
+              ========================================================================= */}
+          <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5 sm:p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between border-b border-slate-200 pb-3 gap-2">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
+                  <Compass className="w-4 h-4" />
+                </span>
+                <span>পৌর কর্তৃপক্ষের মূল্যায়ন/প্রত্যয়ন :</span>
+              </h3>
+
+              <div>
+                {searchedApp.status === 'rejected' ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-300">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>অননুমোদিত / বাতিল (Rejected)</span>
+                  </span>
+                ) : searchedApp.draftsmanReview?.boundaryClearance === 'disputed' ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>সীমানা নিয়ে আপত্তি / বিরোধপূর্ণ (Disputed)</span>
+                  </span>
+                ) : searchedApp.status === 'approved' ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>অনুমোদিত ও প্রত্যয়িত (Approved)</span>
+                  </span>
+                ) : searchedApp.status === 'investigating' ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>সরজমিন তদন্তাধীন (Investigating)</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>পর্যালোচনায় অপেক্ষমান</span>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Rejection Specific Notice Box */}
+            {searchedApp.status === 'rejected' && (
+              <div className="p-4 bg-red-50/90 border border-red-200 rounded-xl space-y-2">
+                <div className="flex items-center gap-2 text-red-950 font-bold text-xs sm:text-sm">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>আবেদন বাতিলের কারণ ও পৌর কর্তৃপক্ষের মূল্যায়ন মন্তব্য:</span>
+                </div>
+                <div className="p-3 bg-white rounded-lg border border-red-200 text-xs sm:text-sm text-red-900 font-medium leading-relaxed">
+                  {searchedApp.draftsmanReview?.remarks ||
+                    searchedApp.adminRemarks ||
+                    searchedApp.engineerApproval?.finalRemarks ||
+                    'নথিপত্র বা সরজমিন সীমানা যাচাইয়ে অসংগতি থাকায় আবেদনটি বাতিল করা হয়েছে।'}
+                </div>
+                <p className="text-[11px] text-red-700 leading-normal">
+                  * প্রয়োজনীয় তথ্যাদি বা নথিপত্রের ত্রুটি সংশোধনপূর্বক পুনরায় আবেদন করতে অথবা বিস্তারিত জানতে সীতাকুণ্ড পৌরসভা কার্যালয়ের প্রকৌশল শাখায় যোগাযোগ করতে অনুরোধ করা যাচ্ছে।
+                </p>
+              </div>
+            )}
+
+            {/* General Assessment Remarks / Observation Box */}
+            {searchedApp.status !== 'rejected' && (
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>পৌর কর্তৃপক্ষের সরজমিন প্রতিবেদন ও মূল্যায়ন মন্তব্য:</span>
+                </div>
+                <div className="p-3 bg-white rounded-lg border border-slate-200 text-xs sm:text-sm text-slate-800 font-medium leading-relaxed">
+                  {searchedApp.draftsmanReview?.remarks ||
+                    searchedApp.adminRemarks ||
+                    (searchedApp.status === 'pending'
+                      ? 'আবেদনটি পৌর কর্তৃপক্ষ কর্তৃক প্রারম্ভিক নথিপত্র নিরীক্ষা ও সরজমিন পরিদর্শনের অপেক্ষায় রয়েছে।'
+                      : 'সরজমিন পরিদর্শন ও সীমানা পরিমাপ প্রতিবেদন প্রক্রিয়াধীন রয়েছে।')}
+                </div>
+              </div>
+            )}
+
+            {/* Assessment Details Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <span className="text-slate-500 block mb-0.5">মূল্যায়নকারী কর্তৃপক্ষ / পদবী</span>
+                <span className="font-bold text-slate-900">
+                  {searchedApp.draftsmanReview?.designation || 'দায়িত্বপ্রাপ্ত পৌর কর্মকর্তা, সীতাকুণ্ড পৌরসভা'}
+                </span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <span className="text-slate-500 block mb-0.5">মূল্যায়ন / পর্যালোচনার তারিখ</span>
+                <span className="font-bold text-slate-900">
+                  {searchedApp.draftsmanReview?.reviewDate
+                    ? formatBanglaDate(searchedApp.draftsmanReview.reviewDate)
+                    : searchedApp.status === 'pending'
+                    ? 'প্রক্রিয়াধীন'
+                    : formatBanglaDate(searchedApp.createdAt)}
+                </span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <span className="text-slate-500 block mb-0.5">সরজমিন পরিদর্শন অবস্থা</span>
+                <span className="font-bold text-slate-900">
+                  {searchedApp.draftsmanReview?.isSiteInspected
+                    ? `পরিদর্শন সম্পন্ন (${formatBanglaDate(searchedApp.draftsmanReview.inspectionDate || searchedApp.draftsmanReview.reviewDate)})`
+                    : searchedApp.status === 'pending'
+                    ? 'পরিদর্শন অনুষ্ঠিত হয়নি'
+                    : 'পরিদর্শন প্রক্রিয়াধীন'}
+                </span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 sm:col-span-2 md:col-span-1">
+                <span className="text-slate-500 block mb-0.5">সীমানা সংক্রান্ত ছাড়পত্র</span>
+                <span
+                  className={`font-bold ${
+                    searchedApp.draftsmanReview?.boundaryClearance === 'disputed'
+                      ? 'text-red-700'
+                      : searchedApp.draftsmanReview?.boundaryClearance === 'clear' || searchedApp.status === 'approved'
+                      ? 'text-emerald-700'
+                      : 'text-slate-900'
+                  }`}
+                >
+                  {searchedApp.draftsmanReview?.boundaryClearance === 'disputed'
+                    ? 'আপত্তি / বিরোধযুক্ত (Disputed)'
+                    : searchedApp.draftsmanReview?.boundaryClearance === 'clear' || searchedApp.status === 'approved'
+                    ? 'বিরোধমুক্ত ও সঠিক (Clear)'
+                    : searchedApp.draftsmanReview?.boundaryClearance === 'under_survey'
+                    ? 'জরিপাধীন (Under Survey)'
+                    : 'যাচাই-বাছাই প্রক্রিয়াধীন'}
+                </span>
+              </div>
+
+              {/* Demarcation PDF attachment if present */}
+              {searchedApp.draftsmanReview?.demarcationPdf && (
+                <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 sm:col-span-2 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="text-emerald-800 font-bold block">সংযুক্ত ডিমার্কেশন নকশা / ফিল্ড স্কেচ:</span>
+                    <span className="text-[11px] text-emerald-700 truncate max-w-xs block">
+                      {searchedApp.draftsmanReview.demarcationPdf.fileName || 'Demarcation_Sketch.pdf'}
+                    </span>
+                  </div>
+                  <a
+                    href={searchedApp.draftsmanReview.demarcationPdf.dataUrl}
+                    download={searchedApp.draftsmanReview.demarcationPdf.fileName || 'Demarcation_Sketch.pdf'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition-colors shadow-2xs"
+                  >
+                    নকশা ফাইল ডাউনলোড
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* =========================================================================
               ৩. ভূমির তফসিল ও প্রস্তাবিত সাইট
               ========================================================================= */}
           <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5 sm:p-6">
@@ -1005,159 +1158,6 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
               </button>
             </div>
           )}
-
-          {/* =========================================================================
-              ৪. নক্সাকার (সিভিল), সীতাকুণ্ড পৌরসভা-র মূল্যায়ন ও প্রত্যয়ন সিদ্ধান্ত
-              ========================================================================= */}
-          <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5 sm:p-6 space-y-4">
-            <div className="flex flex-wrap items-center justify-between border-b border-slate-200 pb-3 gap-2">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
-                  <Compass className="w-4 h-4" />
-                </span>
-                <span>নক্সাকার (সিভিল), সীতাকুণ্ড পৌরসভা-র মূল্যায়ন ও প্রত্যয়ন সিদ্ধান্ত:</span>
-              </h3>
-
-              <div>
-                {searchedApp.status === 'rejected' ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-300">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>অননুমোদিত / বাতিল (Rejected)</span>
-                  </span>
-                ) : searchedApp.draftsmanReview?.boundaryClearance === 'disputed' ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>সীমানা নিয়ে আপত্তি / বিরোধপূর্ণ (Disputed)</span>
-                  </span>
-                ) : searchedApp.status === 'approved' ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>অনুমোদিত ও প্রত্যয়িত (Approved)</span>
-                  </span>
-                ) : searchedApp.status === 'investigating' ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>সরজমিন তদন্তাধীন (Investigating)</span>
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>পর্যালোচনায় অপেক্ষমান</span>
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Rejection Specific Notice Box */}
-            {searchedApp.status === 'rejected' && (
-              <div className="p-4 bg-red-50/90 border border-red-200 rounded-xl space-y-2">
-                <div className="flex items-center gap-2 text-red-950 font-bold text-xs sm:text-sm">
-                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                  <span>আবেদন বাতিলের কারণ ও নক্সাকারের আপত্তি নোট:</span>
-                </div>
-                <div className="p-3 bg-white rounded-lg border border-red-200 text-xs sm:text-sm text-red-900 font-medium leading-relaxed">
-                  {searchedApp.draftsmanReview?.remarks ||
-                    searchedApp.adminRemarks ||
-                    searchedApp.engineerApproval?.finalRemarks ||
-                    'নথিপত্র বা সরজমিন সীমানা যাচাইয়ে অসংগতি থাকায় আবেদনটি বাতিল করা হয়েছে।'}
-                </div>
-                <p className="text-[11px] text-red-700 leading-normal">
-                  * প্রয়োজনীয় তথ্যাদি বা নথিপত্রের ত্রুটি সংশোধনপূর্বক পুনরায় আবেদন করতে অথবা বিস্তারিত জানতে সীতাকুণ্ড পৌরসভা কার্যালয়ের প্রকৌশল শাখায় যোগাযোগ করতে অনুরোধ করা যাচ্ছে।
-                </p>
-              </div>
-            )}
-
-            {/* General Assessment Remarks / Observation Box */}
-            {searchedApp.status !== 'rejected' && (
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>নক্সাকারের সরজমিন প্রতিবেদন ও মূল্যায়ন মন্তব্য:</span>
-                </div>
-                <div className="p-3 bg-white rounded-lg border border-slate-200 text-xs sm:text-sm text-slate-800 font-medium leading-relaxed">
-                  {searchedApp.draftsmanReview?.remarks ||
-                    searchedApp.adminRemarks ||
-                    (searchedApp.status === 'pending'
-                      ? 'আবেদনটি নক্সাকার কর্তৃক প্রারম্ভিক নথিপত্র নিরীক্ষা ও সরজমিন পরিদর্শনের অপেক্ষায় রয়েছে।'
-                      : 'সরজমিন পরিদর্শন ও সীমানা পরিমাপ প্রতিবেদন প্রক্রিয়াধীন রয়েছে।')}
-                </div>
-              </div>
-            )}
-
-            {/* Assessment Details Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <span className="text-slate-500 block mb-0.5">মূল্যায়নকারী কর্মকর্তা ও পদবী</span>
-                <span className="font-bold text-slate-900">
-                  {searchedApp.draftsmanReview?.designation || 'নক্সাকার (সিভিল), সীতাকুণ্ড পৌরসভা'}
-                </span>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <span className="text-slate-500 block mb-0.5">মূল্যায়ন / পর্যালোচনার তারিখ</span>
-                <span className="font-bold text-slate-900">
-                  {searchedApp.draftsmanReview?.reviewDate
-                    ? formatBanglaDate(searchedApp.draftsmanReview.reviewDate)
-                    : searchedApp.status === 'pending'
-                    ? 'প্রক্রিয়াধীন'
-                    : formatBanglaDate(searchedApp.createdAt)}
-                </span>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <span className="text-slate-500 block mb-0.5">সরজমিন পরিদর্শন অবস্থা</span>
-                <span className="font-bold text-slate-900">
-                  {searchedApp.draftsmanReview?.isSiteInspected
-                    ? `পরিদর্শন সম্পন্ন (${formatBanglaDate(searchedApp.draftsmanReview.inspectionDate || searchedApp.draftsmanReview.reviewDate)})`
-                    : searchedApp.status === 'pending'
-                    ? 'পরিদর্শন অনুষ্ঠিত হয়নি'
-                    : 'পরিদর্শন প্রক্রিয়াধীন'}
-                </span>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 sm:col-span-2 md:col-span-1">
-                <span className="text-slate-500 block mb-0.5">সীমানা সংক্রান্ত ছাড়পত্র</span>
-                <span
-                  className={`font-bold ${
-                    searchedApp.draftsmanReview?.boundaryClearance === 'disputed'
-                      ? 'text-red-700'
-                      : searchedApp.draftsmanReview?.boundaryClearance === 'clear' || searchedApp.status === 'approved'
-                      ? 'text-emerald-700'
-                      : 'text-slate-900'
-                  }`}
-                >
-                  {searchedApp.draftsmanReview?.boundaryClearance === 'disputed'
-                    ? 'আপত্তি / বিরোধযুক্ত (Disputed)'
-                    : searchedApp.draftsmanReview?.boundaryClearance === 'clear' || searchedApp.status === 'approved'
-                    ? 'বিরোধমুক্ত ও সঠিক (Clear)'
-                    : searchedApp.draftsmanReview?.boundaryClearance === 'under_survey'
-                    ? 'জরিপাধীন (Under Survey)'
-                    : 'যাচাই-বাছাই প্রক্রিয়াধীন'}
-                </span>
-              </div>
-
-              {/* Draftsman Demarcation PDF attachment if present */}
-              {searchedApp.draftsmanReview?.demarcationPdf && (
-                <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 sm:col-span-2 flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <span className="text-emerald-800 font-bold block">সংযুক্ত ডিমার্কেশন নকশা / ফিল্ড স্কেচ:</span>
-                    <span className="text-[11px] text-emerald-700 truncate max-w-xs block">
-                      {searchedApp.draftsmanReview.demarcationPdf.fileName || 'Demarcation_Sketch.pdf'}
-                    </span>
-                  </div>
-                  <a
-                    href={searchedApp.draftsmanReview.demarcationPdf.dataUrl}
-                    download={searchedApp.draftsmanReview.demarcationPdf.fileName || 'Demarcation_Sketch.pdf'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition-colors shadow-2xs"
-                  >
-                    নকশা ফাইল ডাউনলোড
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* =========================================================================
               ৫. নোটিফিকেশন এলার্ট ও বার্তা হিস্ট্রি (Notification Alerts Stream)
