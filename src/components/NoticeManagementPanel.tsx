@@ -533,16 +533,6 @@ export const NoticeManagementPanel: React.FC<NoticeManagementPanelProps> = ({
                     )}
                   </label>
                 )}
-                {/* Also allow URL input */}
-                <div className="mt-2">
-                  <input
-                    type="url"
-                    value={formData.fileUrl?.startsWith('data:') ? '' : (formData.fileUrl || '')}
-                    onChange={(e) => setFormData({ ...formData, fileUrl: e.target.value })}
-                    placeholder="অথবা PDF URL লিঙ্ক পেস্ট করুন (https://...)"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-400 bg-slate-50"
-                  />
-                </div>
               </div>
 
               {/* Mark as Important Checkbox */}
