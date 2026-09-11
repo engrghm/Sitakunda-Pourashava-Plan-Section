@@ -51,6 +51,7 @@ import {
   hasSavedDraft,
   formatBanglaDate
 } from '../utils/storage';
+import { uploadDocumentToServer } from '../utils/apiStorage';
 import { sendAutomatedStatusAlert } from '../utils/notificationService';
 
 interface NewApplicationFormProps {
@@ -570,8 +571,8 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
     handleToggleApplicantSameAsFirstOwner(true);
   };
 
-  // File Upload with 2 MB Size Validation
-  const handleFileUpload = (docKey: string, docTitle: string, isMandatory: boolean, file: File | null) => {
+  // File Upload with 2 MB Size Validation and Hostinger Server Storage
+  const handleFileUpload = async (docKey: string, docTitle: string, isMandatory: boolean, file: File | null) => {
     setFileError(null);
     if (!file) return;
 
@@ -583,15 +584,7 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
       return;
     }
 
-    const newDoc: UploadedDocument = {
-      id: `doc-${Date.now()}`,
-      docType: docKey,
-      docTitle,
-      fileName: file.name,
-      fileSize: file.size,
-      uploadDate: new Date().toISOString().split('T')[0],
-      isMandatory,
-    };
+    const newDoc = await uploadDocumentToServer(file, docKey, docTitle, isMandatory);
 
     setUploadedDocs((prev) => ({
       ...prev,
@@ -855,7 +848,7 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-7" noValidate>
       {/* Draft Found Notification Banner */}
       {draftNotice && (
         <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 sm:p-5 shadow-sm animate-in fade-in duration-200">
@@ -914,17 +907,18 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
       )}
 
       {/* Form Header Banner */}
-      <div className="bg-emerald-900 text-white rounded-xl p-5 sm:p-6 shadow-md border-l-4 border-emerald-400">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-emerald-800 rounded-lg">
+      <div className="bg-gradient-to-br from-[#043328] via-[#064e3b] to-[#0f172a] text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-emerald-500/40 relative overflow-hidden">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none"></div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/15 text-emerald-300 shadow-md">
               <Building2 className="w-6 h-6 text-emerald-300" />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-emerald-50">
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-sm">
                 ভূমির ডিমার্কেশন যাচাইয়ের অনলাইন আবেদন ফরম
               </h2>
-              <p className="text-emerald-200 text-sm mt-1">
+              <p className="text-emerald-100/90 text-xs sm:text-sm mt-1 font-normal">
                 সীতাকুণ্ড পৌরসভা এলাকাভুক্ত সকল মৌজার জন্য প্রযোজ্য | সকল তথ্য ও নথিপত্র বাংলায় পূরণ করুন
               </p>
             </div>

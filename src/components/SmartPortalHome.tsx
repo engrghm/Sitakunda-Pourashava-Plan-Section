@@ -24,16 +24,19 @@ import {
   Info,
   Layers,
   MapPin,
-  AlertTriangle
+  AlertTriangle,
+  Activity
 } from 'lucide-react';
 import { PortalConfig, CouncilCategory, COUNCIL_CATEGORIES_META } from '../utils/portalConfig';
 import { MunicipalityLogo } from './MunicipalityLogo';
 import { 
   toBanglaNumber, 
   getStoredApplications, 
-  getBuildingApplications, 
+  getBuildingApplications,
   getRoadCuttingApplications 
 } from '../utils/storage';
+import Tilt from 'react-parallax-tilt';
+import { motion } from 'framer-motion';
 
 interface SmartPortalHomeProps {
   config: PortalConfig;
@@ -62,63 +65,65 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
   };
 
   return (
-    <div className="space-y-8 sm:space-y-12 animate-fade-in-up">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in-up">
       
-      {/* 1. Scrolling Announcements (Marquee) */}
-      {config.enableMarquee && config.marqueeNotices.length > 0 && (
-        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white rounded-2xl p-2 sm:p-2.5 shadow-md border border-emerald-500/30 flex items-center gap-3 overflow-hidden text-xs sm:text-sm">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600 text-white rounded-xl font-bold shrink-0 shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 animate-spin" />
-            <span>জরুরি সংবাদ</span>
-          </div>
+      {/* 1 & 2. Scrolling Announcements (Marquee) + Hero Section closely attached */}
+      <div className="space-y-2.5 sm:space-y-3">
+        {/* 1. Scrolling Announcements (Marquee) */}
+        {config.enableMarquee && config.marqueeNotices.length > 0 && (
+          <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-2 sm:p-2.5 shadow-md border border-emerald-500/30 flex items-center gap-3 overflow-hidden text-xs sm:text-sm">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600 text-white rounded-xl font-bold shrink-0 shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 animate-spin" />
+              <span>জরুরি সংবাদ</span>
+            </div>
 
-          <div 
-            className="flex-1 overflow-hidden relative cursor-pointer"
-            onMouseEnter={() => setMarqueePlaying(false)}
-            onMouseLeave={() => setMarqueePlaying(true)}
-            title="মাউস হোভার করলে স্ক্রোল থামবে"
-          >
-            <div className={`whitespace-nowrap inline-block ${marqueePlaying ? 'animate-marquee' : ''}`}>
-              {config.marqueeNotices.map((notice, idx) => (
-                <span key={idx} className="inline-flex items-center gap-2 mr-10 text-emerald-100 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                  <span>{notice}</span>
-                </span>
-              ))}
+            <div 
+              className="flex-1 overflow-hidden relative cursor-pointer"
+              onMouseEnter={() => setMarqueePlaying(false)}
+              onMouseLeave={() => setMarqueePlaying(true)}
+              title="মাউস হোভার করলে স্ক্রোল থামবে"
+            >
+              <div className={`whitespace-nowrap inline-block ${marqueePlaying ? 'animate-marquee' : ''}`}>
+                {config.marqueeNotices.map((notice, idx) => (
+                  <span key={idx} className="inline-flex items-center gap-2 mr-10 text-emerald-100 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span>{notice}</span>
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* 2. Hero Section */}
-      <section className="relative rounded-3xl overflow-hidden shadow-2xl border border-emerald-500/30 bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-950 text-white p-6 sm:p-10 lg:p-12">
+        {/* 2. Hero Section */}
+        <section className="relative rounded-3xl overflow-hidden shadow-2xl border border-emerald-500/40 bg-gradient-to-br from-[#043328] via-[#064e3b] to-[#0f172a] text-white p-6 sm:p-10 lg:p-12">
         {/* Background Decorative Rings & Watermark */}
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 rounded-full bg-teal-500/10 blur-3xl pointer-events-none"></div>
-        <div className="absolute right-6 bottom-6 opacity-10 pointer-events-none select-none hidden lg:block">
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 rounded-full bg-teal-500/20 blur-3xl pointer-events-none"></div>
+        <div className="absolute right-6 bottom-6 opacity-15 pointer-events-none select-none hidden lg:block">
           <MunicipalityLogo size={280} />
         </div>
 
         <div className="relative z-10 max-w-3xl space-y-6">
           {/* Top Badge */}
-          <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-400/40 px-3.5 py-1.5 rounded-full text-xs font-semibold text-emerald-300 backdrop-blur-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <div className="inline-flex items-center gap-2 bg-emerald-950/80 border border-emerald-400/50 px-3.5 py-1.5 rounded-full text-xs font-bold text-emerald-300 shadow-sm">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
             <span>{config.heroBadgeText}</span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight sm:leading-tight text-white drop-shadow-sm">
+          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight sm:leading-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
             {config.heroHeadline}
           </h1>
 
           {/* Subtitle */}
-          <p className="text-sm sm:text-base text-slate-200 leading-relaxed font-normal">
+          <p className="text-base sm:text-lg text-emerald-100/95 leading-relaxed font-normal max-w-2xl drop-shadow-sm">
             {config.heroSubheadline}
           </p>
 
           {/* Instant Tracking Quick Search Box */}
-          <div className="bg-white/10 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-white/20 shadow-xl space-y-2">
-            <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+          <div className="bg-black/40 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-emerald-400/40 shadow-xl space-y-2">
+            <span className="text-xs sm:text-sm font-bold text-amber-300 flex items-center gap-1.5 drop-shadow-xs">
               <Search className="w-3.5 h-3.5" />
               <span>আপনার দাখিলকৃত আবেদনের লাইভ স্ট্যাটাস জানতে ট্র্যাকিং আইডি লিখুন:</span>
             </span>
@@ -134,7 +139,7 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
               </div>
               <button
                 type="submit"
-                className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 active:scale-[0.98] text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Search className="w-4 h-4" />
                 <span>তাত্ক্ষণিক ট্র্যাকিং</span>
@@ -147,7 +152,7 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
             <button
               type="button"
               onClick={() => onNavigateTab('apply')}
-              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer hover:shadow-lg"
+              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer hover:shadow-lg"
             >
               <FileText className="w-4 h-4" />
               <span>ডিমার্কেশন আবেদন</span>
@@ -157,7 +162,7 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
             <button
               type="button"
               onClick={() => onNavigateTab('schedule1')}
-              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer hover:shadow-lg"
+              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer hover:shadow-lg"
             >
               <Building2 className="w-4 h-4" />
               <span>ইমারত অনুমোদন</span>
@@ -167,7 +172,7 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
             <button
               type="button"
               onClick={() => onNavigateTab('roadcutting')}
-              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs sm:text-sm font-bold border border-slate-600 shadow-md transition-all cursor-pointer"
+              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-white text-xs sm:text-sm font-bold border border-slate-600 shadow-md transition-all cursor-pointer"
             >
               <Construction className="w-4 h-4 text-amber-400" />
               <span>রাস্তা কর্তন অনুমোদন</span>
@@ -176,6 +181,7 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
           </div>
         </div>
       </section>
+      </div>
 
       {/* 3. Core Services Spotlight Grid */}
       <section className="space-y-4">
@@ -197,201 +203,219 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
           {/* Card 1: Demarcation */}
-          <div className="group bg-white rounded-2xl p-5 sm:p-6 border-2 border-emerald-500/40 shadow-sm hover:shadow-xl hover:border-emerald-600 transition-all duration-300 flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-full pointer-events-none -z-0 group-hover:scale-110 transition-transform"></div>
-            
-            <div className="space-y-3 relative z-10">
-              <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shadow-xs">
-                  <FileText className="w-6 h-6" />
+          <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10} perspective={1000} scale={1.02} transitionSpeed={1500} className="h-full">
+            <div className="h-full group bg-white rounded-3xl p-6 border border-slate-200/90 hover:border-emerald-500/60 shadow-[0_4px_20px_rgb(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(5,150,105,0.15)] transition-all duration-300 flex flex-col justify-between relative overflow-hidden" style={{ transformStyle: 'preserve-3d' }}>
+              <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/10 rounded-bl-full pointer-events-none -z-0 group-hover:scale-125 transition-transform duration-500 ease-out"></div>
+              
+              <div className="space-y-4 relative z-10" style={{ transform: 'translateZ(30px)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shadow-md shadow-emerald-700/25">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <span className="text-[11px] font-black bg-emerald-100 text-emerald-900 px-3 py-1.5 rounded-full shadow-2xs border border-emerald-300/80">
+                    ফি: ৳ ১০০/-
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold bg-emerald-600 text-white px-2.5 py-1 rounded-full shadow-xs">
-                  ফি: ৳ ১০০/-
-                </span>
+
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 group-hover:text-emerald-800 transition-colors">
+                    ডিমার্কেশন ও মালিকানা
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                    মৌজা নকশা, জে.এল. ও বি.এস খতিয়ান অনুযায়ী জমির সঠিক সীমানা নির্ধারণ ও সরজমিন তদন্ত।
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 space-y-2 text-xs font-semibold text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>পৌর কর্তৃপক্ষের সরজমিন তদন্ত ও পরিমাপ</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>কিউআর কোডযুক্ত প্রত্যয়নপত্র ও ম্যাপ</span>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-emerald-800 transition-colors">
-                  ডিমার্কেশন ও মালিকানা
-                </h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  মৌজা নকশা, জে.এল. ও বি.এস খতিয়ান অনুযায়ী জমির সঠিক সীমানা নির্ধারণ ও সরজমিন তদন্ত।
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>নক্শাকারের সরজমিন তদন্ত ও পরিমাপ</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>কিউআর কোডযুক্ত প্রত্যয়নপত্র ও ম্যাপ</span>
-                </div>
+              <div style={{ transform: 'translateZ(40px)' }}>
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('apply')}
+                  className="mt-6 w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 active:scale-98 text-white font-bold text-sm rounded-xl shadow-md shadow-emerald-900/15 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>অনলাইনে আবেদন করুন</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
+                </button>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => onNavigateTab('apply')}
-              className="mt-5 w-full py-2.5 px-4 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer group-hover:shadow-lg"
-            >
-              <span>অনলাইনে আবেদন করুন</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
+          </Tilt>
 
           {/* Card 2: Tracking */}
-          <div className="group bg-white rounded-2xl p-5 sm:p-6 border-2 border-teal-500/40 shadow-sm hover:shadow-xl hover:border-teal-600 transition-all duration-300 flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-teal-50 rounded-bl-full pointer-events-none -z-0 group-hover:scale-110 transition-transform"></div>
+          <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10} perspective={1000} scale={1.02} transitionSpeed={1500} className="h-full">
+            <div className="h-full group bg-white rounded-3xl p-6 border border-slate-200/90 hover:border-teal-500/60 shadow-[0_4px_20px_rgb(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(13,148,136,0.15)] transition-all duration-300 flex flex-col justify-between relative overflow-hidden" style={{ transformStyle: 'preserve-3d' }}>
+              <div className="absolute top-0 right-0 w-28 h-28 bg-teal-500/10 rounded-bl-full pointer-events-none -z-0 group-hover:scale-125 transition-transform duration-500 ease-out"></div>
 
-            <div className="space-y-3 relative z-10">
-              <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center font-bold shadow-xs">
-                  <Search className="w-6 h-6" />
+              <div className="space-y-4 relative z-10" style={{ transform: 'translateZ(30px)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-700 text-white flex items-center justify-center shadow-md shadow-teal-700/25">
+                    <Search className="w-6 h-6" />
+                  </div>
+                  <span className="text-[11px] font-black bg-teal-100 text-teal-900 px-3 py-1.5 rounded-full shadow-2xs border border-teal-300/80">
+                    সম্পূর্ণ ফ্রি
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold bg-teal-700 text-white px-2.5 py-1 rounded-full shadow-xs">
-                  সম্পূর্ণ ফ্রি
-                </span>
+
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 group-hover:text-teal-800 transition-colors">
+                    আবেদন লাইভ ট্র্যাকিং
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                    যেকোনো দাখিলকৃত আবেদনের বর্তমান ধাপ, রিপোর্ট ও অনুমোদন তাৎক্ষণিক জানুন।
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 space-y-2 text-xs font-semibold text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
+                    <span>ট্র্যাকিং আইডি ও মোবাইল নম্বর সার্চ</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
+                    <span>A4 ফরম ও প্রত্যয়নপত্র ডাউনলোড</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span>২৪/৭ রিয়েল-টাইম ডাটা আপডেট</span>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-teal-800 transition-colors">
-                  আবেদন লাইভ ট্র্যাকিং
-                </h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  যেকোনো দাখিলকৃত আবেদনের বর্তমান ধাপ, রিপোর্ট ও অনুমোদন তাৎক্ষণিক জানুন।
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                  <span>ট্র্যাকিং আইডি ও মোবাইল নম্বর সার্চ</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                  <span>A4 ফরম ও প্রত্যয়নপত্র ডাউনলোড</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>২৪/৭ রিয়েল-টাইম ডাটা আপডেট</span>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => onNavigateTab('track')}
-              className="mt-5 w-full py-2.5 px-4 bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer group-hover:shadow-lg"
-            >
-              <span>আবেদন স্ট্যাটাস দেখুন</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-
-          {/* Card 3: Building Plan (Schedule-1) */}
-          <div className="group bg-white rounded-2xl p-5 sm:p-6 border-2 border-amber-500/40 shadow-sm hover:shadow-xl hover:border-amber-600 transition-all duration-300 flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50 rounded-bl-full pointer-events-none -z-0 group-hover:scale-110 transition-transform"></div>
-
-            <div className="space-y-3 relative z-10">
-              <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold shadow-xs">
-                  <Building2 className="w-6 h-6" />
-                </div>
-                <span className="text-[10px] font-bold bg-amber-600 text-white px-2.5 py-1 rounded-full shadow-xs">
-                  ফি: ৳ ১,০০০/-
-                </span>
-              </div>
-
-              <div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-amber-800 transition-colors">
-                  ইমারত অনুমোদন (তফসিল-১)
-                </h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  ইমারত নির্মাণ বিধিমালা অনুযায়ী ভবনের প্ল্যান অনুমোদন, চালানের বিবরণ ও ১৫% সরকারি ভ্যাট।
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>তফসিল-১ অফিসিয়াল ফর্ম পূরণ</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>নক্সাকার ও XEN অনুমোদন ও সিলযুক্ত A4 কপি</span>
-                </div>
+              <div style={{ transform: 'translateZ(40px)' }}>
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('track')}
+                  className="mt-6 w-full py-3 px-4 bg-gradient-to-r from-teal-600 to-emerald-700 hover:from-teal-500 hover:to-emerald-600 active:scale-98 text-white font-bold text-sm rounded-xl shadow-md shadow-teal-900/15 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>আবেদন স্ট্যাটাস দেখুন</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
+                </button>
               </div>
             </div>
+          </Tilt>
 
-            <button
-              type="button"
-              onClick={() => onNavigateTab('schedule1')}
-              className="mt-5 w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer group-hover:shadow-lg"
-            >
-              <span>তফসিল-১ ফরম পূরণ করুন</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
+          {/* Card 3: Building Plan */}
+          <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10} perspective={1000} scale={1.02} transitionSpeed={1500} className="h-full">
+            <div className="h-full group bg-white rounded-3xl p-6 border border-slate-200/90 hover:border-amber-500/60 shadow-[0_4px_20px_rgb(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(217,119,6,0.15)] transition-all duration-300 flex flex-col justify-between relative overflow-hidden" style={{ transformStyle: 'preserve-3d' }}>
+              <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/10 rounded-bl-full pointer-events-none -z-0 group-hover:scale-125 transition-transform duration-500 ease-out"></div>
+
+              <div className="space-y-4 relative z-10" style={{ transform: 'translateZ(30px)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-amber-600 to-emerald-800 text-white flex items-center justify-center shadow-md shadow-amber-700/25">
+                    <Building2 className="w-6 h-6" />
+                  </div>
+                  <span className="text-[11px] font-black bg-amber-100 text-amber-900 px-3 py-1.5 rounded-full shadow-2xs border border-amber-300/80">
+                    ফি: ৳ ১,০০০/-
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 group-hover:text-amber-800 transition-colors">
+                    ইমারত অনুমোদন (তফসিল-১)
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                    ইমারত নির্মাণ বিধিমালা অনুযায়ী ভবনের প্ল্যান অনুমোদন, চালানের বিবরণ ও ১৫% সরকারি ভ্যাট।
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 space-y-2 text-xs font-semibold text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>তফসিল-১ অফিসিয়াল ফর্ম পূরণ</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>অনলাইন ব্যাংক চালান ট্র্যাকিং</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ transform: 'translateZ(40px)' }}>
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('schedule1')}
+                  className="mt-6 w-full py-3 px-4 bg-gradient-to-r from-amber-600 to-emerald-800 hover:from-amber-500 hover:to-emerald-700 active:scale-98 text-white font-bold text-sm rounded-xl shadow-md shadow-amber-900/15 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>তফসিল-১ ফরম পূরণ করুন</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
+                </button>
+              </div>
+            </div>
+          </Tilt>
 
           {/* Card 4: Road Cutting */}
-          <div className="group bg-white rounded-2xl p-5 sm:p-6 border-2 border-yellow-500/40 shadow-sm hover:shadow-xl hover:border-yellow-600 transition-all duration-300 flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-50 rounded-bl-full pointer-events-none -z-0 group-hover:scale-110 transition-transform"></div>
+          <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10} perspective={1000} scale={1.02} transitionSpeed={1500} className="h-full">
+            <div className="h-full group bg-white rounded-3xl p-6 border border-slate-200/90 hover:border-emerald-600/60 shadow-[0_4px_20px_rgb(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(5,150,105,0.15)] transition-all duration-300 flex flex-col justify-between relative overflow-hidden" style={{ transformStyle: 'preserve-3d' }}>
+              <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-600/10 rounded-bl-full pointer-events-none -z-0 group-hover:scale-125 transition-transform duration-500 ease-out"></div>
 
-            <div className="space-y-3 relative z-10">
-              <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-yellow-100 text-yellow-800 flex items-center justify-center font-bold shadow-xs">
-                  <Construction className="w-6 h-6" />
+              <div className="space-y-4 relative z-10" style={{ transform: 'translateZ(30px)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-emerald-700 to-slate-800 text-white flex items-center justify-center shadow-md shadow-emerald-800/25">
+                    <Activity className="w-6 h-6" />
+                  </div>
+                  <span className="text-[11px] font-black bg-emerald-100 text-emerald-900 px-3 py-1.5 rounded-full shadow-2xs border border-emerald-300/80">
+                    ফি: ৳ ৩০০/-
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold bg-yellow-600 text-white px-2.5 py-1 rounded-full shadow-xs">
-                  ফি: ৳ ৩০০/-
-                </span>
+
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 group-hover:text-emerald-800 transition-colors">
+                    রাস্তা কর্তন ও মেরামত
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                    গ্যাস, বিদ্যুৎ, ওয়াসা বা ড্রেন সংযোগের জন্য পৌর রাস্তা খনন ও ক্ষতিপূরণ অনুমোদন।
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 space-y-2 text-xs font-semibold text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>রাস্তা কর্তন ক্ষতিপূরণ এসেসমেন্ট</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>অনুমোদন পত্র ও ব্যাংক চালান ট্র্যাকিং</span>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-yellow-800 transition-colors">
-                  রাস্তা কর্তন অনুমোদন
-                </h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  গ্যাস, পানি বা বিদ্যুৎ লাইন সংযোগের জন্য রাস্তা খনন অনুমতি ও ক্ষতিপূরণ পরিমাপ।
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 space-y-1 text-xs text-slate-600">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-yellow-600 shrink-0" />
-                  <span>পৌর ক্যাশ কাউন্টার রসিদ (৳ ৩০০/-)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-yellow-600 shrink-0" />
-                  <span>পরিমাপ ও মেরামত ক্ষতিপূরণ হিসাব</span>
-                </div>
+              <div style={{ transform: 'translateZ(40px)' }}>
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('roadcutting')}
+                  className="mt-6 w-full py-3 px-4 bg-gradient-to-r from-emerald-700 to-slate-800 hover:from-emerald-600 hover:to-slate-700 active:scale-98 text-white font-bold text-sm rounded-xl shadow-md shadow-slate-900/15 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>অনুমোদন আবেদন করুন</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
+                </button>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => onNavigateTab('roadcutting')}
-              className="mt-5 w-full py-2.5 px-4 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer group-hover:shadow-lg"
-            >
-              <span>রাস্তা কর্তনের আবেদন</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
+          </Tilt>
         </div>
       </section>
 
-      {/* 4. Municipal Services Directory - Under Maintenance */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+      {/* 4. Other Municipal Citizen Services Highlights (Under Maintenance) */}
+      <section className="bg-white/70 backdrop-blur-2xl rounded-3xl p-6 sm:p-8 border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.06)] space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-2 border-b border-slate-200/50 pb-3">
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-teal-600"></span>
-              <span>পৌরসভার অন্যান্য ডিজিটাল নাগরিক সেবাসমূহ</span>
-            </h2>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-700"></span>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                পৌরসভার অন্যান্য ডিজিটাল নাগরিক সেবাসমূহ
+              </h2>
+            </div>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
               স্মার্ট পৌরসভা ফ্রেমওয়ার্কের অন্তর্ভুক্ত সকল সেবা ও আবেদন প্রক্রিয়া
             </p>
@@ -405,15 +429,14 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
         {/* Under Maintenance Notice */}
         <div className="relative">
           <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-dashed border-amber-300 rounded-2xl p-8 text-center space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+            <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-sm">
               <AlertTriangle className="w-8 h-8" />
             </div>
             <h3 className="text-lg font-bold text-amber-800">আন্ডার মেইন্টেন্যান্স</h3>
-            <p className="text-sm text-amber-700 max-w-md mx-auto">
-              এই বিভাগের অন্যান্য ডিজিটাল নাগরিক সেবাগুলি বর্তমানে নির্মাণাধীন (Under Construction) রয়েছে।
-              শীঘ্রই চালু হবে।
+            <p className="text-sm text-amber-700 max-w-md mx-auto leading-relaxed">
+              অন্যান্য ডিজিটাল নাগরিক সেবাগুলি বর্তমানে নির্মাণাধীন (আন্ডার মেইন্টেন্যান্স) রয়েছে। শীঘ্রই চালু হবে।
             </p>
-            <p className="text-xs text-amber-600 font-mono">Coming Soon — নির্মাণাধীন</p>
+            <p className="text-xs text-amber-600 font-mono font-bold">Coming Soon — নির্মাণাধীন</p>
           </div>
         </div>
 
@@ -443,20 +466,17 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-1">
+                  <h3 className="font-bold text-slate-900 text-sm group-hover:text-emerald-800 transition-colors">
                     {srv.banglaTitle}
-                  </h4>
-                  <span className="text-[10px] text-slate-400 block font-medium">
-                    শাখা: {srv.category}
-                  </span>
-                  <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">
                     {srv.description}
                   </p>
                 </div>
               </div>
 
               <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                <span className="text-[11px] font-bold text-emerald-800">
+                <span className="text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
                   {srv.fee}
                 </span>
                 <span className="text-[11px] text-slate-400 flex items-center gap-1 group-hover:text-emerald-700 font-semibold transition-colors">
@@ -469,41 +489,68 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
         </div>
       </section>
 
-      {/* 5. Leadership & Message Section */}
+      {/* 5. Leadership & Message Section — Prominent Administrator Speech & Face View */}
       <section>
         {/* Mayor / Administrator Speech Card — Full Width */}
-        <div className="bg-gradient-to-br from-slate-900 to-emerald-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-emerald-500/30 flex flex-col justify-between relative overflow-hidden">
-          <div className="space-y-4 relative z-10">
-            <div className="flex items-center justify-between border-b border-emerald-800/80 pb-3">
-              <div className="flex items-center gap-2.5">
-                <MunicipalityLogo size={40} />
+        <div className="bg-gradient-to-br from-[#043328] via-[#064e3b] to-[#0f172a] text-white rounded-3xl p-6 sm:p-8 lg:p-10 shadow-xl border border-emerald-500/40 relative overflow-hidden">
+          {/* Subtle Background Watermark */}
+          <div className="absolute right-0 bottom-0 opacity-5 pointer-events-none translate-x-8 translate-y-8">
+            <MunicipalityLogo size={260} />
+          </div>
+
+          <div className="space-y-6 relative z-10">
+            {/* Header bar of the card */}
+            <div className="flex items-center justify-between border-b border-emerald-800/80 pb-3.5">
+              <div className="flex items-center gap-3">
+                <MunicipalityLogo size={42} />
                 <div>
-                  <span className="text-xs font-semibold text-emerald-400 block">স্মার্ট সিটি ও ডিজিটাল গভর্নেন্স</span>
-                  <h3 className="text-lg sm:text-xl font-bold text-white">{config.leaderTitle}</h3>
+                  <span className="text-xs font-semibold text-emerald-400 block tracking-wide">স্মার্ট সিটি ও ডিজিটাল গভর্নেন্স</span>
+                  <h3 className="text-lg sm:text-2xl font-bold text-white tracking-tight">{config.leaderTitle}</h3>
                 </div>
               </div>
-              <span className="bg-emerald-500/20 text-emerald-300 text-xs px-3 py-1 rounded-full border border-emerald-400/40">
+              <span className="bg-emerald-500/20 text-emerald-300 text-xs px-3.5 py-1 rounded-full border border-emerald-400/40 font-bold">
                 সীতাকুণ্ড পৌরসভা
               </span>
             </div>
 
-            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed italic bg-black/20 p-4 rounded-2xl border border-white/10">
-              "{config.leaderMessage}"
-            </p>
-
-            <div className="flex items-center gap-4 pt-2">
-              <div className="w-14 h-14 rounded-2xl bg-white/10 border-2 border-emerald-400 overflow-hidden flex items-center justify-center p-1 shrink-0 shadow-md">
-                <img
-                  src={config.leaderImageUrl || '/logo.png'}
-                  alt={config.leaderName}
-                  className="w-full h-full object-contain"
-                  onError={(e: any) => { e.target.src = '/logo.png'; }}
-                />
+            {/* Main content: Large Face Photo + Official Speech */}
+            <div className="flex flex-col md:flex-row gap-6 lg:gap-8 items-center md:items-start">
+              {/* Prominent High-Visibility Official Photo Box */}
+              <div className="relative shrink-0 flex flex-col items-center">
+                <div className="w-36 h-44 sm:w-48 sm:h-56 lg:w-52 lg:h-60 rounded-3xl bg-slate-800/90 border-3 border-emerald-400 overflow-hidden shadow-2xl ring-4 ring-emerald-500/25 flex items-center justify-center group">
+                  <img
+                    src={config.leaderImageUrl || '/logo.png'}
+                    alt={config.leaderName}
+                    className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+                    onError={(e: any) => { e.target.src = '/logo.png'; }}
+                  />
+                </div>
+                <div className="mt-2.5 text-center">
+                  <span className="inline-block bg-gradient-to-r from-emerald-600 to-teal-700 text-white text-xs font-bold px-4 py-1 rounded-full border border-emerald-400/50 shadow-md">
+                    পৌর প্রশাসক
+                  </span>
+                </div>
               </div>
-              <div>
-                <h4 className="text-base font-bold text-white">{config.leaderName}</h4>
-                <p className="text-xs text-emerald-300 font-medium">{config.leaderDesignation}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">সীতাকুণ্ড পৌরসভা কার্যালয়, চট্টগ্রাম</p>
+
+              {/* Official Statement & Designation Box */}
+              <div className="flex-1 space-y-4 text-center md:text-left">
+                <div className="relative">
+                  <span className="text-emerald-500/30 text-5xl sm:text-6xl font-serif absolute -top-4 -left-3 select-none pointer-events-none">“</span>
+                  <p className="text-sm sm:text-base text-slate-200 leading-relaxed italic bg-black/30 p-5 sm:p-6 rounded-2xl border border-white/10 shadow-inner relative z-10 font-normal">
+                    "{config.leaderMessage}"
+                  </p>
+                </div>
+
+                <div className="space-y-1 pt-1">
+                  <h4 className="text-xl sm:text-2xl font-black text-white tracking-tight">{config.leaderName}</h4>
+                  <p className="text-sm sm:text-base text-emerald-300 font-semibold">{config.leaderDesignation}</p>
+                  <p className="text-xs text-slate-400">সীতাকুণ্ড পৌরসভা কার্যালয়, চট্টগ্রাম</p>
+                  
+                  <div className="inline-flex items-center gap-2 mt-2 bg-emerald-950/70 border border-emerald-500/30 px-3.5 py-1 rounded-full text-xs text-emerald-200 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -583,7 +630,7 @@ export const SmartPortalHome: React.FC<SmartPortalHomeProps> = ({
         ].length;
         const inProgressApps = totalApps - approvedApps - pendingApps;
         return (
-          <section className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-emerald-500/30">
+          <section className="bg-gradient-to-br from-[#043328] via-[#064e3b] to-[#0f172a] text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-emerald-500/40">
             <div className="text-center max-w-xl mx-auto mb-6">
               <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">রিয়েল-টাইম ডাটা ট্র্যাকিং</span>
               <h2 className="text-xl sm:text-2xl font-black text-white mt-1">

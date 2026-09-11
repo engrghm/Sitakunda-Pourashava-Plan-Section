@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Plus, 
@@ -14,7 +14,9 @@ import {
   Save,
   X,
   ArrowUpDown,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Loader2,
+  Lock
 } from 'lucide-react';
 import { 
   CouncilMember, 
@@ -24,6 +26,8 @@ import {
   getPortalConfig,
   savePortalConfig
 } from '../utils/portalConfig';
+import { uploadImageToServer } from '../utils/apiStorage';
+import { getOfficerSession } from '../utils/storage';
 
 interface CouncilManagementPanelProps {
   onSuccessNotification?: (msg: string) => void;
@@ -37,6 +41,18 @@ export const CouncilManagementPanel: React.FC<CouncilManagementPanelProps> = ({
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<CouncilCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSaved, setIsSaved] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // Sync with portal-config-updated event
+  useEffect(() => {
+    const handlePortalConfigUpdate = () => {
+      const latest = getPortalConfig();
+      setConfig(latest);
+      setMembers(latest.councilMembers || []);
+    };
+    window.addEventListener('portal-config-updated', handlePortalConfigUpdate);
+    return () => window.removeEventListener('portal-config-updated', handlePortalConfigUpdate);
+  }, []);
 
   // Form Modal state
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -55,19 +71,24 @@ export const CouncilManagementPanel: React.FC<CouncilManagementPanelProps> = ({
     displayOrder: 1
   });
 
-  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      alert('ছবির আকার সর্বোচ্চ ২ মেগাবাইট হতে হবে');
+    if (file.size > 5 * 1024 * 1024) {
+      alert('ছবির আকার সর্বোচ্চ ৫ মেগাবাইট হতে হবে');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setFormData(prev => ({ ...prev, imageUrl: dataUrl }));
-    };
-    reader.readAsDataURL(file);
+    setIsUploadingImage(true);
+    try {
+      const serverUrl = await uploadImageToServer(file);
+      if (serverUrl) {
+        setFormData(prev => ({ ...prev, imageUrl: serverUrl }));
+      }
+    } catch (err) {
+      console.warn('Image upload error:', err);
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const handleOpenAddModal = (cat?: CouncilCategory) => {
@@ -95,6 +116,12 @@ export const CouncilManagementPanel: React.FC<CouncilManagementPanelProps> = ({
 
   const handleSaveMember = (e: React.FormEvent) => {
     e.preventDefault();
+    const session = getOfficerSession();
+    if (!session?.username) {
+      alert('অননুমোদিত চেষ্টা! পরিষদ ও কর্মকর্তা প্রোফাইল পরিবর্তন করার জন্য অফিসিয়াল কর্মকর্তা আইডিতে লগইন করা আবশ্যক।');
+      return;
+    }
+
     if (!formData.name?.trim() || !formData.designation?.trim()) {
       alert('অনুগ্রহ করে নাম এবং পদবি পূরণ করুন');
       return;
@@ -135,6 +162,12 @@ export const CouncilManagementPanel: React.FC<CouncilManagementPanelProps> = ({
   };
 
   const handleDeleteMember = (id: string, name: string) => {
+    const session = getOfficerSession();
+    if (!session?.username) {
+      alert('অননুমোদিত চেষ্টা! প্রোফাইল মুছে ফেলার জন্য অফিসিয়াল কর্মকর্তা আইডিতে লগইন করা আবশ্যক।');
+      return;
+    }
+
     if (window.confirm(`আপনি কি নিশ্চিত যে "${name}"-এর প্রোফাইল মুছে ফেলতে চান?`)) {
       const updatedList = members.filter(m => m.id !== id);
       setMembers(updatedList);
@@ -143,6 +176,12 @@ export const CouncilManagementPanel: React.FC<CouncilManagementPanelProps> = ({
   };
 
   const handleResetToDefaults = () => {
+    const session = getOfficerSession();
+    if (!session?.username) {
+      alert('অননুমোদিত চেষ্টা! ডিফল্ট ডাটা রিস্টোর করার জন্য অফিসিয়াল কর্মকর্তা আইডিতে লগইন করা আবশ্যক।');
+      return;
+    }
+
     if (window.confirm('আপনি কি সকল পরিষদ ও কর্মকর্তা প্রোফাইল প্রাথমিক ডিফল্ট তালিকায় ফিরিয়ে নিতে চান? বর্তমান সকল কাস্টম পরিবর্তন মুছে যাবে।')) {
       const defaultList = [...DEFAULT_PORTAL_CONFIG.councilMembers];
       setMembers(defaultList);
@@ -526,16 +565,26 @@ export const CouncilManagementPanel: React.FC<CouncilManagementPanelProps> = ({
 
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2">
-                      <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors">
-                        <span>কম্পিউটার/মোবাইল থেকে ছবি আপলোড</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageFileUpload}
-                          className="hidden"
-                        />
+                      <label className={`cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 ${isUploadingImage ? 'bg-slate-400 cursor-wait' : 'bg-emerald-600 hover:bg-emerald-700 cursor-pointer'} text-white text-xs font-bold rounded-xl shadow-xs transition-colors`}>
+                        {isUploadingImage ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>সার্ভারে আপলোড হচ্ছে...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>কম্পিউটার/মোবাইল থেকে ছবি আপলোড</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              disabled={isUploadingImage}
+                              onChange={handleImageFileUpload}
+                              className="hidden"
+                            />
+                          </>
+                        )}
                       </label>
-                      <span className="text-[10px] text-slate-400">(সর্বোচ্চ ২ MB)</span>
+                      <span className="text-[10px] text-slate-400">(সর্বোচ্চ ৫ MB)</span>
                     </div>
 
                     <div>

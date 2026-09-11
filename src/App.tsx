@@ -19,7 +19,7 @@ import { Footer } from './components/Footer';
 import { CouncilMembersModal } from './components/CouncilMembersModal';
 import { NoticesModal } from './components/NoticesModal';
 import { DemarcationApplication, BuildingConstructionApplication, RoadCuttingApplication } from './types';
-import { getOfficerSession } from './utils/storage';
+import { getOfficerSession, syncStorageWithHostinger } from './utils/storage';
 import { PortalConfig, getPortalConfig, CouncilCategory, NoticeCategory } from './utils/portalConfig';
 
 export default function App() {
@@ -42,6 +42,11 @@ export default function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => !!getOfficerSession());
 
   const isAnyPrintModalOpen = !!(printApp || certificateApp || schedule1PrintApp || roadCuttingPrintApp);
+
+  // Sync with Hostinger MySQL Database on portal mount
+  useEffect(() => {
+    syncStorageWithHostinger().catch(() => {});
+  }, []);
 
   // Sync portal config when updated in localStorage or from customizer modal
   useEffect(() => {
@@ -79,6 +84,17 @@ export default function App() {
   const handleApplicationSubmitted = (newApp: DemarcationApplication) => {
     setSubmittedApp(newApp);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Securely open Portal Customizer only if officer is authenticated
+  const handleOpenCustomizer = () => {
+    const session = getOfficerSession();
+    if (!session) {
+      alert('ওয়েবসাইট কাস্টমাইজেশন ও তথ্য পরিবর্তনের জন্য পৌর কর্মকর্তা আইডিতে (ইউজারনেম ও পাসওয়ার্ড দিয়ে) লগইন করা আবশ্যক।');
+      setActiveTab('admin');
+      return;
+    }
+    setIsCustomizerOpen(true);
   };
 
   // Switch to tracking with prefilled ID and update URL
@@ -123,7 +139,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-kalpurush relative">
+    <div className="min-h-screen flex flex-col font-kalpurush relative bg-slate-50 overflow-x-hidden">
       {/* Network Connectivity Status Banner */}
       <ConnectionStatusBanner />
 
@@ -140,7 +156,7 @@ export default function App() {
         }}
         isAdminLoggedIn={isAdminLoggedIn}
         config={portalConfig}
-        onOpenCustomizer={() => setIsCustomizerOpen(true)}
+        onOpenCustomizer={handleOpenCustomizer}
         onSelectCouncilCategory={(cat) => {
           setSelectedCouncilCategory(cat);
           setIsCouncilModalOpen(true);
@@ -162,7 +178,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 ${isAnyPrintModalOpen ? 'no-print' : ''}`}>
+      <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 ${isAnyPrintModalOpen ? 'no-print' : ''}`}>
         
         {/* Tab 0: Smart Portal Homepage (smartpourashava.com style) */}
         {activeTab === 'home' && (
@@ -174,7 +190,7 @@ export default function App() {
               setSubmittedRoadCuttingApp(null);
             }}
             onSearchTracking={handleGoToTracking}
-            onOpenCustomizer={() => setIsCustomizerOpen(true)}
+            onOpenCustomizer={handleOpenCustomizer}
             onOpenCouncilCategory={(cat) => {
               setSelectedCouncilCategory(cat);
               setIsCouncilModalOpen(true);
@@ -254,15 +270,15 @@ export default function App() {
             onViewPrintA4={handleViewPrintA4}
             onViewCertificate={handleViewCertificate}
             onAuthChange={setIsAdminLoggedIn}
-            onOpenCustomizer={() => setIsCustomizerOpen(true)}
+            onOpenCustomizer={handleOpenCustomizer}
           />
         )}
       </main>
 
-      {/* Website Customizer & CMS Settings Modal */}
+      {/* Website Customizer & CMS Settings Modal (Guarded: Only opens when officer session is active) */}
       <PortalCustomizerModal
         currentConfig={portalConfig}
-        isOpen={isCustomizerOpen}
+        isOpen={isCustomizerOpen && !!getOfficerSession()}
         onClose={() => setIsCustomizerOpen(false)}
         onConfigSaved={(newConf) => setPortalConfig(newConf)}
       />
@@ -323,7 +339,7 @@ export default function App() {
       {/* Official Footer */}
       <Footer
         config={portalConfig}
-        onOpenCustomizer={() => setIsCustomizerOpen(true)}
+        onOpenCustomizer={handleOpenCustomizer}
         onNavigateTab={(tab) => {
           setActiveTab(tab);
           setSubmittedApp(null);

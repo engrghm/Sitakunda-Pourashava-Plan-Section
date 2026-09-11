@@ -4,6 +4,14 @@ import {
   INITIAL_BUILDING_APPLICATIONS,
   INITIAL_ROAD_CUTTING_APPLICATIONS
 } from '../data/initialApplications';
+import {
+  saveApplicationToApi,
+  saveAuditLogToApi,
+  fetchApplicationsFromApi,
+  fetchAuditLogsFromApi
+} from './apiStorage';
+import { syncPortalConfigWithHostinger } from './portalConfig';
+
 
 const STORAGE_KEY = 'sitakunda_demarcation_applications_clean_v1';
 const BUILDING_APPS_STORAGE_KEY = 'sitakunda_building_applications_clean_v1';
@@ -237,14 +245,19 @@ export function saveApplication(app: DemarcationApplication): DemarcationApplica
   } catch (err) {
     console.error('Error saving application to localStorage:', err);
   }
+  saveApplicationToApi(app, 'demarcation').catch((err) => {
+    console.warn('[Hostinger MySQL] Application sync deferred:', err);
+  });
   return updated;
 }
 
 export function updateApplication(id: string, updates: Partial<DemarcationApplication>): DemarcationApplication[] {
   const current = getStoredApplications();
+  let updatedItem: DemarcationApplication | null = null;
   const updated = current.map((item) => {
     if (item.id === id) {
-      return { ...item, ...updates };
+      updatedItem = { ...item, ...updates };
+      return updatedItem;
     }
     return item;
   });
@@ -252,6 +265,11 @@ export function updateApplication(id: string, updates: Partial<DemarcationApplic
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   } catch (err) {
     console.error('Error updating application in localStorage:', err);
+  }
+  if (updatedItem) {
+    saveApplicationToApi(updatedItem, 'demarcation').catch((err) => {
+      console.warn('[Hostinger MySQL] Application update sync deferred:', err);
+    });
   }
   return updated;
 }
@@ -512,6 +530,9 @@ export function addAuditLog(entry: {
     // Keep max 500 records in storage
     const trimmed = updated.slice(0, 500);
     localStorage.setItem(AUDIT_LOG_STORAGE_KEY, JSON.stringify(trimmed));
+    saveAuditLogToApi(newLogItem).catch((err) => {
+      console.warn('[Hostinger MySQL] Audit log sync deferred:', err);
+    });
     return trimmed;
   } catch (err) {
     console.error('Error adding audit log:', err);
@@ -551,6 +572,9 @@ export function saveBuildingApplication(app: BuildingConstructionApplication): B
     const current = getBuildingApplications();
     const updated = [app, ...current.filter((item) => item.id !== app.id)];
     localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(updated));
+    saveApplicationToApi(app, 'building').catch((err) => {
+      console.warn('[Hostinger MySQL] Building application sync deferred:', err);
+    });
     return updated;
   } catch (err) {
     console.error('Error saving building application:', err);
@@ -570,6 +594,9 @@ export function updateBuildingApplication(updatedApp: BuildingConstructionApplic
       updated = [updatedApp, ...current];
     }
     localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(updated));
+    saveApplicationToApi(updatedApp, 'building').catch((err) => {
+      console.warn('[Hostinger MySQL] Building application update sync deferred:', err);
+    });
     return updated;
   } catch (err) {
     console.error('Error updating building application:', err);
@@ -601,6 +628,9 @@ export function saveRoadCuttingApplication(app: RoadCuttingApplication): RoadCut
     const current = getRoadCuttingApplications();
     const updated = [app, ...current.filter((item) => item.id !== app.id)];
     localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(updated));
+    saveApplicationToApi(app, 'road_cutting').catch((err) => {
+      console.warn('[Hostinger MySQL] Road cutting application sync deferred:', err);
+    });
     return updated;
   } catch (err) {
     console.error('Error saving road cutting application:', err);
@@ -620,10 +650,45 @@ export function updateRoadCuttingApplication(updatedApp: RoadCuttingApplication)
       updated = [updatedApp, ...current];
     }
     localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(updated));
+    saveApplicationToApi(updatedApp, 'road_cutting').catch((err) => {
+      console.warn('[Hostinger MySQL] Road cutting application update sync deferred:', err);
+    });
     return updated;
   } catch (err) {
     console.error('Error updating road cutting application:', err);
     return getRoadCuttingApplications();
+  }
+}
+
+/**
+ * Synchronize all applications and audit logs with Hostinger MySQL server on startup
+ */
+export async function syncStorageWithHostinger(): Promise<void> {
+  try {
+    const [demarcation, building, roadCutting, auditLogs] = await Promise.all([
+      fetchApplicationsFromApi<DemarcationApplication>('demarcation'),
+      fetchApplicationsFromApi<BuildingConstructionApplication>('building'),
+      fetchApplicationsFromApi<RoadCuttingApplication>('road_cutting'),
+      fetchAuditLogsFromApi(),
+    ]);
+
+    if (demarcation && demarcation.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(demarcation));
+    }
+    if (building && building.length > 0) {
+      localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(building));
+    }
+    if (roadCutting && roadCutting.length > 0) {
+      localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(roadCutting));
+    }
+    if (auditLogs && auditLogs.length > 0) {
+      localStorage.setItem(AUDIT_LOG_STORAGE_KEY, JSON.stringify(auditLogs));
+    }
+
+    // Also synchronize portal config, council & notices with Hostinger
+    await syncPortalConfigWithHostinger().catch(() => {});
+  } catch (err) {
+    console.warn('[Hostinger Sync] Continuing with local storage:', err);
   }
 }
 

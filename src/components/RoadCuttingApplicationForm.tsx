@@ -176,29 +176,29 @@ export const RoadCuttingApplicationForm: React.FC<RoadCuttingApplicationFormProp
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in-up">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-amber-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-amber-500/30 relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[#043328] via-[#064e3b] to-[#0f172a] rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-emerald-500/40 relative overflow-hidden">
         <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
           <MunicipalityLogo size={220} />
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left relative z-10">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0">
+          <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-center text-amber-300 shadow-md shrink-0">
             <Construction className="w-9 h-9" />
           </div>
           <div>
             <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap mb-1">
-              <span className="text-xs font-bold text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/30">
+              <span className="text-xs font-bold text-amber-300 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/30">
                 প্রকৌশল বিভাগ • সীতাকুণ্ড পৌরসভা
               </span>
-              <span className="text-xs font-bold text-emerald-300 bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-500/30">
+              <span className="text-xs font-bold text-emerald-200 bg-emerald-950/70 px-3 py-1 rounded-full border border-emerald-400/30">
                 আবেদন ফরম মূল্য: ৳ {toBanglaNumber(formFee)}/-
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-sm">
               পৌর এলাকার রাস্তা কর্তনের অনুমতির আবেদন ফরম
             </h1>
 
-            <p className="text-xs sm:text-sm text-slate-300 mt-1">
+            <p className="text-xs sm:text-sm text-emerald-100/90 mt-1 font-normal">
               পানি, গ্যাস, বিদ্যুৎ, ড্রেন ও অন্যান্য ভূগর্ভস্থ লাইন সংযোগের জন্য রাস্তা কর্তনের সরকারি অনুমতিপত্র
             </p>
           </div>

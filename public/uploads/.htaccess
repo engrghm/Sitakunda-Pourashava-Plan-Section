@@ -1,0 +1,11 @@
+# Disable PHP script execution in uploads folder for security
+<FilesMatch "(?i)\.(php|phtml|php3|php4|php5|php7|phps|cgi|pl|exe)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+# Allow public access to view images and pdfs
+<FilesMatch "(?i)\.(pdf|jpg|jpeg|png|webp|svg)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>

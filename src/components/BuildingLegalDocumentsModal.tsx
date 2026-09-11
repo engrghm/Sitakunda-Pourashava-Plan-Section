@@ -16,143 +16,43 @@ import {
 } from 'lucide-react';
 import { MunicipalityLogo } from './MunicipalityLogo';
 import { toBanglaNumber } from '../utils/storage';
+import {
+  LegalDocId,
+  LegalDocumentItem as BaseLegalDocumentItem,
+  getLegalDocuments,
+  DEFAULT_LEGAL_DOCUMENTS
+} from '../utils/legalDocuments';
 
-export type LegalDocId = 
-  | 'rules1996' 
-  | 'act1952' 
-  | 'pourashava2009' 
-  | 'openspace2000' 
-  | 'fire2003'
-  | 'envAct1995'
-  | 'envRules2023'
-  | 'highwayAct2021'
-  | 'bnbc2020Part1'
-  | 'bnbc2020Part2';
+export type { LegalDocId };
 
-export interface LegalDocumentItem {
-  id: LegalDocId;
-  title: string;
-  category: string;
-  year: string;
-  description: string;
-  fileUrl: string;
-  fileName: string;
+export const getLegalDocIcon = (id: LegalDocId) => {
+  switch (id) {
+    case 'rules1996': return BookOpen;
+    case 'act1952': return Scale;
+    case 'pourashava2009': return Landmark;
+    case 'openspace2000': return Trees;
+    case 'fire2003': return Flame;
+    case 'envAct1995': return Leaf;
+    case 'envRules2023': return Trees;
+    case 'highwayAct2021': return Milestone;
+    case 'bnbc2020Part1':
+    case 'bnbc2020Part2':
+    default: return Building2;
+  }
+};
+
+export interface LegalDocumentItem extends BaseLegalDocumentItem {
   icon: React.ComponentType<{ className?: string }>;
-  badgeColor: string;
 }
 
-export const OFFICIAL_LEGAL_DOCUMENTS: LegalDocumentItem[] = [
-  {
-    id: 'rules1996',
-    title: 'ইমারত নির্মাণ বিধিমালা, ১৯৯৬',
-    category: 'গেজেট বিধিমালা',
-    year: '১৯৯৬',
-    description: 'বিধি ১-৩০, নকশা প্রণয়নকারীর যোগ্যতা, উন্মুক্ত স্থান (সেটব্যাক) ও তফসিল-২ সরকারি ফি তালিকা।',
-    fileUrl: '/documents/building-construction-rules-1996.pdf',
-    fileName: 'ইমারত_নির্মাণ_বিধিমালা_১৯৯৬.pdf',
-    icon: BookOpen,
-    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  },
-  {
-    id: 'act1952',
-    title: 'ইমারত নির্মাণ আইন, ১৯৫২',
-    category: 'মূল আইন',
-    year: '১৯৫২',
-    description: 'ধারা ১-২০, ৩ বৎসরের অনুমোদন মেয়াদ, অননুমোদিত নির্মাণ অপসারণ ও দণ্ডাদেশ সংক্রান্ত বিধানাবলী।',
-    fileUrl: '/documents/building-construction-act-1952.pdf',
-    fileName: 'ইমারত_নির্মাণ_আইন_১৯৫২.pdf',
-    icon: Scale,
-    badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
-  },
-  {
-    id: 'pourashava2009',
-    title: 'স্থানীয় সরকার (পৌরসভা) আইন, ২০০৯',
-    category: 'পৌরসভা আইন',
-    year: '২০০৯',
-    description: 'পৌর এলাকায় ইমারত ও ভূমি নিয়ন্ত্রণ, মহাপরিকল্পনা, ২য় তফসিল ৩৫-৩৭ এবং ৩য় ও ৪র্থ তফসিল।',
-    fileUrl: '/documents/local-government-pourashava-act-2009.pdf',
-    fileName: 'স্থানীয়_সরকার_পৌরসভা_আইন_২০০৯.pdf',
-    icon: Landmark,
-    badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
-  },
-  {
-    id: 'openspace2000',
-    title: 'উন্মুক্ত স্থান ও জলাধার সংরক্ষণ আইন, ২০০০',
-    category: 'পরিবেশ ও জলাধার',
-    year: '২০০০',
-    description: 'পৌর এলাকার খেলার মাঠ, উন্মুক্ত স্থান, উদ্যান ও প্রাকৃতিক জলাধারের শ্রেণী পরিবর্তন সংক্রান্ত বাধা-নিষেধ।',
-    fileUrl: '/documents/open-space-waterbody-act-2000.pdf',
-    fileName: 'উন্মুক্ত_স্থান_ও_জলাধার_সংরক্ষণ_আইন_২০০০.pdf',
-    icon: Trees,
-    badgeColor: 'bg-teal-100 text-teal-800 border-teal-200',
-  },
-  {
-    id: 'fire2003',
-    title: 'অগ্নি প্রতিরোধ ও নির্বাপণ আইন, ২০০৩',
-    category: 'অগ্নি নিরাপত্তা ও NOC',
-    year: '২০০৩',
-    description: 'বহুতল (৭+ তলা) ও বাণিজ্যিক ভবনের ফায়ার সার্ভিস ছাড়পত্র (NOC) ও জীবন-সম্পদ নিরাপত্তা বিধান।',
-    fileUrl: '/documents/fire-prevention-extinguishment-act-2003.pdf',
-    fileName: 'অগ্নি_প্রতিরোধ_ও_নির্বাপণ_আইন_২০০৩.pdf',
-    icon: Flame,
-    badgeColor: 'bg-rose-100 text-rose-800 border-rose-200',
-  },
-  {
-    id: 'envAct1995',
-    title: 'বাংলাদেশ পরিবেশ সংরক্ষণ আইন, ১৯৯৫',
-    category: 'পরিবেশ আইন',
-    year: '১৯৯৫',
-    description: 'পরিবেশ সংরক্ষণ, পরিবেশগত মান উন্নয়ন, দূষণ নিয়ন্ত্রণ ও পরিবেশগত ছাড়পত্র (ECC) সংক্রান্ত আইন।',
-    fileUrl: '/documents/bangladesh-environment-conservation-act-1995.pdf',
-    fileName: 'বাংলাদেশ_পরিবেশ_সংরক্ষণ_আইন_১৯৯৫.pdf',
-    icon: Leaf,
-    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  },
-  {
-    id: 'envRules2023',
-    title: 'পরিবেশ সংরক্ষণ বিধিমালা, ২০২৩',
-    category: 'পরিবেশ বিধিমালা',
-    year: '২০২৩',
-    description: 'ইমারত, শিল্প ও উন্নয়ন প্রকল্পের পরিবেশগত অবস্থান ছাড়পত্র, পরিবেশগত প্রভাব নিরূপণ (EIA) ও বর্জ্য ব্যবস্থাপনা।',
-    fileUrl: '/documents/environment-conservation-rules-2023.pdf',
-    fileName: 'পরিবেশ_সংরক্ষণ_বিধিমালা_২০২৩.pdf',
-    icon: Trees,
-    badgeColor: 'bg-green-100 text-green-800 border-green-200',
-  },
-  {
-    id: 'highwayAct2021',
-    title: 'মহাসড়ক আইন, ২০২১',
-    category: 'মহাসড়ক ও সড়ক আইন',
-    year: '২০২১',
-    description: 'জাতীয়, আঞ্চলিক ও জেলা মহাসড়ক সংরক্ষণ, রাইট অব ওয়ে (ROW), সড়কের উভয়পাশে নির্মাণ সীমানা ও নিয়ন্ত্রণ।',
-    fileUrl: '/documents/highway-act-2021.pdf',
-    fileName: 'মহাসড়ক_আইন_২০২১.pdf',
-    icon: Milestone,
-    badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-  },
-  {
-    id: 'bnbc2020Part1',
-    title: 'BNBC 2020 (Part - 01)',
-    category: 'জাতীয় বিল্ডিং কোড',
-    year: '২০২০',
-    description: 'বাংলাদেশ ন্যাশনাল বিল্ডিং কোড ২০২০ (পার্ট-১): সাধারণ ভবন নিয়ন্ত্রণ, প্রশাসনিক বিধান ও সাধারণ নির্দেশিকা।',
-    fileUrl: '/documents/bnbc-2020-part-01.pdf',
-    fileName: 'BNBC_2020_Part_01.pdf',
-    icon: Building2,
-    badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
-  },
-  {
-    id: 'bnbc2020Part2',
-    title: 'BNBC 2020 (Part - 02)',
-    category: 'জাতীয় বিল্ডিং কোড',
-    year: '২০২০',
-    description: 'বাংলাদেশ ন্যাশনাল বিল্ডিং কোড ২০২০ (পার্ট-২): স্ট্রাকচারাল ডিজাইন, লোড ও সিসমিক ডিজাইন, অগ্নি নিরাপত্তা।',
-    fileUrl: '/documents/bnbc-2020-part-02.pdf',
-    fileName: 'BNBC_2020_Part_02.pdf',
-    icon: Building2,
-    badgeColor: 'bg-violet-100 text-violet-800 border-violet-200',
-  },
-];
+export const getEnrichedLegalDocuments = (): LegalDocumentItem[] => {
+  return getLegalDocuments().map((doc) => ({
+    ...doc,
+    icon: getLegalDocIcon(doc.id),
+  }));
+};
+
+export const OFFICIAL_LEGAL_DOCUMENTS: LegalDocumentItem[] = getEnrichedLegalDocuments();
 
 interface BuildingLegalDocumentsModalProps {
   isOpen: boolean;
@@ -165,18 +65,28 @@ export const BuildingLegalDocumentsModal: React.FC<BuildingLegalDocumentsModalPr
   onClose,
   defaultDoc = 'rules1996',
 }) => {
+  const [docs, setDocs] = useState<LegalDocumentItem[]>(() => getEnrichedLegalDocuments());
   const [selectedDocId, setSelectedDocId] = useState<LegalDocId>(defaultDoc);
 
-  // Keep selectedDocId synced when defaultDoc changes
+  // Sync when defaultDoc prop changes
   React.useEffect(() => {
     setSelectedDocId(defaultDoc);
   }, [defaultDoc]);
 
+  // Listen to dynamic updates when officer uploads/modifies gazette PDFs
+  React.useEffect(() => {
+    const handleUpdate = () => {
+      setDocs(getEnrichedLegalDocuments());
+    };
+    window.addEventListener('legal-documents-updated', handleUpdate);
+    return () => window.removeEventListener('legal-documents-updated', handleUpdate);
+  }, []);
+
   if (!isOpen) return null;
 
   const currentDoc =
-    OFFICIAL_LEGAL_DOCUMENTS.find((d) => d.id === selectedDocId) ||
-    OFFICIAL_LEGAL_DOCUMENTS[0];
+    docs.find((d) => d.id === selectedDocId) ||
+    docs[0];
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto animate-fade-in">
@@ -234,7 +144,7 @@ export const BuildingLegalDocumentsModal: React.FC<BuildingLegalDocumentsModalPr
 
         {/* Tab Navigation */}
         <div className="bg-slate-100 border-b border-slate-200 px-4 py-2.5 flex items-center gap-2 overflow-x-auto shrink-0 scrollbar-none">
-          {OFFICIAL_LEGAL_DOCUMENTS.map((doc, idx) => {
+          {docs.map((doc, idx) => {
             const Icon = doc.icon;
             const isSelected = doc.id === currentDoc.id;
             return (

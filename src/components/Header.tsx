@@ -29,6 +29,7 @@ interface HeaderProps {
   onOpenProjects?: () => void;
   onOpenComplaints?: () => void;
   onOpenOthers?: () => void;
+  onOpenCitizenServiceInfo?: (service: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -101,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Main Header Brand + Nav */}
-      <div className="glass-panel border-b border-slate-200/70 shadow-sm bg-white/95 backdrop-blur-md">
+      <div className="glass-panel border-b border-slate-200/50 shadow-[0_4px_30px_rgb(0,0,0,0.1)] bg-white/60 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-3 sm:gap-4">
 

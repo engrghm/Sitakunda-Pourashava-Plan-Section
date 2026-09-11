@@ -42,7 +42,7 @@ import { Schedule1ApplicationPrintA4 } from './Schedule1ApplicationPrintA4';
 import { 
   BuildingLegalDocumentsModal, 
   LegalDocId, 
-  OFFICIAL_LEGAL_DOCUMENTS 
+  getEnrichedLegalDocuments 
 } from './BuildingLegalDocumentsModal';
 
 interface Schedule1ApplicationFormProps {
@@ -65,6 +65,15 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
   const [verificationError, setVerificationError] = useState<string>('');
   const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
   const [selectedLegalDoc, setSelectedLegalDoc] = useState<LegalDocId>('rules1996');
+  const [legalDocs, setLegalDocs] = useState(() => getEnrichedLegalDocuments());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setLegalDocs(getEnrichedLegalDocuments());
+    };
+    window.addEventListener('legal-documents-updated', handleUpdate);
+    return () => window.removeEventListener('legal-documents-updated', handleUpdate);
+  }, []);
   const [architectName, setArchitectName] = useState<string>('');
   const [architectDesignation, setArchitectDesignation] = useState<string>('স্নাতক স্থপতি (B.Arch)');
   const [architectRegNo, setArchitectRegNo] = useState<string>('');
@@ -601,7 +610,7 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
       {/* =========================================================================
           Header Card: Schedule - 1 Statutory Legal Notice & Info
           ========================================================================= */}
-      <div className="bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900 rounded-3xl shadow-lg p-6 sm:p-8 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[#043328] via-[#064e3b] to-[#0f172a] rounded-3xl shadow-xl p-6 sm:p-8 text-white relative overflow-hidden border border-emerald-500/40">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-800/80 border border-emerald-400/40 text-emerald-200 text-xs font-bold">
@@ -2001,7 +2010,7 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <span>ইমারত নির্মাণ সংক্রান্ত আইন ও সরকারি বিধিমালা লাইব্রেরি</span>
                 <span className="text-xs bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full font-bold">
-                  {OFFICIAL_LEGAL_DOCUMENTS.length}টি অফিসিয়াল গেজেট/আইন
+                  {legalDocs.length}টি অফিসিয়াল গেজেট/আইন
                 </span>
               </h3>
               <p className="text-xs text-slate-500">
@@ -2025,7 +2034,7 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
 
         {/* 5 Law PDF Option Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
-          {OFFICIAL_LEGAL_DOCUMENTS.map((doc, idx) => {
+          {legalDocs.map((doc, idx) => {
             const Icon = doc.icon;
             return (
               <div

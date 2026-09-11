@@ -14,6 +14,36 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 
 // Configure body parsers with limit to handle PDF/image base64 document attachments
 app.use(express.json({ limit: '50mb' }));
+app.use('/documents', express.static(path.join(process.cwd(), 'public', 'documents')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
+
+// Official Gazette PDF Upload endpoint
+app.post('/api/upload-gazette', (req, res) => {
+  try {
+    const { docId, fileName, fileData } = req.body || {};
+    if (!fileData || !fileName) {
+      return res.status(400).json({ error: 'Missing file data or fileName' });
+    }
+    const documentsDir = path.join(process.cwd(), 'public', 'documents');
+    if (!fs.existsSync(documentsDir)) {
+      fs.mkdirSync(documentsDir, { recursive: true });
+    }
+    const ext = path.extname(fileName) || '.pdf';
+    const cleanDocId = (docId || 'gazette').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const targetFileName = `${cleanDocId}_${Date.now()}${ext}`;
+    const targetPath = path.join(documentsDir, targetFileName);
+
+    const base64Data = fileData.includes(';base64,') ? fileData.split(';base64,')[1] : fileData;
+    fs.writeFileSync(targetPath, Buffer.from(base64Data, 'base64'));
+
+    const fileUrl = `/documents/${targetFileName}`;
+    console.log(`[Gazette Upload] Saved ${targetFileName} to public/documents -> ${fileUrl}`);
+    res.json({ success: true, fileUrl, fileName: targetFileName });
+  } catch (err: any) {
+    console.error('[Gazette Upload Error]', err);
+    res.status(500).json({ error: err.message || 'Failed to save gazette PDF' });
+  }
+});
 
 // Keep administrator credentials on the server; set ADMIN_USERNAME and
 // ADMIN_PASSWORD in production. Sessions expire automatically after 8 hours.

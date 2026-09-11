@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Save, 
@@ -15,9 +15,15 @@ import {
   AlertTriangle,
   Plus,
   Trash2,
-  Users
+  Users,
+  Image as ImageIcon,
+  Loader2,
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
-import { PortalConfig, savePortalConfig, resetPortalConfig } from '../utils/portalConfig';
+import { PortalConfig, savePortalConfig, resetPortalConfig, getPortalConfig } from '../utils/portalConfig';
+import { uploadImageToServer } from '../utils/apiStorage';
+import { getOfficerSession } from '../utils/storage';
 import { CouncilManagementPanel } from './CouncilManagementPanel';
 
 interface PortalCustomizerModalProps {
@@ -37,6 +43,30 @@ export const PortalCustomizerModal: React.FC<PortalCustomizerModalProps> = ({
   const [formData, setFormData] = useState<PortalConfig>({ ...currentConfig });
   const [saveSuccessToast, setSaveSuccessToast] = useState(false);
   const [newNoticeInput, setNewNoticeInput] = useState('');
+  const [isUploadingLeaderImage, setIsUploadingLeaderImage] = useState(false);
+
+  const officerSession = getOfficerSession();
+  const isAuthenticated = !!officerSession?.username;
+
+  // Keep formData in sync with latest currentConfig and portal-config-updated events
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(getPortalConfig());
+    }
+  }, [isOpen, currentConfig]);
+
+  useEffect(() => {
+    const handleSync = () => {
+      const latest = getPortalConfig();
+      setFormData(prev => ({
+        ...prev,
+        councilMembers: latest.councilMembers || prev.councilMembers,
+        noticesList: latest.noticesList || prev.noticesList,
+      }));
+    };
+    window.addEventListener('portal-config-updated', handleSync);
+    return () => window.removeEventListener('portal-config-updated', handleSync);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -47,14 +77,52 @@ export const PortalCustomizerModal: React.FC<PortalCustomizerModalProps> = ({
     }));
   };
 
+  const handleLeaderImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('ছবির আকার সর্বোচ্চ ৫ মেগাবাইট হতে হবে');
+      return;
+    }
+    setIsUploadingLeaderImage(true);
+    try {
+      const serverUrl = await uploadImageToServer(file);
+      if (serverUrl) {
+        handleFieldChange('leaderImageUrl', serverUrl);
+      }
+    } catch (err) {
+      console.warn('Leader image upload failed:', err);
+    } finally {
+      setIsUploadingLeaderImage(false);
+    }
+  };
+
   const handleSave = () => {
-    savePortalConfig(formData);
-    onConfigSaved(formData);
+    const session = getOfficerSession();
+    if (!session?.username) {
+      alert('অননুমোদিত চেষ্টা! ওয়েবসাইট বা পরিষদ তথ্য পরিবর্তন করার জন্য অফিসিয়াল কর্মকর্তা আইডিতে লগইন থাকা বাধ্যতামূলক।');
+      return;
+    }
+
+    const latestConf = getPortalConfig();
+    const configToSave: PortalConfig = {
+      ...formData,
+      councilMembers: (latestConf.councilMembers && latestConf.councilMembers.length > 0)
+        ? latestConf.councilMembers
+        : formData.councilMembers,
+      noticesList: (latestConf.noticesList && latestConf.noticesList.length > 0)
+        ? latestConf.noticesList
+        : formData.noticesList,
+    };
+    savePortalConfig(configToSave);
+    onConfigSaved(configToSave);
     setSaveSuccessToast(true);
     setTimeout(() => {
       setSaveSuccessToast(false);
     }, 3500);
   };
+
+
 
   const handleReset = () => {
     if (window.confirm('আপনি কি নিশ্চিত যে ওয়েবসাইট সেটিংস ডিফল্ট মানে ফিরিয়ে আনতে চান? আপনার কাস্টম পরিবর্তন মুছে যাবে।')) {
@@ -130,6 +198,18 @@ export const PortalCustomizerModal: React.FC<PortalCustomizerModalProps> = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {isAuthenticated ? (
+            <span className="flex items-center gap-1.5 bg-emerald-950/80 text-emerald-300 border border-emerald-600/50 text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-inner">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>কর্মকর্তা: {officerSession.username}</span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 bg-red-950/80 text-red-300 border border-red-600/50 text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-inner">
+              <Lock className="w-3.5 h-3.5 text-red-400" />
+              <span>লগইন নেই (সংরক্ষণ নিষ্ক্রিয়)</span>
+            </span>
+          )}
+
           <button
             type="button"
             onClick={handleExportJSON}
@@ -140,16 +220,17 @@ export const PortalCustomizerModal: React.FC<PortalCustomizerModalProps> = ({
             <span className="hidden sm:inline">ব্যাকআপ JSON</span>
           </button>
 
-          <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold border border-slate-700 transition-colors cursor-pointer">
+          <label className={`flex items-center gap-1.5 px-3 py-1.5 ${isAuthenticated ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer' : 'bg-slate-800/50 text-slate-500 cursor-not-allowed'} rounded-lg text-xs font-semibold border border-slate-700 transition-colors`}>
             <Upload className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">ইমপোর্ট</span>
-            <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
+            <input type="file" accept=".json" disabled={!isAuthenticated} onChange={handleImportJSON} className="hidden" />
           </label>
 
           <button
             type="button"
             onClick={handleReset}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 rounded-lg text-xs font-semibold border border-rose-800/40 transition-colors cursor-pointer"
+            disabled={!isAuthenticated}
+            className={`flex items-center gap-1.5 px-3 py-1.5 ${isAuthenticated ? 'bg-rose-950/60 hover:bg-rose-900 text-rose-300 cursor-pointer' : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'} rounded-lg text-xs font-semibold border border-rose-800/40 transition-colors`}
             title="ডিফল্ট মান ফিরিয়ে আনুন"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -159,10 +240,11 @@ export const PortalCustomizerModal: React.FC<PortalCustomizerModalProps> = ({
           <button
             type="button"
             onClick={handleSave}
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-md transition-all cursor-pointer"
+            disabled={!isAuthenticated}
+            className={`flex items-center gap-1.5 px-4 py-2 ${isAuthenticated ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white shadow-md cursor-pointer' : 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-60'} rounded-lg text-xs font-bold transition-all`}
           >
-            <Save className="w-4 h-4" />
-            <span>পরিবর্তন সংরক্ষণ করুন</span>
+            {isAuthenticated ? <Save className="w-4 h-4" /> : <Lock className="w-4 h-4 text-red-400" />}
+            <span>{isAuthenticated ? 'পরিবর্তন সংরক্ষণ করুন' : 'লগইন আবশ্যক'}</span>
           </button>
 
           <button
@@ -538,14 +620,74 @@ export const PortalCustomizerModal: React.FC<PortalCustomizerModalProps> = ({
                     />
                   </div>
 
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">ছবি / লোগো URL</label>
-                    <input
-                      type="text"
-                      value={formData.leaderImageUrl}
-                      onChange={(e) => handleFieldChange('leaderImageUrl', e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono"
-                    />
+                  {/* Mayor / Administrator Photo Upload Option */}
+                  <div className="col-span-1 sm:col-span-2 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                    <label className="font-bold text-slate-800 block mb-2 text-xs flex items-center justify-between">
+                      <span>মেয়র / প্রশাসক মহোদয়ের অফিসিয়াল ছবি (Photo)</span>
+                      <span className="text-[10px] text-slate-400 font-normal">সর্বোচ্চ ৫ MB (JPG, PNG, WEBP)</span>
+                    </label>
+
+                    <div className="flex items-center gap-4">
+                      {formData.leaderImageUrl ? (
+                        <div className="relative shrink-0">
+                          <img
+                            src={formData.leaderImageUrl}
+                            alt="Leader Preview"
+                            className="w-24 h-28 rounded-2xl object-cover object-top border-2 border-emerald-600 shadow-md ring-2 ring-emerald-500/20"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/logo.png';
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleFieldChange('leaderImageUrl', '/logo.png')}
+                            className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+                            title="লোগোতে ফিরিয়ে নিন"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-24 h-28 rounded-2xl bg-slate-200 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 shrink-0">
+                          <ImageIcon className="w-8 h-8 opacity-60" />
+                        </div>
+                      )}
+
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <label className={`cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 ${isUploadingLeaderImage ? 'bg-slate-400 cursor-wait' : 'bg-emerald-600 hover:bg-emerald-700 cursor-pointer'} text-white text-xs font-bold rounded-xl shadow-xs transition-colors`}>
+                            {isUploadingLeaderImage ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>সার্ভারে ছবি আপলোড হচ্ছে...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-3.5 h-3.5" />
+                                <span>কম্পিউটার/মোবাইল থেকে প্রশাসকের ছবি আপলোড করুন</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  disabled={isUploadingLeaderImage}
+                                  onChange={handleLeaderImageUpload}
+                                  className="hidden"
+                                />
+                              </>
+                            )}
+                          </label>
+                        </div>
+
+                        <div>
+                          <input
+                            type="text"
+                            value={formData.leaderImageUrl}
+                            onChange={(e) => handleFieldChange('leaderImageUrl', e.target.value)}
+                            placeholder="অথবা সরাসরি ছবির লিঙ্ক/URL পেস্ট করুন..."
+                            className="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono text-[11px] bg-white text-slate-700"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -668,15 +810,18 @@ export const PortalCustomizerModal: React.FC<PortalCustomizerModalProps> = ({
           {/* Bottom Action Rail */}
           <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
             <span className="text-xs text-slate-500">
-              * পরিবর্তন সংরক্ষণের সাথে সাথে পুরো ওয়েবসাইটে সরাসরি কার্যকর হবে।
+              {isAuthenticated
+                ? '* পরিবর্তন সংরক্ষণের সাথে সাথে পুরো ওয়েবসাইটে সরাসরি কার্যকর হবে।'
+                : '⚠️ তথ্য পরিবর্তন করতে উপরের অফিসার আইডি দিয়ে লগইন থাকা আবশ্যক।'}
             </span>
             <button
               type="button"
               onClick={handleSave}
-              className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer"
+              disabled={!isAuthenticated}
+              className={`flex items-center gap-2 px-6 py-2.5 ${isAuthenticated ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white shadow-md hover:shadow-lg cursor-pointer' : 'bg-slate-400 text-white cursor-not-allowed opacity-60'} rounded-xl text-xs font-bold transition-all`}
             >
-              <Save className="w-4 h-4" />
-              <span>পরিবর্তন সংরক্ষণ করুন</span>
+              {isAuthenticated ? <Save className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+              <span>{isAuthenticated ? 'পরিবর্তন সংরক্ষণ করুন' : 'লগইন আবশ্যক'}</span>
             </button>
           </div>
         </div>

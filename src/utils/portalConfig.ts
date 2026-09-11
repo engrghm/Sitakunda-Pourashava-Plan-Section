@@ -1,3 +1,5 @@
+import { savePortalConfigToApi, fetchPortalConfigFromApi } from './apiStorage';
+
 export type CouncilCategory = 
   | 'administrator' // প্রশাসকের প্রোফাইল
   | 'panel_mayor' // প্যানেল মেয়র প্রোফাইল
@@ -213,7 +215,7 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
   ],
 
   leaderTitle: 'প্রশাসক / মেয়র মহোদয়ের বাণী',
-  leaderName: 'মুহাম্মদ ফখরুল ইসলাম',
+  leaderName: 'মোহাম্মদ ফখরুল ইসলাম',
   leaderDesignation: 'উপজেলা নির্বাহী অফিসার ও প্রশাসক, সীতাকুণ্ড পৌরসভা',
   leaderMessage: 'স্মার্ট বাংলাদেশের রূপকল্প বাস্তবায়নে সীতাকুণ্ড পৌরসভাকে একটি আধুনিক, পরিবেশবান্ধব ও প্রযুক্তিনির্ভর ডিজিটাল নগর হিসেবে গড়ে তোলাই আমাদের লক্ষ্য। নাগরিকদের সরকারি সেবা দ্রুত, স্বচ্ছ ও দুর্নীতিমুক্ত উপায়ে সরাসরি পৌঁছে দিতে আমাদের এই সমন্বিত স্মার্ট পোর্টাল। পৌরবাসীর সক্রিয় সহযোগিতা ও উন্নয়নে আমরা অঙ্গীকারবদ্ধ।',
   leaderImageUrl: '/logo.png',
@@ -224,11 +226,11 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
   officerMessage: 'পরিকল্পিত নগরায়ন ও বিধি মোতাবেক ভবন নির্মাণের ক্ষেত্রে সীমানা সঠিকতা যাচাই ও ছাড়পত্র গ্রহণ অপরিহার্য। ডিজিটাল প্ল্যানিং শাখার মাধ্যমে আবেদনসমূহ দ্রুত নিষ্পত্তি করা হচ্ছে।',
 
   councilMembers: [
-    // 1. Administrator (প্রশাসকের প্রোফাইল)
+    // Administrator (প্রশাসকের প্রোফাইল)
     {
       id: 'cm-admin-1',
       category: 'administrator',
-      name: 'মুহাম্মদ ফখরুল ইসলাম',
+      name: 'মোহাম্মদ ফখরুল ইসলাম',
       designation: 'উপজেলা নির্বাহী অফিসার ও পৌর প্রশাসক',
       wardOrDepartment: 'পৌর প্রশাসন ও নির্বাহী শাখা',
       phone: '০৩০২৮-৫৬০৪৪',
@@ -450,6 +452,9 @@ export function getPortalConfig(): PortalConfig {
     return {
       ...DEFAULT_PORTAL_CONFIG,
       ...parsed,
+      councilMembers: Array.isArray(parsed.councilMembers)
+        ? parsed.councilMembers
+        : DEFAULT_PORTAL_CONFIG.councilMembers,
       emergencyNumbers: parsed.emergencyNumbers || DEFAULT_PORTAL_CONFIG.emergencyNumbers,
       servicesList: parsed.servicesList || DEFAULT_PORTAL_CONFIG.servicesList,
       marqueeNotices: parsed.marqueeNotices || DEFAULT_PORTAL_CONFIG.marqueeNotices,
@@ -467,9 +472,15 @@ export function savePortalConfig(config: PortalConfig): boolean {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
     window.dispatchEvent(new Event('portal-config-updated'));
+    // Asynchronously synchronize with Hostinger MySQL Database
+    savePortalConfigToApi(config).catch((err) => {
+      console.warn('[Hostinger PortalConfig Sync] Deferred:', err);
+    });
     return true;
   } catch (err) {
     console.error('Failed to save portal config:', err);
+    // Even if localStorage quota is exceeded, try to save directly to server
+    savePortalConfigToApi(config).catch(() => {});
     return false;
   }
 }
@@ -478,6 +489,36 @@ export function resetPortalConfig(): PortalConfig {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(STORAGE_KEY);
     window.dispatchEvent(new Event('portal-config-updated'));
+    savePortalConfigToApi(DEFAULT_PORTAL_CONFIG).catch(() => {});
   }
   return DEFAULT_PORTAL_CONFIG;
 }
+
+/**
+ * Synchronize portal config, council members, and notices with Hostinger MySQL
+ */
+export async function syncPortalConfigWithHostinger(): Promise<PortalConfig | null> {
+  try {
+    const remote = await fetchPortalConfigFromApi<PortalConfig>();
+    if (remote && typeof remote === 'object') {
+      const merged: PortalConfig = {
+        ...DEFAULT_PORTAL_CONFIG,
+        ...remote,
+        councilMembers: Array.isArray(remote.councilMembers)
+          ? remote.councilMembers
+          : DEFAULT_PORTAL_CONFIG.councilMembers,
+        noticesList: Array.isArray(remote.noticesList)
+          ? remote.noticesList
+          : DEFAULT_PORTAL_CONFIG.noticesList,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      window.dispatchEvent(new Event('portal-config-updated'));
+      return merged;
+    }
+  } catch (err) {
+    console.warn('[Hostinger Settings Sync] Error:', err);
+  }
+  return null;
+}
+
+

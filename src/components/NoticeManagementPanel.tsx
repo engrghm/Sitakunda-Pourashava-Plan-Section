@@ -24,6 +24,7 @@ import {
   getPortalConfig, 
   savePortalConfig 
 } from '../utils/portalConfig';
+import { getOfficerSession } from '../utils/storage';
 
 interface NoticeManagementPanelProps {
   onSuccessNotification?: (msg: string) => void;
@@ -99,6 +100,12 @@ export const NoticeManagementPanel: React.FC<NoticeManagementPanelProps> = ({
 
   const handleSaveNotice = (e: React.FormEvent) => {
     e.preventDefault();
+    const session = getOfficerSession();
+    if (!session?.username) {
+      alert('অননুমোদিত চেষ্টা! নোটিশ বা টেন্ডার তৈরি/সম্পাদনা করতে অফিসিয়াল কর্মকর্তা আইডিতে লগইন করা আবশ্যক।');
+      return;
+    }
+
     if (!formData.title?.trim()) {
       alert('অনুগ্রহ করে নোটিশের শিরোনাম লিখুন');
       return;
@@ -134,6 +141,12 @@ export const NoticeManagementPanel: React.FC<NoticeManagementPanelProps> = ({
   };
 
   const handleDeleteNotice = (id: string, title: string) => {
+    const session = getOfficerSession();
+    if (!session?.username) {
+      alert('অননুমোদিত চেষ্টা! নোটিশ মুছে ফেলতে অফিসিয়াল কর্মকর্তা আইডিতে লগইন করা আবশ্যক।');
+      return;
+    }
+
     if (window.confirm(`আপনি কি নিশ্চিত যে "${title}" নোটিশটি মুছে ফেলতে চান?`)) {
       const updatedList = notices.filter(n => n.id !== id);
       setNotices(updatedList);
@@ -142,6 +155,12 @@ export const NoticeManagementPanel: React.FC<NoticeManagementPanelProps> = ({
   };
 
   const handleResetToDefaults = () => {
+    const session = getOfficerSession();
+    if (!session?.username) {
+      alert('অননুমোদিত চেষ্টা! নোটিশ রিস্টোর করতে অফিসিয়াল কর্মকর্তা আইডিতে লগইন করা আবশ্যক।');
+      return;
+    }
+
     if (window.confirm('আপনি কি সকল নোটিশ ডিফল্ট তালিকায় পুনরুদ্ধার করতে চান?')) {
       const defaultList = [...(DEFAULT_PORTAL_CONFIG.noticesList || [])];
       setNotices(defaultList);

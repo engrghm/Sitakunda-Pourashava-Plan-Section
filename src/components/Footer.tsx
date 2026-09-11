@@ -23,7 +23,7 @@ export const Footer: React.FC<FooterProps> = ({ config, onOpenCustomizer, onNavi
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
   return (
-    <footer className="no-print relative mt-16 overflow-hidden">
+    <footer className="no-print relative mt-10 sm:mt-12 overflow-hidden">
       {/* Decorative top border */}
       <div className="h-1 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-700"></div>
 
@@ -32,7 +32,7 @@ export const Footer: React.FC<FooterProps> = ({ config, onOpenCustomizer, onNavi
         {/* Geometric dot overlay */}
         <div className="absolute inset-0 hero-dot-overlay opacity-30 pointer-events-none"></div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-8 pt-12 pb-8">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-8 pt-8 sm:pt-10 pb-6 sm:pb-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 sm:gap-10">
 
             {/* Col 1 — Brand */}

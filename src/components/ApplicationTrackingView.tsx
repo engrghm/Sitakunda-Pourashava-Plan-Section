@@ -247,16 +247,17 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Search Header Banner */}
-      <div className="bg-emerald-900 text-white rounded-xl p-6 shadow-md border-l-4 border-emerald-400">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="p-2.5 bg-emerald-800 rounded-lg">
+      <div className="bg-gradient-to-br from-[#043328] via-[#064e3b] to-[#0f172a] text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-emerald-500/40 relative overflow-hidden">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none"></div>
+        <div className="flex items-center gap-3.5 mb-3.5 relative z-10">
+          <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/15 text-emerald-300 shadow-md">
             <Search className="w-6 h-6 text-emerald-300" />
           </div>
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-emerald-50">
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-sm">
               ভূমির ডিমার্কেশন ও সঠিকতা যাচাই ট্র্যাকিং পোর্টাল
             </h2>
-            <p className="text-emerald-200 text-sm mt-0.5">
+            <p className="text-emerald-100/90 text-xs sm:text-sm mt-0.5 font-normal">
               আবেদনের ট্র্যাকিং আইডি অথবা আবেদনকারীর মোবাইল নম্বর দিয়ে বর্তমান অবস্থা যাচাই করুন
             </p>
           </div>
