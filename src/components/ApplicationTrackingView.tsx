@@ -402,7 +402,7 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
     },
     {
       title: 'চূড়ান্ত ডিমার্কেশন প্রত্যয়নপত্র',
-      subtitle: 'নির্বাহী প্রকৌশলী অনুমোদন',
+      subtitle: 'নির্বাহী প্রকৌশলী/প্রশাসক/মেয়র অনুমোদন',
       status: searchedApp?.status === 'approved' ? 'completed' : 'pending',
       icon: <Award className="w-4 h-4" />
     },
