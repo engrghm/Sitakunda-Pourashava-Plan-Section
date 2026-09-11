@@ -1706,7 +1706,6 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
                     <option value="স্নাতক পুর কৌশলী (B.Sc Civil)">স্নাতক পুর কৌশলী (B.Sc Civil - IEB)</option>
                     <option value="ডিপ্লোমা স্থপতি (Diploma Arch)">ডিপ্লোমা স্থপতি (কারিগরি বোর্ড)</option>
                     <option value="ডিপ্লোমা পুর কৌশলী (Diploma Civil)">ডিপ্লোমা পুর কৌশলী (কারিগরি বোর্ড)</option>
-                    <option value="সার্টিফিকেটপ্রাপ্ত নক্সাকার">সার্টিফিকেটপ্রাপ্ত নক্সাকার</option>
                   </select>
                 </div>
 
