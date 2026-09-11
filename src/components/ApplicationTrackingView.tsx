@@ -974,6 +974,7 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
               documents={searchedApp.documents || []}
               applicantName={searchedApp.siteLocation.applicantName}
               applicationId={searchedApp.id}
+              hideViewAndDownload={true}
             />
           </div>
 

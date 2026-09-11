@@ -15,7 +15,8 @@ import {
   Trash2,
   Loader2,
   Upload,
-  AlertCircle
+  AlertCircle,
+  Lock
 } from 'lucide-react';
 import { UploadedDocument } from '../types';
 import { toBanglaNumber, formatBanglaDate } from '../utils/storage';
@@ -38,6 +39,7 @@ interface DocumentAttachmentsViewerProps {
   applicantName: string;
   applicationId: string;
   allowManage?: boolean;
+  hideViewAndDownload?: boolean;
   onUpdateDocuments?: (updatedDocs: UploadedDocument[]) => void;
 }
 
@@ -46,6 +48,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
   applicantName,
   applicationId,
   allowManage = false,
+  hideViewAndDownload = false,
   onUpdateDocuments,
 }) => {
   const [selectedDoc, setSelectedDoc] = useState<UploadedDocument | null>(null);
@@ -317,11 +320,33 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
             </button>
           )}
 
-          <span className="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold">
-            {allowManage ? 'নক্সাকার সম্পাদনাসক্ষম' : 'অফিসিয়াল যাচাইযোগ্য'}
+          <span className="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold flex items-center gap-1">
+            {allowManage ? (
+              <span>নক্সাকার সম্পাদনাসক্ষম</span>
+            ) : hideViewAndDownload ? (
+              <>
+                <Lock className="w-3 h-3 text-emerald-600" />
+                <span>দাপ্তরিকভাবে সুরক্ষাপ্রাপ্ত</span>
+              </>
+            ) : (
+              <span>অফিসিয়াল যাচাইযোগ্য</span>
+            )}
           </span>
         </div>
       </div>
+
+      {/* Confidentiality Notice for Citizens / Tracking View */}
+      {hideViewAndDownload && (
+        <div className="p-3 bg-amber-50/90 border border-amber-200 text-amber-950 rounded-xl text-xs flex items-start gap-2.5 shadow-2xs">
+          <Lock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+          <div className="text-[11px] leading-relaxed">
+            <span className="font-bold text-xs text-amber-950 block mb-0.5">
+              সংযুক্ত নথিপত্র ও ম্যাপসমূহ দাপ্তরিকভাবে সুরক্ষাপ্রাপ্ত
+            </span>
+            নাগরিকের ব্যক্তিগত নথিপত্র ও জমির মালিকানার তথ্যের গোপনীয়তা ও সুরক্ষার্থে ট্র্যাকিং পোর্টালে সংযুক্ত ফাইলসমূহ সরাসরি প্রদর্শন (প্রিভিউ) বা ডাউনলোড উন্মুক্ত নয়। শুধুমাত্র দায়িত্বপ্রাপ্ত পৌর কর্মকর্তা ও নক্সাকার যাচাই প্যানেল থেকে এগুলি পর্যালোচনা করতে পারবেন।
+          </div>
+        </div>
+      )}
 
       {documents.length === 0 ? (
         <div className="p-5 bg-white border border-dashed border-slate-300 rounded-xl text-center text-xs text-slate-500 space-y-2">
@@ -373,23 +398,32 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                   </span>
 
                   <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDoc(doc)}
-                      className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold rounded-md border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <Eye className="w-3 h-3" />
-                      <span>প্রিভিউ</span>
-                    </button>
+                    {hideViewAndDownload ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200" title="দাপ্তরিক গোপনীয়তা রক্ষার্থে ট্র্যাকিং পেজে ফাইল প্রিভিউ বা ডাউনলোড উন্মুক্ত নয়">
+                        <Lock className="w-3 h-3 text-slate-400" />
+                        <span>সংরক্ষিত ও সুরক্ষিত</span>
+                      </span>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDoc(doc)}
+                          className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold rounded-md border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>প্রিভিউ</span>
+                        </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDownload(doc)}
-                      className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md border border-slate-200 transition-colors cursor-pointer"
-                      title="ডাউনলোড করুন"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(doc)}
+                          className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md border border-slate-200 transition-colors cursor-pointer"
+                          title="ডাউনলোড করুন"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
 
                     {allowManage && (
                       <>
@@ -636,7 +670,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
       )}
 
       {/* Document Quick Preview Modal */}
-      {selectedDoc && (
+      {selectedDoc && !hideViewAndDownload && (
         <div className="fixed inset-0 z-70 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-150">
             {/* Modal Header */}
