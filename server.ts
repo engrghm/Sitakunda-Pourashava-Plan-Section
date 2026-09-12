@@ -481,6 +481,34 @@ app.get(['/api/applications.php', '/api/applications'], (req, res) => {
 app.post(['/api/applications.php', '/api/applications'], (req, res) => {
   try {
     const payload = req.body;
+    const isDelete = payload?.action === 'delete' || req.query.action === 'delete' || req.query.clear_all || payload?.clear_all;
+
+    if (isDelete) {
+      const id = String(req.query.id || payload?.id || '').trim();
+      const clearAll = req.query.clear_all || payload?.clear_all;
+      const moduleType = (req.query.module || payload?.module) as string;
+      let list = getApplicationsList();
+
+      if (clearAll === 'true' || clearAll === '1' || clearAll === true || clearAll === 1) {
+        if (moduleType) {
+          list = list.filter((item: any) => (item.moduleType || 'demarcation') !== moduleType);
+        } else {
+          list = [];
+        }
+      } else if (id) {
+        const target = id.toLowerCase();
+        list = list.filter((item: any) => {
+          const iId = (item.id || '').trim().toLowerCase();
+          const tId = (item.trackingId || '').trim().toLowerCase();
+          const fNo = (item.formNo || '').trim().toLowerCase();
+          return iId !== target && tId !== target && fNo !== target;
+        });
+      }
+
+      saveApplicationsList(list);
+      return res.json({ success: true, deletedId: id, totalRemaining: list.length });
+    }
+
     if (!payload || !payload.id) {
       return res.status(400).json({ error: 'Missing application ID' });
     }
@@ -523,19 +551,25 @@ app.put(['/api/applications.php', '/api/applications'], (req, res) => {
 
 app.delete(['/api/applications.php', '/api/applications'], (req, res) => {
   try {
-    const id = req.query.id as string;
-    const clearAll = req.query.clear_all as string;
-    const moduleType = req.query.module as string;
+    const id = String(req.query.id || req.body?.id || '').trim();
+    const clearAll = req.query.clear_all || req.body?.clear_all;
+    const moduleType = (req.query.module || req.body?.module) as string;
     let list = getApplicationsList();
 
-    if (clearAll === 'true' || clearAll === '1') {
+    if (clearAll === 'true' || clearAll === '1' || clearAll === true || clearAll === 1) {
       if (moduleType) {
         list = list.filter((item: any) => (item.moduleType || 'demarcation') !== moduleType);
       } else {
         list = [];
       }
     } else if (id) {
-      list = list.filter((item: any) => item.id !== id && item.trackingId !== id);
+      const target = id.toLowerCase();
+      list = list.filter((item: any) => {
+        const iId = (item.id || '').trim().toLowerCase();
+        const tId = (item.trackingId || '').trim().toLowerCase();
+        const fNo = (item.formNo || '').trim().toLowerCase();
+        return iId !== target && tId !== target && fNo !== target;
+      });
     }
 
     saveApplicationsList(list);

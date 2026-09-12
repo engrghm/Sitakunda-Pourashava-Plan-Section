@@ -165,6 +165,14 @@ if ($method === 'POST') {
                 $savedUrl = $extractPhoto($node['fileUrl'], $node['fileName'] ?? 'notice_file');
                 if ($savedUrl) $node['fileUrl'] = $savedUrl;
             }
+            if (isset($node['thumbnailUrl']) && is_string($node['thumbnailUrl']) && strpos($node['thumbnailUrl'], 'data:') === 0) {
+                $savedUrl = $extractPhoto($node['thumbnailUrl'], $node['title'] ?? 'media_thumb');
+                if ($savedUrl) $node['thumbnailUrl'] = $savedUrl;
+            }
+            if (isset($node['url']) && is_string($node['url']) && strpos($node['url'], 'data:') === 0) {
+                $savedUrl = $extractPhoto($node['url'], $node['title'] ?? 'media_item');
+                if ($savedUrl) $node['url'] = $savedUrl;
+            }
             foreach ($node as &$sub) {
                 if (is_array($sub)) {
                     $sanitizeSettings($sub);

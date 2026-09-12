@@ -102,6 +102,7 @@ import {
   deleteBuildingApplication,
   deleteRoadCuttingApplication,
   purgeModuleApplications,
+  isAppDeleted,
   toBanglaNumber, 
   formatBanglaDate, 
   authenticateOfficer, 
@@ -112,14 +113,17 @@ import {
   getOfficerAccounts,
   addAuditLog,
   getStoredAuditLogs,
-  resetToDemoApplications
+  resetToDemoApplications,
+  DEMARCATION_STORAGE_KEY,
+  BUILDING_APPS_STORAGE_KEY,
+  ROAD_CUTTING_APPS_STORAGE_KEY
 } from '../utils/storage';
 import { 
   sendAutomatedStatusAlert, 
   generateOfficialEmailTemplate, 
   EmailTemplate 
 } from '../utils/notificationService';
-import { uploadFileToServer, fetchApplicationsFromApi } from '../utils/apiStorage';
+import { uploadFileToServer, fetchApplicationsFromApi, deleteApplicationFromApi } from '../utils/apiStorage';
 
 interface OfficerDashboardProps {
   onViewPrintA4: (app: DemarcationApplication) => void;
@@ -342,7 +346,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
   }, []);
 
   const loadApplications = async () => {
-    // 1. Initial immediate render from local cache
+    // 1. Initial immediate render from local cache (already filtered by isAppDeleted)
     const data = getStoredApplications();
     setApplications(data);
     const bData = getBuildingApplications();
@@ -359,9 +363,22 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
       ]);
 
       if (remoteDemarcation && Array.isArray(remoteDemarcation) && remoteDemarcation.length > 0) {
+        // Purge any remote records that were marked as permanently deleted
+        const validRemoteDemarcation = remoteDemarcation.filter((app) => {
+          if (isAppDeleted(app.id, app.trackingId, app.formNo)) {
+            deleteApplicationFromApi(app.id).catch(() => {});
+            return false;
+          }
+          return true;
+        });
+
         const mergedMap = new Map<string, DemarcationApplication>();
-        data.forEach((app) => mergedMap.set(app.id, app));
-        remoteDemarcation.forEach((remoteApp) => {
+        data.forEach((app) => {
+          if (!isAppDeleted(app.id, app.trackingId, app.formNo)) {
+            mergedMap.set(app.id, app);
+          }
+        });
+        validRemoteDemarcation.forEach((remoteApp) => {
           const localApp = mergedMap.get(remoteApp.id);
           if (localApp && localApp.documents && localApp.documents.length > 0) {
             const localDocMap = new Map<string, any>();
@@ -388,33 +405,57 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
         );
         setApplications(merged);
         try {
-          localStorage.setItem('sitakunda_demarcation_applications', JSON.stringify(merged));
+          localStorage.setItem(DEMARCATION_STORAGE_KEY, JSON.stringify(merged));
         } catch {}
       }
 
       if (remoteBuilding && Array.isArray(remoteBuilding) && remoteBuilding.length > 0) {
+        const validRemoteBuilding = remoteBuilding.filter((app) => {
+          if (isAppDeleted(app.id, (app as any).trackingId, app.formNo)) {
+            deleteApplicationFromApi(app.id).catch(() => {});
+            return false;
+          }
+          return true;
+        });
+
         const mergedBMap = new Map<string, BuildingConstructionApplication>();
-        bData.forEach((app) => mergedBMap.set(app.id, app));
-        remoteBuilding.forEach((app) => mergedBMap.set(app.id, app));
+        bData.forEach((app) => {
+          if (!isAppDeleted(app.id, (app as any).trackingId, app.formNo)) {
+            mergedBMap.set(app.id, app);
+          }
+        });
+        validRemoteBuilding.forEach((app) => mergedBMap.set(app.id, app));
         const mergedB = Array.from(mergedBMap.values()).sort((a, b) => 
           new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
         );
         setBuildingApplications(mergedB);
         try {
-          localStorage.setItem('sitakunda_building_applications', JSON.stringify(mergedB));
+          localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(mergedB));
         } catch {}
       }
 
       if (remoteRoadCutting && Array.isArray(remoteRoadCutting) && remoteRoadCutting.length > 0) {
+        const validRemoteRoadCutting = remoteRoadCutting.filter((app) => {
+          if (isAppDeleted(app.id, (app as any).trackingId, (app as any).formNo)) {
+            deleteApplicationFromApi(app.id).catch(() => {});
+            return false;
+          }
+          return true;
+        });
+
         const mergedRCMap = new Map<string, RoadCuttingApplication>();
-        rcData.forEach((app) => mergedRCMap.set(app.id, app));
-        remoteRoadCutting.forEach((app) => mergedRCMap.set(app.id, app));
+        rcData.forEach((app) => {
+          if (!isAppDeleted(app.id, (app as any).trackingId, (app as any).formNo)) {
+            mergedRCMap.set(app.id, app);
+          }
+        });
+        validRemoteRoadCutting.forEach((app) => mergedRCMap.set(app.id, app));
         const mergedRC = Array.from(mergedRCMap.values()).sort((a, b) => 
           new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
         );
         setRoadCuttingApplications(mergedRC);
         try {
-          localStorage.setItem('sitakunda_road_cutting_applications', JSON.stringify(mergedRC));
+          localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(mergedRC));
         } catch {}
       }
     } catch (err) {
@@ -518,7 +559,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
   };
 
   // Delete a single demarcation application
-  const handleDeleteDemarcationApp = (id: string, applicantName: string) => {
+  const handleDeleteDemarcationApp = async (id: string, applicantName: string) => {
     if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${applicantName}"-এর সীমানা নির্ধারণ আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
       return;
     }
@@ -528,56 +569,76 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
     if (selectedApp?.id === id) {
       setSelectedApp(null);
     }
+    await deleteApplicationFromApi(id).catch(() => {});
     alert('সীমানা নির্ধারণ আবেদনটি সফলভাবে মুছে ফেলা হয়েছে।');
   };
 
   // Delete a single building application
-  const handleDeleteBuildingApp = (id: string, applicantName: string) => {
+  const handleDeleteBuildingApp = async (id: string, applicantName: string) => {
     if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${applicantName}"-এর তফসিল-১ আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
       return;
     }
     const updated = deleteBuildingApplication(id);
     setBuildingApplications(updated);
     setSelectedBuildingAppIds((prev) => prev.filter((i) => i !== id));
+    await deleteApplicationFromApi(id).catch(() => {});
     alert('তফসিল-১ আবেদনটি সফলভাবে মুছে ফেলা হয়েছে।');
   };
 
+  // Delete a single road cutting application
+  const handleDeleteRoadCuttingApp = async (id: string, applicantName: string) => {
+    if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${applicantName}"-এর রাস্তা কর্তন আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+      return;
+    }
+    const updated = deleteRoadCuttingApplication(id);
+    setRoadCuttingApplications(updated);
+    setSelectedRoadCuttingAppIds((prev) => prev.filter((i) => i !== id));
+    await deleteApplicationFromApi(id).catch(() => {});
+    alert('রাস্তা কর্তন আবেদনটি সফলভাবে মুছে ফেলা হয়েছে।');
+  };
+
   // Bulk delete selected demarcation applications
-  const handleBulkDeleteDemarcation = () => {
+  const handleBulkDeleteDemarcation = async () => {
     if (selectedAppIds.length === 0) return;
     if (!window.confirm(`আপনি কি নিশ্চিত যে নির্বাচিত ${toBanglaNumber(selectedAppIds.length)} টি সীমানা নির্ধারণ আবেদন স্থায়ীভাবে মুছে ফেলতে চান?`)) {
       return;
     }
+    const toDelete = [...selectedAppIds];
     let current = applications;
-    selectedAppIds.forEach((id) => {
+    for (const id of toDelete) {
       current = deleteDemarcationApplication(id);
-    });
+      await deleteApplicationFromApi(id).catch(() => {});
+    }
     setApplications(current);
     setSelectedAppIds([]);
     alert('নির্বাচিত আবেদনসমূহ সফলভাবে মুছে ফেলা হয়েছে।');
   };
 
   // Bulk delete selected building applications
-  const handleBulkDeleteBuilding = () => {
+  const handleBulkDeleteBuilding = async () => {
     if (selectedBuildingAppIds.length === 0) return;
     if (!window.confirm(`আপনি কি নিশ্চিত যে নির্বাচিত ${toBanglaNumber(selectedBuildingAppIds.length)} টি তফসিল-১ আবেদন স্থায়ীভাবে মুছে ফেলতে চান?`)) {
       return;
     }
+    const toDelete = [...selectedBuildingAppIds];
     let current = buildingApplications;
-    selectedBuildingAppIds.forEach((id) => {
+    for (const id of toDelete) {
       current = deleteBuildingApplication(id);
-    });
+      await deleteApplicationFromApi(id).catch(() => {});
+    }
     setBuildingApplications(current);
     setSelectedBuildingAppIds([]);
     alert('নির্বাচিত তফসিল-১ আবেদনসমূহ সফলভাবে মুছে ফেলা হয়েছে।');
   };
 
   // Purge demo applications across modules
-  const handlePurgeDemoData = (module: 'demarcation' | 'building' | 'all') => {
+  const handlePurgeDemoData = (module: 'demarcation' | 'building' | 'road_cutting' | 'all') => {
     const title = module === 'demarcation' 
       ? 'সীমানা নির্ধারণ ও ডিমার্কেশন ফরমের সকল ডেমো / পরীক্ষামূলক আবেদন' 
       : module === 'building'
       ? 'ইমারত নির্মাণ অনুমোদন ফরম তফসিল-১ এর সকল ডেমো / পরীক্ষামূলক আবেদন'
+      : module === 'road_cutting'
+      ? 'রাস্তা কর্তন অনুমোদন ফরমের সকল ডেমো / পরীক্ষামূলক আবেদন'
       : 'সকল মডিউলের পরীক্ষামূলক ও ডেমো আবেদন';
 
     if (!window.confirm(`আপনি কি নিশ্চিত যে ${title} স্থায়ীভাবে মুছে সম্পূর্ণ খালি করতে চান?`)) {
@@ -592,6 +653,10 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
       purgeModuleApplications('building');
       setBuildingApplications([]);
       setSelectedBuildingAppIds([]);
+    } else if (module === 'road_cutting') {
+      purgeModuleApplications('road_cutting');
+      setRoadCuttingApplications([]);
+      setSelectedRoadCuttingAppIds([]);
     } else {
       resetToDemoApplications();
       setApplications([]);
@@ -599,6 +664,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
       setRoadCuttingApplications([]);
       setSelectedAppIds([]);
       setSelectedBuildingAppIds([]);
+      setSelectedRoadCuttingAppIds([]);
     }
     alert(`${title} সফলভাবে মুছে ফেলা হয়েছে।`);
   };
@@ -3165,6 +3231,16 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => handlePurgeDemoData('road_cutting')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition-all border border-rose-200 cursor-pointer shadow-2xs"
+                  title="রাস্তা কর্তন ফরমের সকল ডেমো / পরীক্ষামূলক আবেদন মুছে ফেলুন"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>সকল ডেমো মুছুন</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setCsvExportModalModule('roadcutting')}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer border border-amber-600"
                   title="রাস্তা কর্তন অনুমোদন ফরমের কাস্টম CSV এক্সপোর্ট ও ফিল্টারিং"
@@ -3306,6 +3382,16 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                               >
                                 প্রিন্ট / PDF
                               </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteRoadCuttingApp(rcApp.id, rcApp.applicantName || 'আবেদন')}
+                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-xs border border-rose-200 flex items-center justify-center gap-1"
+                                title="এই রাস্তা কর্তন আবেদনটি স্থায়ীভাবে মুছে ফেলুন"
+                              >
+                                <Trash2 className="w-3 h-3 text-rose-600" />
+                                <span>মুছুন</span>
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -3358,12 +3444,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
       {/* MODULE 7: Media, Photo & Video Gallery Management */}
       {activeModule === 'media' && (
         <div className="space-y-6 animate-fade-in">
-          <MediaManagementPanel
-            onMediaChanged={() => {
-              setSaveSuccessMsg('মিডিয়া গ্যালারি সফলভাবে আপডেট হয়েছে');
-              setTimeout(() => setSaveSuccessMsg(null), 4000);
-            }}
-          />
+          <MediaManagementPanel />
         </div>
       )}
 
@@ -4706,6 +4787,23 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedApp) {
+                      handleDeleteDemarcationApp(
+                        selectedApp.id,
+                        selectedApp.applicantName || selectedApp.siteLocation?.applicantName || 'আবেদন'
+                      );
+                    }
+                  }}
+                  className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 border border-rose-200 rounded-lg text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                  title="এই আবেদনটি স্থায়ীভাবে মুছে ফেলুন"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-600" />
+                  <span>মুছে ফেলুন</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setSelectedApp(null)}

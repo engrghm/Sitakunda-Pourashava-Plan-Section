@@ -19,6 +19,7 @@ import {
   MediaItem, 
   MediaType, 
   getStoredMediaItems,
+  syncMediaGalleryWithHostinger,
   extractYoutubeId
 } from '../utils/mediaGalleryStorage';
 
@@ -37,6 +38,8 @@ export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({ onBackToHome
   const [activeVideo, setActiveVideo] = useState<MediaItem | null>(null);
 
   useEffect(() => {
+    syncMediaGalleryWithHostinger().catch(() => {});
+
     const handleUpdate = () => {
       setItems(getStoredMediaItems());
     };

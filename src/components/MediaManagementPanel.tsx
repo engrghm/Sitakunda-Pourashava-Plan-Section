@@ -15,7 +15,8 @@ import {
   Calendar,
   Layers,
   FileImage,
-  Film
+  Film,
+  Loader2
 } from 'lucide-react';
 import { 
   MediaItem, 
@@ -24,8 +25,11 @@ import {
   saveMediaItem, 
   deleteMediaItem, 
   resetToDefaultMedia,
+  persistMediaItemsAsync,
+  syncMediaGalleryWithHostinger,
   extractYoutubeId 
 } from '../utils/mediaGalleryStorage';
+import { uploadFileToServer } from '../utils/apiStorage';
 
 interface MediaManagementPanelProps {
   onMediaChanged?: () => void;
@@ -42,15 +46,25 @@ export const MediaManagementPanel: React.FC<MediaManagementPanelProps> = ({ onMe
   const [description, setDescription] = useState('');
   const [isFeatured, setIsFeatured] = useState(false);
 
-  // File upload state
+  // File upload & saving states
   const [uploadedFilePreview, setUploadedFilePreview] = useState<string | null>(null);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   // Lightbox preview for testing
   const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
 
   useEffect(() => {
+    // Initial sync from database/server
+    syncMediaGalleryWithHostinger()
+      .then((remote) => {
+        if (remote && Array.isArray(remote) && remote.length > 0) {
+          setItems(remote);
+        }
+      })
+      .catch(() => {});
+
     const handleUpdate = () => {
       setItems(getStoredMediaItems());
     };
@@ -58,7 +72,7 @@ export const MediaManagementPanel: React.FC<MediaManagementPanelProps> = ({ onMe
     return () => window.removeEventListener('media-gallery-updated', handleUpdate);
   }, []);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -67,28 +81,50 @@ export const MediaManagementPanel: React.FC<MediaManagementPanelProps> = ({ onMe
       return;
     }
 
-    if (file.size > 8 * 1024 * 1024) {
-      setStatusMsg({ type: 'error', text: 'ছবির সাইজ ৮ মেগাবাইটের বেশি হতে পারবে না।' });
+    if (file.size > 15 * 1024 * 1024) {
+      setStatusMsg({ type: 'error', text: 'ছবির সাইজ ১৫ মেগাবাইটের বেশি হতে পারবে না।' });
       return;
     }
 
     setIsProcessingUpload(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setUploadedFilePreview(dataUrl);
-      setUrl(dataUrl);
+    setStatusMsg({ type: 'info', text: `"${file.name}" ছবি সার্ভারে আপলোড হচ্ছে...` });
+
+    try {
+      // 1. Show instant local preview
+      const localPreviewUrl = URL.createObjectURL(file);
+      setUploadedFilePreview(localPreviewUrl);
+
+      // 2. Upload file directly to server uploads folder
+      const uploadRes = await uploadFileToServer(file);
+      if (uploadRes && uploadRes.success && uploadRes.fileUrl) {
+        setUrl(uploadRes.fileUrl);
+        setUploadedFilePreview(uploadRes.fileUrl);
+        setStatusMsg({ type: 'success', text: `ছবি সার্ভারে সফলভাবে আপলোড হয়েছে: ${uploadRes.fileName}` });
+      } else {
+        // Fallback: Read compact dataUrl
+        const dataUrl = await new Promise<string>((res) => {
+          const r = new FileReader();
+          r.onload = () => res((r.result as string) || '');
+          r.onerror = () => res('');
+          r.readAsDataURL(file);
+        });
+        if (dataUrl) {
+          setUrl(dataUrl);
+          setUploadedFilePreview(dataUrl);
+          setStatusMsg({ type: 'success', text: `ছবি সফলভাবে প্রস্তুত হয়েছে: ${file.name}` });
+        } else {
+          setStatusMsg({ type: 'error', text: 'ছবি রিড করতে সমস্যা হয়েছে।' });
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Media Upload] Error:', err);
+      setStatusMsg({ type: 'error', text: 'ছবি আপলোডে কিছুটা বিলম্ব হচ্ছে, অনুগ্রহ করে পুনরায় চেষ্টা করুন।' });
+    } finally {
       setIsProcessingUpload(false);
-      setStatusMsg({ type: 'success', text: `ছবি সফলভাবে লোড হয়েছে: ${file.name}` });
-    };
-    reader.onerror = () => {
-      setIsProcessingUpload(false);
-      setStatusMsg({ type: 'error', text: 'ছবি রিড করতে ব্যর্থ হয়েছে।' });
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!title.trim()) {
@@ -108,8 +144,12 @@ export const MediaManagementPanel: React.FC<MediaManagementPanelProps> = ({ onMe
       ? (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : '/logo.png')
       : finalUrl;
 
+    setIsSaving(true);
+    setStatusMsg({ type: 'info', text: 'মিডিয়া ডাটাবেজে সংরক্ষণ করা হচ্ছে...' });
+
     try {
-      saveMediaItem({
+      // 1. Save to state and storage
+      const { newItem, allItems } = saveMediaItem({
         type: mediaType,
         title: title.trim(),
         category: finalCategory,
@@ -121,35 +161,81 @@ export const MediaManagementPanel: React.FC<MediaManagementPanelProps> = ({ onMe
         isFeatured,
       });
 
-      // Reset form
+      // Update local state immediately so user sees new card instantly
+      setItems(allItems);
+
+      // Reset form fields
       setTitle('');
       setUrl('');
       setUploadedFilePreview(null);
       setDescription('');
       setIsFeatured(false);
-      setStatusMsg({ type: 'success', text: 'নতুন মিডিয়া আইটেম সফলভাবে গ্যালারিতে যুক্ত হয়েছে!' });
-      onMediaChanged?.();
+
+      // 2. Persist directly to Hostinger MySQL Database
+      const apiSuccess = await persistMediaItemsAsync(allItems);
+      if (apiSuccess) {
+        setStatusMsg({ type: 'success', text: 'নতুন মিডিয়া আইটেম সফলভাবে ডাটাবেজ ও গ্যালারিতে সংরক্ষিত হয়েছে!' });
+      } else {
+        setStatusMsg({ type: 'success', text: 'নতুন মিডিয়া গ্যালারিতে সংরক্ষিত হয়েছে (সিঙ্ক মোড)।' });
+      }
+
+      // 3. Trigger parent callback safely
+      try {
+        onMediaChanged?.();
+      } catch (cbErr) {
+        console.warn('[MediaManagementPanel] onMediaChanged error:', cbErr);
+      }
+
       setTimeout(() => setStatusMsg(null), 4000);
-    } catch {
-      setStatusMsg({ type: 'error', text: 'মিডিয়া সংরক্ষণে সমস্যা হয়েছে।' });
+    } catch (err: any) {
+      console.error('[Media Save Error]:', err);
+      setStatusMsg({ type: 'error', text: `মিডিয়া সংরক্ষণে সমস্যা হয়েছে: ${err?.message || 'অনুগ্রহ করে পুনরায় চেষ্টা করুন'}` });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDelete = (id: string, itemTitle: string) => {
-    if (window.confirm(`আপনি কি নিশ্চিতভাবে "${itemTitle}" আইটেমটি গ্যালারি থেকে মুছে ফেলতে চান?`)) {
-      deleteMediaItem(id);
-      setStatusMsg({ type: 'success', text: 'আইটেমটি সফলভাবে মুছে ফেলা হয়েছে।' });
-      onMediaChanged?.();
-      setTimeout(() => setStatusMsg(null), 3000);
+  const handleDelete = async (id: string, itemTitle: string) => {
+    if (window.confirm(`আপনি কি নিশ্চিতভাবে "${itemTitle}" আইটেমটি গ্যালারি ও ডাটাবেজ থেকে মুছে ফেলতে চান?`)) {
+      try {
+        const remaining = deleteMediaItem(id);
+        setItems(remaining);
+        setStatusMsg({ type: 'info', text: 'ডাটাবেজ আপডেট হচ্ছে...' });
+        
+        await persistMediaItemsAsync(remaining);
+        setStatusMsg({ type: 'success', text: 'আইটেমটি সফলভাবে মুছে ডাটাবেজ আপডেট করা হয়েছে।' });
+
+        try {
+          onMediaChanged?.();
+        } catch {}
+
+        setTimeout(() => setStatusMsg(null), 3000);
+      } catch (err: any) {
+        console.error('[Media Delete Error]', err);
+        setStatusMsg({ type: 'error', text: 'আইটেমটি মুছতে সমস্যা হয়েছে।' });
+      }
     }
   };
 
-  const handleResetDefaults = () => {
+  const handleResetDefaults = async () => {
     if (window.confirm('আপনি কি গ্যালারি রিসেট করে ডিফল্ট নমুনা ছবি ও ভিডিও ফিরিয়ে আনতে চান?')) {
-      resetToDefaultMedia();
-      setStatusMsg({ type: 'success', text: 'ডিফল্ট মিডিয়া ডাটা রিস্টোর সম্পন্ন হয়েছে।' });
-      onMediaChanged?.();
-      setTimeout(() => setStatusMsg(null), 3000);
+      try {
+        const defaults = resetToDefaultMedia();
+        setItems(defaults);
+        setStatusMsg({ type: 'info', text: 'ডিফল্ট ডাটা ডাটাবেজে রিস্টোর হচ্ছে...' });
+
+        await persistMediaItemsAsync(defaults);
+        setStatusMsg({ type: 'success', text: 'ডিফল্ট মিডিয়া ডাটা রিস্টোর সম্পন্ন হয়েছে।' });
+
+        try {
+          onMediaChanged?.();
+        } catch {}
+
+        setTimeout(() => setStatusMsg(null), 3000);
+      } catch (err: any) {
+        console.error('[Media Reset Error]', err);
+        setStatusMsg({ type: 'error', text: 'ডাটা রিস্টোর করতে সমস্যা হয়েছে।' });
+      }
     }
   };
 
@@ -188,9 +274,17 @@ export const MediaManagementPanel: React.FC<MediaManagementPanelProps> = ({ onMe
         <div className={`p-4 rounded-2xl border flex items-center gap-2.5 text-xs sm:text-sm font-bold animate-fade-in ${
           statusMsg.type === 'success'
             ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+            : statusMsg.type === 'info'
+            ? 'bg-blue-50 border-blue-300 text-blue-900'
             : 'bg-red-50 border-red-300 text-red-900'
         }`}>
-          {statusMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
+          {statusMsg.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          ) : statusMsg.type === 'info' ? (
+            <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+          )}
           <span>{statusMsg.text}</span>
         </div>
       )}
@@ -399,10 +493,25 @@ export const MediaManagementPanel: React.FC<MediaManagementPanelProps> = ({ onMe
 
             <button
               type="submit"
-              className="px-6 py-2.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 active:scale-98 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
+              disabled={isProcessingUpload || isSaving}
+              className="px-6 py-2.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 active:scale-98 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Plus className="w-4 h-4" />
-              <span>গ্যালারিতে যুক্ত করুন</span>
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>সংরক্ষণ হচ্ছে...</span>
+                </>
+              ) : isProcessingUpload ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>ছবি আপলোড হচ্ছে...</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  <span>গ্যালারিতে যুক্ত করুন</span>
+                </>
+              )}
             </button>
           </div>
         </form>

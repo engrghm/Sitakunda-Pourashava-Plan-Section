@@ -48,7 +48,11 @@ switch ($method) {
         handleGet($pdo);
         break;
     case 'POST':
-        handlePost($pdo);
+        if ((isset($_GET['action']) && $_GET['action'] === 'delete') || isset($_GET['clear_all'])) {
+            handleDelete($pdo);
+        } else {
+            handlePost($pdo);
+        }
         break;
     case 'PUT':
     case 'PATCH':
@@ -367,14 +371,28 @@ function handlePut($pdo) {
 }
 
 function handleDelete($pdo) {
-    $id = isset($_GET['id']) ? trim($_GET['id']) : null;
-    $clearAll = isset($_GET['clear_all']) ? trim($_GET['clear_all']) : null;
-    $module = isset($_GET['module']) ? trim($_GET['module']) : null;
+    $rawBody = @file_get_contents('php://input');
+    $bodyJson = $rawBody ? @json_decode($rawBody, true) : [];
 
-    if ($clearAll === 'true' || $clearAll === '1') {
+    $id = isset($_GET['id']) ? trim($_GET['id']) : (isset($bodyJson['id']) ? trim($bodyJson['id']) : null);
+    $clearAll = isset($_GET['clear_all']) ? trim($_GET['clear_all']) : (isset($bodyJson['clear_all']) ? $bodyJson['clear_all'] : null);
+    $module = isset($_GET['module']) ? trim($_GET['module']) : (isset($bodyJson['module']) ? trim($bodyJson['module']) : null);
+
+    if ($clearAll === 'true' || $clearAll === '1' || $clearAll === true || $clearAll === 1) {
         if ($module) {
-            $stmt = $pdo->prepare("DELETE FROM applications WHERE module_type = :module");
-            $stmt->execute([':module' => $module]);
+            if ($module === 'demarcation') {
+                $stmt = $pdo->prepare("DELETE FROM applications WHERE module_type = 'demarcation' OR module_type IS NULL OR module_type = '' OR id LIKE 'SKM-DEM-%' OR id LIKE 'APP-%'");
+                $stmt->execute();
+            } else if ($module === 'building') {
+                $stmt = $pdo->prepare("DELETE FROM applications WHERE module_type = 'building' OR id LIKE 'SKM-BLD-%' OR id LIKE 'SKM-BCA-%'");
+                $stmt->execute();
+            } else if ($module === 'road_cutting') {
+                $stmt = $pdo->prepare("DELETE FROM applications WHERE module_type = 'road_cutting' OR id LIKE 'SKM-RC-%'");
+                $stmt->execute();
+            } else {
+                $stmt = $pdo->prepare("DELETE FROM applications WHERE module_type = :module");
+                $stmt->execute([':module' => $module]);
+            }
         } else {
             $pdo->exec("DELETE FROM applications");
         }
@@ -388,8 +406,13 @@ function handleDelete($pdo) {
         return;
     }
 
-    $stmt = $pdo->prepare("DELETE FROM applications WHERE id = :id OR tracking_id = :id");
-    $stmt->execute([':id' => $id]);
-
-    echo json_encode(['success' => true, 'deletedId' => $id]);
+    try {
+        $cleanId = strtolower(trim($id));
+        $stmt = $pdo->prepare("DELETE FROM applications WHERE LOWER(TRIM(id)) = :id OR LOWER(TRIM(tracking_id)) = :id OR LOWER(TRIM(form_no)) = :id");
+        $stmt->execute([':id' => $cleanId]);
+        echo json_encode(['success' => true, 'deletedId' => $id]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Delete failed: ' . $e->getMessage()]);
+    }
 }

@@ -23,6 +23,7 @@ import { DemarcationApplication, BuildingConstructionApplication, RoadCuttingApp
 import { getOfficerSession, syncStorageWithHostinger } from './utils/storage';
 import { PortalConfig, getPortalConfig, CouncilCategory, NoticeCategory, syncPortalConfigWithHostinger } from './utils/portalConfig';
 import { syncLegalDocumentsWithHostinger } from './utils/legalDocuments';
+import { syncMediaGalleryWithHostinger } from './utils/mediaGalleryStorage';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'apply' | 'track' | 'schedule1' | 'roadcutting' | 'admin' | 'media'>('home');
@@ -50,6 +51,7 @@ export default function App() {
     syncStorageWithHostinger().catch(() => {});
     syncLegalDocumentsWithHostinger().catch(() => {});
     syncPortalConfigWithHostinger().catch(() => {});
+    syncMediaGalleryWithHostinger().catch(() => {});
   }, []);
 
   // Sync portal config when updated in localStorage or from customizer modal

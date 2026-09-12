@@ -18,43 +18,95 @@ import {
   saveApplicationToVault,
   deleteApplicationFromVault,
   clearApplicationsFromVault,
+  clearApplicationsByModuleFromVault,
   hydrateApplicationFromVault,
   hydrateDocumentsFromVault,
   getApplicationFromVault
 } from './indexedDbStorage';
 
 
-const STORAGE_KEY = 'sitakunda_demarcation_applications_clean_v2';
-const BUILDING_APPS_STORAGE_KEY = 'sitakunda_building_applications_clean_v2';
-const ROAD_CUTTING_APPS_STORAGE_KEY = 'sitakunda_road_cutting_applications_clean_v2';
+export const DEMARCATION_STORAGE_KEY = 'sitakunda_demarcation_applications_clean_v3';
+export const BUILDING_APPS_STORAGE_KEY = 'sitakunda_building_applications_clean_v3';
+export const ROAD_CUTTING_APPS_STORAGE_KEY = 'sitakunda_road_cutting_applications_clean_v3';
+export const STORAGE_KEY = DEMARCATION_STORAGE_KEY;
 const AUTH_KEY = 'sitakunda_admin_session_auth';
 const PASSWORDS_STORAGE_KEY = 'sitakunda_officer_passwords_v1';
 const DRAFT_STORAGE_KEY = 'sitakunda_demarcation_draft_v1';
 const AUDIT_LOG_STORAGE_KEY = 'sitakunda_system_audit_logs_v1';
+const DELETED_APP_IDS_KEY = 'sitakunda_permanently_deleted_ids_v1';
 
-// Auto-purge any cached mock/demo data and previous applications
+export function getDeletedAppIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_APP_IDS_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return new Set(parsed.map((s) => String(s).trim().toLowerCase()));
+    }
+  } catch {}
+  return new Set();
+}
+
+export function recordDeletedAppId(id?: string, trackingId?: string, formNo?: string): void {
+  try {
+    const current = getDeletedAppIds();
+    if (id && id.trim()) current.add(id.trim().toLowerCase());
+    if (trackingId && trackingId.trim()) current.add(trackingId.trim().toLowerCase());
+    if (formNo && formNo.trim()) current.add(formNo.trim().toLowerCase());
+    localStorage.setItem(DELETED_APP_IDS_KEY, JSON.stringify(Array.from(current)));
+  } catch {}
+}
+
+export function isAppDeleted(id?: string, trackingId?: string, formNo?: string): boolean {
+  const deleted = getDeletedAppIds();
+  if (id && deleted.has(id.trim().toLowerCase())) return true;
+  if (trackingId && deleted.has(trackingId.trim().toLowerCase())) return true;
+  if (formNo && deleted.has(formNo.trim().toLowerCase())) return true;
+  return false;
+}
+
+// Auto-purge any cached mock/demo data and previous applications (clean v3 migration)
 try {
   if (typeof localStorage !== 'undefined') {
-    localStorage.removeItem('sitakunda_demarcation_applications');
-    localStorage.removeItem('sitakunda_demarcation_applications_clean_v1');
-    localStorage.removeItem('sitakunda_demarcation_applications_v1');
-    localStorage.removeItem('sitakunda_demarcation_applications_v2');
-    localStorage.removeItem('sitakunda_demarcation_applications_v3');
-    localStorage.removeItem('sitakunda_demarcation_applications_v4');
-    localStorage.removeItem('sitakunda_demarcation_applications_v5');
-    localStorage.removeItem('sitakunda_building_applications');
-    localStorage.removeItem('sitakunda_building_applications_clean_v1');
-    localStorage.removeItem('sitakunda_building_applications_v1');
-    localStorage.removeItem('sitakunda_building_applications_v2');
-    localStorage.removeItem('sitakunda_building_applications_v3');
-    localStorage.removeItem('sitakunda_building_applications_v4');
-    localStorage.removeItem('sitakunda_road_cutting_applications');
-    localStorage.removeItem('sitakunda_road_cutting_applications_clean_v1');
-    localStorage.removeItem('sitakunda_road_cutting_applications_v1');
-    localStorage.removeItem('sitakunda_road_cutting_applications_v2');
-    localStorage.removeItem('sitakunda_road_cutting_applications_v3');
-    localStorage.removeItem('sitakunda_demarcation_draft_v1');
-    localStorage.removeItem('sitakunda_recent_tracking_searches_v1');
+    const ONE_TIME_PURGE_KEY = 'sitakunda_demo_purge_v3_complete';
+    if (localStorage.getItem(ONE_TIME_PURGE_KEY) !== 'done') {
+      localStorage.setItem(DEMARCATION_STORAGE_KEY, JSON.stringify([]));
+      localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify([]));
+      localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify([]));
+      clearApplicationsFromVault().catch(() => {});
+      clearAllApplicationsFromApi('demarcation').catch(() => {});
+      clearAllApplicationsFromApi('building').catch(() => {});
+      clearAllApplicationsFromApi().catch(() => {});
+      localStorage.setItem(ONE_TIME_PURGE_KEY, 'done');
+    }
+
+    [
+      'sitakunda_demarcation_applications',
+      'sitakunda_demarcation_applications_clean_v1',
+      'sitakunda_demarcation_applications_clean_v2',
+      'sitakunda_demarcation_applications_v1',
+      'sitakunda_demarcation_applications_v2',
+      'sitakunda_demarcation_applications_v3',
+      'sitakunda_demarcation_applications_v4',
+      'sitakunda_demarcation_applications_v5',
+      'sitakunda_building_applications',
+      'sitakunda_building_applications_clean_v1',
+      'sitakunda_building_applications_clean_v2',
+      'sitakunda_building_applications_v1',
+      'sitakunda_building_applications_v2',
+      'sitakunda_building_applications_v3',
+      'sitakunda_building_applications_v4',
+      'sitakunda_road_cutting_applications',
+      'sitakunda_road_cutting_applications_clean_v1',
+      'sitakunda_road_cutting_applications_clean_v2',
+      'sitakunda_road_cutting_applications_v1',
+      'sitakunda_road_cutting_applications_v2',
+      'sitakunda_road_cutting_applications_v3',
+      'sitakunda_demarcation_draft_v1',
+      'sitakunda_recent_tracking_searches_v1',
+    ].forEach((k) => {
+      try { localStorage.removeItem(k); } catch {}
+    });
   }
 } catch {
   // Ignore storage errors in non-browser environments
@@ -233,8 +285,13 @@ export function getStoredApplications(): DemarcationApplication[] {
       localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
       return [];
     }
+    // Filter out permanently deleted applications
+    const active = parsed.filter((app: DemarcationApplication) => !isAppDeleted(app.id, app.trackingId, app.formNo));
+    if (active.length !== parsed.length) {
+      safeSetLocalStorage(STORAGE_KEY, active);
+    }
     // Normalize any legacy draftsman designation formatting
-    return parsed.map((app: DemarcationApplication) => {
+    return active.map((app: DemarcationApplication) => {
       if (app.statusHistory) {
         app.statusHistory = app.statusHistory.map((h) => {
           if (h.designation === 'পৌরসভা নক্সাকার (সিভিল)' || h.designation === 'নক্সাকার (সিভিল)') {
@@ -608,7 +665,11 @@ export function getBuildingApplications(): BuildingConstructionApplication[] {
       localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify([]));
       return [];
     }
-    return parsed;
+    const active = parsed.filter((app: any) => !isAppDeleted(app.id, app.trackingId, app.formNo));
+    if (active.length !== parsed.length) {
+      safeSetLocalStorage(BUILDING_APPS_STORAGE_KEY, active);
+    }
+    return active;
   } catch (err) {
     console.error('Error reading building applications:', err);
     return [];
@@ -666,7 +727,11 @@ export function getRoadCuttingApplications(): RoadCuttingApplication[] {
       localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify([]));
       return [];
     }
-    return parsed;
+    const active = parsed.filter((app: any) => !isAppDeleted(app.id, app.trackingId, app.formNo));
+    if (active.length !== parsed.length) {
+      safeSetLocalStorage(ROAD_CUTTING_APPS_STORAGE_KEY, active);
+    }
+    return active;
   } catch (err) {
     console.error('Error reading road cutting applications:', err);
     return [];
@@ -716,15 +781,27 @@ export function updateRoadCuttingApplication(updatedApp: RoadCuttingApplication)
  * Helper to smartly merge remote applications with local applications so that
  * locally attached documents/maps are NEVER wiped out by an incomplete remote record.
  */
-function mergeApplicationsPreservingAttachments<T extends { id: string; documents?: any[] }>(
+function mergeApplicationsPreservingAttachments<T extends { id: string; trackingId?: string; formNo?: string; documents?: any[] }>(
   localList: T[],
   remoteList: T[]
 ): T[] {
-  const localMap = new Map<string, T>();
-  localList.forEach((app) => localMap.set(app.id, app));
+  // 1. Filter out any permanently deleted applications from both lists
+  const validLocal = localList.filter((a) => !isAppDeleted(a.id, a.trackingId, a.formNo));
+  const validRemote = remoteList.filter((a) => !isAppDeleted(a.id, a.trackingId, a.formNo));
 
-  // Merge each remote app with local details
-  const mergedRemotes = remoteList.map((remoteApp) => {
+  // 2. If remote returned any previously deleted application, proactively purge it from API & vault
+  remoteList.forEach((r) => {
+    if (isAppDeleted(r.id, r.trackingId, r.formNo)) {
+      deleteApplicationFromApi(r.id).catch(() => {});
+      deleteApplicationFromVault(r.id).catch(() => {});
+    }
+  });
+
+  const localMap = new Map<string, T>();
+  validLocal.forEach((app) => localMap.set(app.id, app));
+
+  // 3. Merge each remote app with local details
+  const mergedRemotes = validRemote.map((remoteApp) => {
     const localApp = localMap.get(remoteApp.id);
     if (!localApp) return remoteApp;
 
@@ -758,8 +835,8 @@ function mergeApplicationsPreservingAttachments<T extends { id: string; document
   });
 
   // Also preserve any local applications that haven't reached remote yet
-  const remoteIdSet = new Set(remoteList.map((r) => r.id));
-  const unsyncedLocals = localList.filter((loc) => !remoteIdSet.has(loc.id));
+  const remoteIdSet = new Set(validRemote.map((r) => r.id));
+  const unsyncedLocals = validLocal.filter((loc) => !remoteIdSet.has(loc.id));
 
   return [...unsyncedLocals, ...mergedRemotes];
 }
@@ -786,10 +863,10 @@ export async function syncStorageWithHostinger(): Promise<void> {
       // Ensure all merged apps are saved into vault
       mergedDemarcation.forEach((app) => saveApplicationToVault(app).catch(() => {}));
 
-      // Check for unsynced local apps and push to remote
+      // Check for unsynced local apps and push to remote (NEVER push deleted applications)
       const remoteIds = new Set(demarcation.map((a) => a.id));
       localDemarcation.forEach((app) => {
-        if (!remoteIds.has(app.id)) {
+        if (!remoteIds.has(app.id) && !isAppDeleted(app.id, app.trackingId, app.formNo)) {
           saveApplicationToApi(app, 'demarcation').catch(() => {});
         }
       });
@@ -799,12 +876,26 @@ export async function syncStorageWithHostinger(): Promise<void> {
       const mergedBuilding = mergeApplicationsPreservingAttachments(localBuilding, building);
       safeSetLocalStorage(BUILDING_APPS_STORAGE_KEY, mergedBuilding);
       mergedBuilding.forEach((app) => saveApplicationToVault(app).catch(() => {}));
+
+      const remoteBIds = new Set(building.map((a) => a.id));
+      localBuilding.forEach((app) => {
+        if (!remoteBIds.has(app.id) && !isAppDeleted(app.id, (app as any).trackingId, app.formNo)) {
+          saveApplicationToApi(app, 'building').catch(() => {});
+        }
+      });
     }
 
     if (roadCutting && roadCutting.length > 0) {
       const mergedRoadCutting = mergeApplicationsPreservingAttachments(localRoadCutting, roadCutting);
       safeSetLocalStorage(ROAD_CUTTING_APPS_STORAGE_KEY, mergedRoadCutting);
       mergedRoadCutting.forEach((app) => saveApplicationToVault(app).catch(() => {}));
+
+      const remoteRCIds = new Set(roadCutting.map((a) => a.id));
+      localRoadCutting.forEach((app) => {
+        if (!remoteRCIds.has(app.id) && !isAppDeleted(app.id, (app as any).trackingId, app.formNo)) {
+          saveApplicationToApi(app, 'road_cutting').catch(() => {});
+        }
+      });
     }
 
     if (auditLogs && auditLogs.length > 0) {
@@ -833,21 +924,43 @@ export function generateRoadCuttingFormNo(): string {
  * Permanently delete a demarcation application across all layers (LocalStorage, IndexedDB, MySQL API)
  */
 export function deleteDemarcationApplication(id: string): DemarcationApplication[] {
+  const targetId = id.trim().toLowerCase();
+  const current = getStoredApplications();
+  const target = current.find(
+    (a) =>
+      (a.id || '').trim().toLowerCase() === targetId ||
+      (a.trackingId || '').trim().toLowerCase() === targetId ||
+      (a.formNo || '').trim().toLowerCase() === targetId
+  );
+
+  recordDeletedAppId(id, target?.trackingId, target?.formNo);
+
   // 1. Permanently delete from IndexedDB vault
   deleteApplicationFromVault(id).catch(() => {});
+  if (target?.trackingId && target.trackingId !== id) {
+    deleteApplicationFromVault(target.trackingId).catch(() => {});
+  }
 
   // 2. Permanently delete from MySQL server / API
   deleteApplicationFromApi(id).catch((err) => {
     console.warn('[Hostinger MySQL] Application delete deferred:', err);
   });
+  if (target?.trackingId && target.trackingId !== id) {
+    deleteApplicationFromApi(target.trackingId).catch(() => {});
+  }
 
   // 3. Delete from LocalStorage
-  const current = getStoredApplications();
-  const updated = current.filter((item) => item.id !== id);
+  const updated = current.filter((item) => {
+    const iId = (item.id || '').trim().toLowerCase();
+    const tId = (item.trackingId || '').trim().toLowerCase();
+    const fNo = (item.formNo || '').trim().toLowerCase();
+    return iId !== targetId && tId !== targetId && fNo !== targetId;
+  });
   safeSetLocalStorage(STORAGE_KEY, updated);
   try {
     localStorage.setItem('sitakunda_demarcation_applications', JSON.stringify(updated));
     localStorage.setItem('sitakunda_demarcation_applications_clean_v1', JSON.stringify([]));
+    localStorage.setItem('sitakunda_demarcation_applications_clean_v2', JSON.stringify([]));
   } catch {}
 
   return updated;
@@ -858,21 +971,43 @@ export const deleteApplication = deleteDemarcationApplication;
  * Permanently delete a building construction application across all layers
  */
 export function deleteBuildingApplication(id: string): BuildingConstructionApplication[] {
+  const targetId = id.trim().toLowerCase();
+  const current = getBuildingApplications();
+  const target = current.find(
+    (a) =>
+      (a.id || '').trim().toLowerCase() === targetId ||
+      ((a as any).trackingId || '').trim().toLowerCase() === targetId ||
+      (a.formNo || '').trim().toLowerCase() === targetId
+  );
+
+  recordDeletedAppId(id, (target as any)?.trackingId, target?.formNo);
+
   // 1. Permanently delete from IndexedDB vault
   deleteApplicationFromVault(id).catch(() => {});
+  if ((target as any)?.trackingId && (target as any).trackingId !== id) {
+    deleteApplicationFromVault((target as any).trackingId).catch(() => {});
+  }
 
   // 2. Permanently delete from MySQL server / API
   deleteApplicationFromApi(id).catch((err) => {
     console.warn('[Hostinger MySQL] Building application delete deferred:', err);
   });
+  if ((target as any)?.trackingId && (target as any).trackingId !== id) {
+    deleteApplicationFromApi((target as any).trackingId).catch(() => {});
+  }
 
   // 3. Delete from LocalStorage
-  const current = getBuildingApplications();
-  const updated = current.filter((item) => item.id !== id);
+  const updated = current.filter((item) => {
+    const iId = (item.id || '').trim().toLowerCase();
+    const tId = ((item as any).trackingId || '').trim().toLowerCase();
+    const fNo = (item.formNo || '').trim().toLowerCase();
+    return iId !== targetId && tId !== targetId && fNo !== targetId;
+  });
   try {
     localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(updated));
     localStorage.setItem('sitakunda_building_applications', JSON.stringify(updated));
     localStorage.setItem('sitakunda_building_applications_clean_v1', JSON.stringify([]));
+    localStorage.setItem('sitakunda_building_applications_clean_v2', JSON.stringify([]));
   } catch (err) {
     console.error('Error deleting building application:', err);
   }
@@ -884,21 +1019,43 @@ export function deleteBuildingApplication(id: string): BuildingConstructionAppli
  * Permanently delete a road cutting application across all layers
  */
 export function deleteRoadCuttingApplication(id: string): RoadCuttingApplication[] {
+  const targetId = id.trim().toLowerCase();
+  const current = getRoadCuttingApplications();
+  const target = current.find(
+    (a) =>
+      (a.id || '').trim().toLowerCase() === targetId ||
+      ((a as any).trackingId || '').trim().toLowerCase() === targetId ||
+      (a.formNo || '').trim().toLowerCase() === targetId
+  );
+
+  recordDeletedAppId(id, (target as any)?.trackingId, target?.formNo);
+
   // 1. Permanently delete from IndexedDB vault
   deleteApplicationFromVault(id).catch(() => {});
+  if ((target as any)?.trackingId && (target as any).trackingId !== id) {
+    deleteApplicationFromVault((target as any).trackingId).catch(() => {});
+  }
 
   // 2. Permanently delete from MySQL server / API
   deleteApplicationFromApi(id).catch((err) => {
     console.warn('[Hostinger MySQL] Road cutting delete deferred:', err);
   });
+  if ((target as any)?.trackingId && (target as any).trackingId !== id) {
+    deleteApplicationFromApi((target as any).trackingId).catch(() => {});
+  }
 
   // 3. Delete from LocalStorage
-  const current = getRoadCuttingApplications();
-  const updated = current.filter((item) => item.id !== id);
+  const updated = current.filter((item) => {
+    const iId = (item.id || '').trim().toLowerCase();
+    const tId = ((item as any).trackingId || '').trim().toLowerCase();
+    const fNo = (item.formNo || '').trim().toLowerCase();
+    return iId !== targetId && tId !== targetId && fNo !== targetId;
+  });
   try {
     localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(updated));
     localStorage.setItem('sitakunda_road_cutting_applications', JSON.stringify(updated));
     localStorage.setItem('sitakunda_road_cutting_applications_clean_v1', JSON.stringify([]));
+    localStorage.setItem('sitakunda_road_cutting_applications_clean_v2', JSON.stringify([]));
   } catch (err) {
     console.error('Error deleting road cutting application:', err);
   }
@@ -916,20 +1073,28 @@ export function resetToDemoApplications(): {
 } {
   try {
     // Clear all LocalStorage application keys
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+    localStorage.setItem(DEMARCATION_STORAGE_KEY, JSON.stringify([]));
     localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify([]));
     localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify([]));
-    localStorage.removeItem('sitakunda_demarcation_applications');
-    localStorage.removeItem('sitakunda_demarcation_applications_clean_v1');
-    localStorage.removeItem('sitakunda_building_applications');
-    localStorage.removeItem('sitakunda_building_applications_clean_v1');
-    localStorage.removeItem('sitakunda_road_cutting_applications');
-    localStorage.removeItem('sitakunda_road_cutting_applications_clean_v1');
+    [
+      'sitakunda_demarcation_applications',
+      'sitakunda_demarcation_applications_clean_v1',
+      'sitakunda_demarcation_applications_clean_v2',
+      'sitakunda_building_applications',
+      'sitakunda_building_applications_clean_v1',
+      'sitakunda_building_applications_clean_v2',
+      'sitakunda_road_cutting_applications',
+      'sitakunda_road_cutting_applications_clean_v1',
+      'sitakunda_road_cutting_applications_clean_v2',
+    ].forEach((k) => localStorage.removeItem(k));
 
     // Clear IndexedDB vault
     clearApplicationsFromVault().catch(() => {});
 
     // Clear backend / MySQL server
+    clearAllApplicationsFromApi('demarcation').catch(() => {});
+    clearAllApplicationsFromApi('building').catch(() => {});
+    clearAllApplicationsFromApi('road_cutting').catch(() => {});
     clearAllApplicationsFromApi().catch(() => {});
   } catch (err) {
     console.error('Error clearing applications:', err);
@@ -947,19 +1112,25 @@ export function resetToDemoApplications(): {
 export function purgeModuleApplications(module: 'demarcation' | 'building' | 'road_cutting'): void {
   try {
     if (module === 'demarcation') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+      localStorage.setItem(DEMARCATION_STORAGE_KEY, JSON.stringify([]));
       localStorage.removeItem('sitakunda_demarcation_applications');
       localStorage.removeItem('sitakunda_demarcation_applications_clean_v1');
+      localStorage.removeItem('sitakunda_demarcation_applications_clean_v2');
+      clearApplicationsByModuleFromVault('demarcation').catch(() => {});
       clearAllApplicationsFromApi('demarcation').catch(() => {});
     } else if (module === 'building') {
       localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify([]));
       localStorage.removeItem('sitakunda_building_applications');
       localStorage.removeItem('sitakunda_building_applications_clean_v1');
+      localStorage.removeItem('sitakunda_building_applications_clean_v2');
+      clearApplicationsByModuleFromVault('building').catch(() => {});
       clearAllApplicationsFromApi('building').catch(() => {});
     } else if (module === 'road_cutting') {
       localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify([]));
       localStorage.removeItem('sitakunda_road_cutting_applications');
       localStorage.removeItem('sitakunda_road_cutting_applications_clean_v1');
+      localStorage.removeItem('sitakunda_road_cutting_applications_clean_v2');
+      clearApplicationsByModuleFromVault('road_cutting').catch(() => {});
       clearAllApplicationsFromApi('road_cutting').catch(() => {});
     }
   } catch (err) {

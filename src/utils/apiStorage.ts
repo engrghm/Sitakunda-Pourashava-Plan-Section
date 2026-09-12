@@ -267,10 +267,19 @@ export async function saveApplicationToApi(
  */
 export async function deleteApplicationFromApi(id: string): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}/applications.php?id=${encodeURIComponent(id)}`, {
+    const cleanId = id.trim();
+    let res = await fetch(`${API_BASE}/applications.php?id=${encodeURIComponent(cleanId)}`, {
       method: 'DELETE',
-    });
-    return res.ok;
+    }).catch(() => null);
+
+    if (!res || !res.ok) {
+      res = await fetch(`${API_BASE}/applications.php?id=${encodeURIComponent(cleanId)}&action=delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id: cleanId }),
+      }).catch(() => null);
+    }
+    return Boolean(res && res.ok);
   } catch (err) {
     console.warn('[Hostinger MySQL] Could not delete application:', err);
     return false;
@@ -283,10 +292,18 @@ export async function deleteApplicationFromApi(id: string): Promise<boolean> {
 export async function clearAllApplicationsFromApi(module?: 'demarcation' | 'building' | 'road_cutting'): Promise<boolean> {
   try {
     const query = module ? `clear_all=1&module=${module}` : `clear_all=1`;
-    const res = await fetch(`${API_BASE}/applications.php?${query}`, {
+    let res = await fetch(`${API_BASE}/applications.php?${query}`, {
       method: 'DELETE',
-    });
-    return res.ok;
+    }).catch(() => null);
+
+    if (!res || !res.ok) {
+      res = await fetch(`${API_BASE}/applications.php?${query}&action=delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', clear_all: true, module }),
+      }).catch(() => null);
+    }
+    return Boolean(res && res.ok);
   } catch (err) {
     console.warn('[Hostinger MySQL] Could not clear applications:', err);
     return false;

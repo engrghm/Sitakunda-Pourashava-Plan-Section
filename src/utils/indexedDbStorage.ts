@@ -250,3 +250,47 @@ export async function clearApplicationsFromVault(): Promise<void> {
     console.warn('[IndexedDB Vault] Could not clear applications vault:', err);
   }
 }
+
+/**
+ * Clear applications from IndexedDB vault for a specific module
+ */
+export async function clearApplicationsByModuleFromVault(module: 'demarcation' | 'building' | 'road_cutting'): Promise<void> {
+  try {
+    const db = await openVaultDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_APPLICATIONS, 'readwrite');
+      const store = tx.objectStore(STORE_APPLICATIONS);
+      const req = store.openCursor();
+      req.onsuccess = (event: any) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          const app = cursor.value?.appData;
+          const id = (cursor.key as string) || '';
+          let match = false;
+          if (module === 'demarcation') {
+            if (!app?.moduleType || app.moduleType === 'demarcation' || id.startsWith('SKM-DEM-') || id.startsWith('APP-')) {
+              match = true;
+            }
+          } else if (module === 'building') {
+            if (app?.moduleType === 'building' || id.startsWith('SKM-BLD-') || id.startsWith('SKM-BCA-')) {
+              match = true;
+            }
+          } else if (module === 'road_cutting') {
+            if (app?.moduleType === 'road_cutting' || id.startsWith('SKM-RC-')) {
+              match = true;
+            }
+          }
+          if (match) {
+            cursor.delete();
+          }
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) {
+    console.warn('[IndexedDB Vault] Could not clear module vault applications:', err);
+  }
+}

@@ -207,6 +207,35 @@ function localBackendPlugin(): Plugin {
             req.on('end', () => {
               try {
                 const payload = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+                const isDelete = payload?.action === 'delete' || urlObj.searchParams.get('action') === 'delete' || urlObj.searchParams.get('clear_all') || payload?.clear_all;
+
+                if (isDelete) {
+                  const id = (urlObj.searchParams.get('id') || payload?.id || '').trim();
+                  const clearAll = urlObj.searchParams.get('clear_all') || payload?.clear_all;
+                  const moduleType = urlObj.searchParams.get('module') || payload?.module;
+                  let list = getApplications();
+
+                  if (clearAll === 'true' || clearAll === '1' || clearAll === true || clearAll === 1) {
+                    if (moduleType) {
+                      list = list.filter((item: any) => (item.moduleType || 'demarcation') !== moduleType);
+                    } else {
+                      list = [];
+                    }
+                  } else if (id) {
+                    const target = id.toLowerCase();
+                    list = list.filter((item: any) => {
+                      const iId = (item.id || '').trim().toLowerCase();
+                      const tId = (item.trackingId || '').trim().toLowerCase();
+                      const fNo = (item.formNo || '').trim().toLowerCase();
+                      return iId !== target && tId !== target && fNo !== target;
+                    });
+                  }
+
+                  saveApplications(list);
+                  res.setHeader('Content-Type', 'application/json');
+                  return res.end(JSON.stringify({ success: true, deletedId: id, totalRemaining: list.length }));
+                }
+
                 if (!payload || !payload.id) {
                   res.statusCode = 400;
                   res.setHeader('Content-Type', 'application/json');
@@ -238,7 +267,7 @@ function localBackendPlugin(): Plugin {
           }
 
           if (req.method === 'DELETE') {
-            const id = urlObj.searchParams.get('id');
+            const id = (urlObj.searchParams.get('id') || '').trim();
             const clearAll = urlObj.searchParams.get('clear_all');
             const moduleType = urlObj.searchParams.get('module');
             let list = getApplications();
@@ -250,7 +279,13 @@ function localBackendPlugin(): Plugin {
                 list = [];
               }
             } else if (id) {
-              list = list.filter((item: any) => item.id !== id && item.trackingId !== id);
+              const target = id.toLowerCase();
+              list = list.filter((item: any) => {
+                const iId = (item.id || '').trim().toLowerCase();
+                const tId = (item.trackingId || '').trim().toLowerCase();
+                const fNo = (item.formNo || '').trim().toLowerCase();
+                return iId !== target && tId !== target && fNo !== target;
+              });
             }
 
             saveApplications(list);
