@@ -368,10 +368,13 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
       ]);
 
       if (remoteDemarcation && Array.isArray(remoteDemarcation)) {
-        // Purge any remote records that were marked as permanently deleted
+        // Purge any remote records that were marked as permanently deleted or lack any identifier
         const validRemoteDemarcation = remoteDemarcation.filter((app) => {
+          if (!app || typeof app !== 'object') return false;
+          const hasAnyId = app.id || app.trackingId || app.formNo;
+          if (!hasAnyId) return false;
           if (isAppDeleted(app.id, app.trackingId, app.formNo)) {
-            deleteApplicationFromApi(app.id).catch(() => {});
+            if (app.id) deleteApplicationFromApi(app.id).catch(() => {});
             return false;
           }
           return true;
@@ -379,12 +382,16 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
 
         const mergedMap = new Map<string, DemarcationApplication>();
         data.forEach((app) => {
-          if (!isAppDeleted(app.id, app.trackingId, app.formNo)) {
-            mergedMap.set(app.id, app);
+          if (!app || typeof app !== 'object') return;
+          const key = app.id || app.trackingId || app.formNo;
+          if (key && !isAppDeleted(app.id, app.trackingId, app.formNo)) {
+            mergedMap.set(key, app);
           }
         });
         validRemoteDemarcation.forEach((remoteApp) => {
-          const localApp = mergedMap.get(remoteApp.id);
+          const key = remoteApp.id || remoteApp.trackingId || remoteApp.formNo;
+          if (!key) return;
+          const localApp = mergedMap.get(key) || (remoteApp.id ? mergedMap.get(remoteApp.id) : undefined);
           if (localApp && localApp.documents && localApp.documents.length > 0) {
             const localDocMap = new Map<string, any>();
             localApp.documents.forEach((d) => {
@@ -400,23 +407,23 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
             localApp.documents.forEach((d) => {
               if (!remoteDocIds.has(d.id)) mergedDocs.push(d);
             });
-            mergedMap.set(remoteApp.id, { ...localApp, ...remoteApp, documents: mergedDocs });
+            mergedMap.set(key, { ...localApp, ...remoteApp, documents: mergedDocs });
           } else {
-            mergedMap.set(remoteApp.id, remoteApp);
+            mergedMap.set(key, remoteApp);
           }
         });
-        const merged = Array.from(mergedMap.values()).sort((a, b) => 
-          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-        );
+        const merged = Array.from(mergedMap.values())
+          .filter((a) => a && (a.id || a.trackingId || a.formNo))
+          .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         setApplications(merged);
         try {
           localStorage.setItem(DEMARCATION_STORAGE_KEY, JSON.stringify(merged));
         } catch {}
 
         // Push any local application that is missing on remote
-        const remoteIds = new Set(validRemoteDemarcation.map((a) => a.id));
+        const remoteIds = new Set(validRemoteDemarcation.map((a) => a.id).filter(Boolean));
         data.forEach((app) => {
-          if (!remoteIds.has(app.id) && !isAppDeleted(app.id, app.trackingId, app.formNo)) {
+          if (app && app.id && !remoteIds.has(app.id) && !isAppDeleted(app.id, app.trackingId, app.formNo)) {
             saveApplicationToApi(app, 'demarcation').catch(() => {});
           }
         });
@@ -424,8 +431,11 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
 
       if (remoteBuilding && Array.isArray(remoteBuilding)) {
         const validRemoteBuilding = remoteBuilding.filter((app) => {
+          if (!app || typeof app !== 'object') return false;
+          const hasAnyId = app.id || (app as any).trackingId || app.formNo;
+          if (!hasAnyId) return false;
           if (isAppDeleted(app.id, (app as any).trackingId, app.formNo)) {
-            deleteApplicationFromApi(app.id).catch(() => {});
+            if (app.id) deleteApplicationFromApi(app.id).catch(() => {});
             return false;
           }
           return true;
@@ -433,22 +443,27 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
 
         const mergedBMap = new Map<string, BuildingConstructionApplication>();
         bData.forEach((app) => {
-          if (!isAppDeleted(app.id, (app as any).trackingId, app.formNo)) {
-            mergedBMap.set(app.id, app);
+          if (!app || typeof app !== 'object') return;
+          const key = app.id || (app as any).trackingId || app.formNo;
+          if (key && !isAppDeleted(app.id, (app as any).trackingId, app.formNo)) {
+            mergedBMap.set(key, app);
           }
         });
-        validRemoteBuilding.forEach((app) => mergedBMap.set(app.id, app));
-        const mergedB = Array.from(mergedBMap.values()).sort((a, b) => 
-          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-        );
+        validRemoteBuilding.forEach((app) => {
+          const key = app.id || (app as any).trackingId || app.formNo;
+          if (key) mergedBMap.set(key, app);
+        });
+        const mergedB = Array.from(mergedBMap.values())
+          .filter((a) => a && (a.id || (a as any).trackingId || a.formNo))
+          .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         setBuildingApplications(mergedB);
         try {
           localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(mergedB));
         } catch {}
 
-        const remoteBIds = new Set(validRemoteBuilding.map((a) => a.id));
+        const remoteBIds = new Set(validRemoteBuilding.map((a) => a.id).filter(Boolean));
         bData.forEach((app) => {
-          if (!remoteBIds.has(app.id) && !isAppDeleted(app.id, (app as any).trackingId, app.formNo)) {
+          if (app && app.id && !remoteBIds.has(app.id) && !isAppDeleted(app.id, (app as any).trackingId, app.formNo)) {
             saveApplicationToApi(app, 'building').catch(() => {});
           }
         });
@@ -456,8 +471,11 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
 
       if (remoteRoadCutting && Array.isArray(remoteRoadCutting)) {
         const validRemoteRoadCutting = remoteRoadCutting.filter((app) => {
+          if (!app || typeof app !== 'object') return false;
+          const hasAnyId = app.id || (app as any).trackingId || (app as any).formNo;
+          if (!hasAnyId) return false;
           if (isAppDeleted(app.id, (app as any).trackingId, (app as any).formNo)) {
-            deleteApplicationFromApi(app.id).catch(() => {});
+            if (app.id) deleteApplicationFromApi(app.id).catch(() => {});
             return false;
           }
           return true;
@@ -465,26 +483,32 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
 
         const mergedRCMap = new Map<string, RoadCuttingApplication>();
         rcData.forEach((app) => {
-          if (!isAppDeleted(app.id, (app as any).trackingId, (app as any).formNo)) {
-            mergedRCMap.set(app.id, app);
+          if (!app || typeof app !== 'object') return;
+          const key = app.id || (app as any).trackingId || (app as any).formNo;
+          if (key && !isAppDeleted(app.id, (app as any).trackingId, (app as any).formNo)) {
+            mergedRCMap.set(key, app);
           }
         });
-        validRemoteRoadCutting.forEach((app) => mergedRCMap.set(app.id, app));
-        const mergedRC = Array.from(mergedRCMap.values()).sort((a, b) => 
-          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-        );
+        validRemoteRoadCutting.forEach((app) => {
+          const key = app.id || (app as any).trackingId || (app as any).formNo;
+          if (key) mergedRCMap.set(key, app);
+        });
+        const mergedRC = Array.from(mergedRCMap.values())
+          .filter((a) => a && (a.id || (a as any).trackingId || (a as any).formNo))
+          .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         setRoadCuttingApplications(mergedRC);
         try {
           localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(mergedRC));
         } catch {}
 
-        const remoteRCIds = new Set(validRemoteRoadCutting.map((a) => a.id));
+        const remoteRCIds = new Set(validRemoteRoadCutting.map((a) => a.id).filter(Boolean));
         rcData.forEach((app) => {
-          if (!remoteRCIds.has(app.id) && !isAppDeleted(app.id, (app as any).trackingId, (app as any).formNo)) {
+          if (app && app.id && !remoteRCIds.has(app.id) && !isAppDeleted(app.id, (app as any).trackingId, (app as any).formNo)) {
             saveApplicationToApi(app, 'road_cutting').catch(() => {});
           }
         });
       }
+
     } catch (err) {
       console.warn('[OfficerDashboard] Background sync error:', err);
     }
@@ -587,203 +611,202 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
 
   // Delete a single demarcation application
   const handleDeleteDemarcationApp = async (
-    id: string, 
+    id?: string, 
     applicantName?: string, 
     trackingId?: string, 
     formNo?: string
   ) => {
-    const target = applications.find(
-      (a) => a.id === id || (trackingId && a.trackingId === trackingId) || (formNo && a.formNo === formNo)
-    );
-    const effTrackingId = trackingId || target?.trackingId;
-    const effFormNo = formNo || target?.formNo;
-    const effName = applicantName || target?.siteLocation?.applicantName || 'আবেদন';
+    try {
+      const target = applications.find(
+        (a) => (id && a.id === id) || (trackingId && a.trackingId === trackingId) || (formNo && a.formNo === formNo)
+      );
+      const effId = String(id || target?.id || '').trim();
+      const effTrackingId = String(trackingId || target?.trackingId || '').trim();
+      const effFormNo = String(formNo || target?.formNo || '').trim();
+      const effName = applicantName || target?.siteLocation?.applicantName || target?.applicantName || 'আবেদন';
+      const displayId = effId || effTrackingId || effFormNo || 'চিহ্নিত আবেদন';
 
-    if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${effName}"-এর সীমানা নির্ধারণ আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
-      return;
-    }
+      if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${effName}"-এর সীমানা নির্ধারণ আবেদনটি (${displayId}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+        return;
+      }
 
-    // 1. Permanently register as deleted
-    recordDeletedAppId(id, effTrackingId, effFormNo);
+      // 1. Permanently register as deleted
+      recordDeletedAppId(effId, effTrackingId, effFormNo);
 
-    // 2. Remove from IndexedDB vault
-    deleteApplicationFromVault(id).catch(() => {});
-    if (effTrackingId && effTrackingId !== id) {
-      deleteApplicationFromVault(effTrackingId).catch(() => {});
-    }
+      // 2. Remove from IndexedDB vault
+      if (effId) deleteApplicationFromVault(effId).catch(() => {});
+      if (effTrackingId && effTrackingId !== effId) deleteApplicationFromVault(effTrackingId).catch(() => {});
+      if (effFormNo && effFormNo !== effId && effFormNo !== effTrackingId) deleteApplicationFromVault(effFormNo).catch(() => {});
 
-    // 3. Remove from storage utilities
-    deleteDemarcationApplication(id);
-    if (effTrackingId && effTrackingId !== id) {
-      deleteDemarcationApplication(effTrackingId);
-    }
+      // 3. Remove from storage utilities
+      if (effId) deleteDemarcationApplication(effId);
+      if (effTrackingId && effTrackingId !== effId) deleteDemarcationApplication(effTrackingId);
 
-    // 4. Update React state immediately and keep storage synchronized
-    setApplications((prev) => {
-      const matchId = id.trim().toLowerCase();
-      const matchTrack = (effTrackingId || '').trim().toLowerCase();
-      const matchForm = (effFormNo || '').trim().toLowerCase();
+      // 4. Update React state immediately and keep storage synchronized
+      setApplications((prev) => {
+        const matchId = effId.toLowerCase();
+        const matchTrack = effTrackingId.toLowerCase();
+        const matchForm = effFormNo.toLowerCase();
 
-      const filtered = prev.filter((item) => {
-        const iId = (item.id || '').trim().toLowerCase();
-        const tId = (item.trackingId || '').trim().toLowerCase();
-        const fNo = (item.formNo || '').trim().toLowerCase();
-        return (
-          iId !== matchId &&
-          tId !== matchId &&
-          fNo !== matchId &&
-          (!matchTrack || (iId !== matchTrack && tId !== matchTrack)) &&
-          (!matchForm || (iId !== matchForm && fNo !== matchForm))
-        );
+        const filtered = prev.filter((item) => {
+          if (target && item === target) return false;
+          const iId = String(item.id || '').trim().toLowerCase();
+          const tId = String(item.trackingId || '').trim().toLowerCase();
+          const fNo = String(item.formNo || '').trim().toLowerCase();
+
+          if (matchId && (iId === matchId || tId === matchId || fNo === matchId)) return false;
+          if (matchTrack && (iId === matchTrack || tId === matchTrack)) return false;
+          if (matchForm && (iId === matchForm || fNo === matchForm)) return false;
+          return true;
+        });
+        try {
+          localStorage.setItem(DEMARCATION_STORAGE_KEY, JSON.stringify(filtered));
+        } catch {}
+        return filtered;
       });
-      try {
-        localStorage.setItem(DEMARCATION_STORAGE_KEY, JSON.stringify(filtered));
-      } catch {}
-      return filtered;
-    });
 
-    setSelectedAppIds((prev) => prev.filter((i) => i !== id && i !== effTrackingId && i !== effFormNo));
-    if (selectedApp?.id === id || (effTrackingId && selectedApp?.trackingId === effTrackingId)) {
-      setSelectedApp(null);
+      setSelectedAppIds((prev) => prev.filter((i) => i !== effId && i !== effTrackingId && i !== effFormNo));
+      if (selectedApp && (selectedApp === target || selectedApp.id === effId || (effTrackingId && selectedApp.trackingId === effTrackingId))) {
+        setSelectedApp(null);
+      }
+
+      // 5. Delete on backend API across all identifying keys
+      const deleteTasks: Promise<any>[] = [];
+      if (effId) deleteTasks.push(deleteApplicationFromApi(effId));
+      if (effTrackingId && effTrackingId !== effId) deleteTasks.push(deleteApplicationFromApi(effTrackingId));
+      if (effFormNo && effFormNo !== effId && effFormNo !== effTrackingId) deleteTasks.push(deleteApplicationFromApi(effFormNo));
+      await Promise.allSettled(deleteTasks);
+    } catch (err) {
+      console.error('Error in handleDeleteDemarcationApp:', err);
     }
-
-    // 5. Delete on backend API across all identifying keys
-    await Promise.allSettled([
-      deleteApplicationFromApi(id),
-      effTrackingId && effTrackingId !== id ? deleteApplicationFromApi(effTrackingId) : Promise.resolve(true),
-      effFormNo && effFormNo !== id ? deleteApplicationFromApi(effFormNo) : Promise.resolve(true),
-    ]);
-
-    alert('সীমানা নির্ধারণ আবেদনটি সফলভাবে মুছে ফেলা হয়েছে।');
   };
 
   // Delete a single building application
   const handleDeleteBuildingApp = async (
-    id: string, 
+    id?: string, 
     applicantName?: string, 
     trackingId?: string, 
     formNo?: string
   ) => {
-    const target = buildingApplications.find(
-      (a) => a.id === id || (trackingId && (a as any).trackingId === trackingId) || (formNo && a.formNo === formNo)
-    );
-    const effTrackingId = trackingId || (target as any)?.trackingId;
-    const effFormNo = formNo || target?.formNo;
-    const effName = applicantName || target?.applicant?.nameBangla || (target as any)?.applicantName || 'আবেদন';
+    try {
+      const target = buildingApplications.find(
+        (a) => (id && a.id === id) || (trackingId && (a as any).trackingId === trackingId) || (formNo && a.formNo === formNo)
+      );
+      const effId = String(id || target?.id || '').trim();
+      const effTrackingId = String(trackingId || (target as any)?.trackingId || '').trim();
+      const effFormNo = String(formNo || target?.formNo || '').trim();
+      const effName = applicantName || target?.applicant?.nameBangla || (target as any)?.applicantName || 'আবেদন';
+      const displayId = effId || effTrackingId || effFormNo || 'চিহ্নিত আবেদন';
 
-    if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${effName}"-এর তফসিল-১ আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
-      return;
-    }
+      if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${effName}"-এর তফসিল-১ আবেদনটি (${displayId}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+        return;
+      }
 
-    recordDeletedAppId(id, effTrackingId, effFormNo);
+      recordDeletedAppId(effId, effTrackingId, effFormNo);
 
-    deleteApplicationFromVault(id).catch(() => {});
-    if (effTrackingId && effTrackingId !== id) {
-      deleteApplicationFromVault(effTrackingId).catch(() => {});
-    }
+      if (effId) deleteApplicationFromVault(effId).catch(() => {});
+      if (effTrackingId && effTrackingId !== effId) deleteApplicationFromVault(effTrackingId).catch(() => {});
 
-    deleteBuildingApplication(id);
-    if (effTrackingId && effTrackingId !== id) {
-      deleteBuildingApplication(effTrackingId);
-    }
+      if (effId) deleteBuildingApplication(effId);
+      if (effTrackingId && effTrackingId !== effId) deleteBuildingApplication(effTrackingId);
 
-    setBuildingApplications((prev) => {
-      const matchId = id.trim().toLowerCase();
-      const matchTrack = (effTrackingId || '').trim().toLowerCase();
-      const matchForm = (effFormNo || '').trim().toLowerCase();
+      setBuildingApplications((prev) => {
+        const matchId = effId.toLowerCase();
+        const matchTrack = effTrackingId.toLowerCase();
+        const matchForm = effFormNo.toLowerCase();
 
-      const filtered = prev.filter((item) => {
-        const iId = (item.id || '').trim().toLowerCase();
-        const tId = ((item as any).trackingId || '').trim().toLowerCase();
-        const fNo = (item.formNo || '').trim().toLowerCase();
-        return (
-          iId !== matchId &&
-          tId !== matchId &&
-          fNo !== matchId &&
-          (!matchTrack || (iId !== matchTrack && tId !== matchTrack)) &&
-          (!matchForm || (iId !== matchForm && fNo !== matchForm))
-        );
+        const filtered = prev.filter((item) => {
+          if (target && item === target) return false;
+          const iId = String(item.id || '').trim().toLowerCase();
+          const tId = String((item as any).trackingId || '').trim().toLowerCase();
+          const fNo = String(item.formNo || '').trim().toLowerCase();
+
+          if (matchId && (iId === matchId || tId === matchId || fNo === matchId)) return false;
+          if (matchTrack && (iId === matchTrack || tId === matchTrack)) return false;
+          if (matchForm && (iId === matchForm || fNo === matchForm)) return false;
+          return true;
+        });
+        try {
+          localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(filtered));
+        } catch {}
+        return filtered;
       });
-      try {
-        localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(filtered));
-      } catch {}
-      return filtered;
-    });
 
-    setSelectedBuildingAppIds((prev) => prev.filter((i) => i !== id && i !== effTrackingId && i !== effFormNo));
+      setSelectedBuildingAppIds((prev) => prev.filter((i) => i !== effId && i !== effTrackingId && i !== effFormNo));
 
-    await Promise.allSettled([
-      deleteApplicationFromApi(id),
-      effTrackingId && effTrackingId !== id ? deleteApplicationFromApi(effTrackingId) : Promise.resolve(true),
-      effFormNo && effFormNo !== id ? deleteApplicationFromApi(effFormNo) : Promise.resolve(true),
-    ]);
-
-    alert('তফসিল-১ আবেদনটি সফলভাবে মুছে ফেলা হয়েছে।');
+      const deleteTasks: Promise<any>[] = [];
+      if (effId) deleteTasks.push(deleteApplicationFromApi(effId));
+      if (effTrackingId && effTrackingId !== effId) deleteTasks.push(deleteApplicationFromApi(effTrackingId));
+      if (effFormNo && effFormNo !== effId && effFormNo !== effTrackingId) deleteTasks.push(deleteApplicationFromApi(effFormNo));
+      await Promise.allSettled(deleteTasks);
+    } catch (err) {
+      console.error('Error in handleDeleteBuildingApp:', err);
+    }
   };
 
   // Delete a single road cutting application
   const handleDeleteRoadCuttingApp = async (
-    id: string, 
+    id?: string, 
     applicantName?: string, 
     trackingId?: string, 
     formNo?: string
   ) => {
-    const target = roadCuttingApplications.find(
-      (a) => a.id === id || (trackingId && (a as any).trackingId === trackingId) || (formNo && (a as any).formNo === formNo)
-    );
-    const effTrackingId = trackingId || (target as any)?.trackingId;
-    const effFormNo = formNo || (target as any)?.formNo;
-    const effName = applicantName || target?.applicantName || 'আবেদন';
+    try {
+      const target = roadCuttingApplications.find(
+        (a) => (id && a.id === id) || (trackingId && (a as any).trackingId === trackingId) || (formNo && (a as any).formNo === formNo)
+      );
+      const effId = String(id || target?.id || '').trim();
+      const effTrackingId = String(trackingId || (target as any)?.trackingId || '').trim();
+      const effFormNo = String(formNo || (target as any)?.formNo || '').trim();
+      const effName = applicantName || target?.applicantName || 'আবেদন';
+      const displayId = effId || effTrackingId || effFormNo || 'চিহ্নিত আবেদন';
 
-    if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${effName}"-এর রাস্তা কর্তন আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
-      return;
-    }
+      if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${effName}"-এর রাস্তা কর্তন আবেদনটি (${displayId}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+        return;
+      }
 
-    recordDeletedAppId(id, effTrackingId, effFormNo);
+      recordDeletedAppId(effId, effTrackingId, effFormNo);
 
-    deleteApplicationFromVault(id).catch(() => {});
-    if (effTrackingId && effTrackingId !== id) {
-      deleteApplicationFromVault(effTrackingId).catch(() => {});
-    }
+      if (effId) deleteApplicationFromVault(effId).catch(() => {});
+      if (effTrackingId && effTrackingId !== effId) deleteApplicationFromVault(effTrackingId).catch(() => {});
 
-    deleteRoadCuttingApplication(id);
-    if (effTrackingId && effTrackingId !== id) {
-      deleteRoadCuttingApplication(effTrackingId);
-    }
+      if (effId) deleteRoadCuttingApplication(effId);
+      if (effTrackingId && effTrackingId !== effId) deleteRoadCuttingApplication(effTrackingId);
 
-    setRoadCuttingApplications((prev) => {
-      const matchId = id.trim().toLowerCase();
-      const matchTrack = (effTrackingId || '').trim().toLowerCase();
-      const matchForm = (effFormNo || '').trim().toLowerCase();
+      setRoadCuttingApplications((prev) => {
+        const matchId = effId.toLowerCase();
+        const matchTrack = effTrackingId.toLowerCase();
+        const matchForm = effFormNo.toLowerCase();
 
-      const filtered = prev.filter((item) => {
-        const iId = (item.id || '').trim().toLowerCase();
-        const tId = ((item as any).trackingId || '').trim().toLowerCase();
-        const fNo = ((item as any).formNo || '').trim().toLowerCase();
-        return (
-          iId !== matchId &&
-          tId !== matchId &&
-          fNo !== matchId &&
-          (!matchTrack || (iId !== matchTrack && tId !== matchTrack)) &&
-          (!matchForm || (iId !== matchForm && fNo !== matchForm))
-        );
+        const filtered = prev.filter((item) => {
+          if (target && item === target) return false;
+          const iId = String(item.id || '').trim().toLowerCase();
+          const tId = String((item as any).trackingId || '').trim().toLowerCase();
+          const fNo = String((item as any).formNo || '').trim().toLowerCase();
+
+          if (matchId && (iId === matchId || tId === matchId || fNo === matchId)) return false;
+          if (matchTrack && (iId === matchTrack || tId === matchTrack)) return false;
+          if (matchForm && (iId === matchForm || fNo === matchForm)) return false;
+          return true;
+        });
+        try {
+          localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(filtered));
+        } catch {}
+        return filtered;
       });
-      try {
-        localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(filtered));
-      } catch {}
-      return filtered;
-    });
 
-    setSelectedRoadCuttingAppIds((prev) => prev.filter((i) => i !== id && i !== effTrackingId && i !== effFormNo));
+      setSelectedRoadCuttingAppIds((prev) => prev.filter((i) => i !== effId && i !== effTrackingId && i !== effFormNo));
 
-    await Promise.allSettled([
-      deleteApplicationFromApi(id),
-      effTrackingId && effTrackingId !== id ? deleteApplicationFromApi(effTrackingId) : Promise.resolve(true),
-      effFormNo && effFormNo !== id ? deleteApplicationFromApi(effFormNo) : Promise.resolve(true),
-    ]);
-
-    alert('রাস্তা কর্তন আবেদনটি সফলভাবে মুছে ফেলা হয়েছে।');
+      const deleteTasks: Promise<any>[] = [];
+      if (effId) deleteTasks.push(deleteApplicationFromApi(effId));
+      if (effTrackingId && effTrackingId !== effId) deleteTasks.push(deleteApplicationFromApi(effTrackingId));
+      if (effFormNo && effFormNo !== effId && effFormNo !== effTrackingId) deleteTasks.push(deleteApplicationFromApi(effFormNo));
+      await Promise.allSettled(deleteTasks);
+    } catch (err) {
+      console.error('Error in handleDeleteRoadCuttingApp:', err);
+    }
   };
+
 
   // Bulk delete selected demarcation applications
   const handleBulkDeleteDemarcation = async () => {

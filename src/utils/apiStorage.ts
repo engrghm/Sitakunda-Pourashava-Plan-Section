@@ -479,8 +479,11 @@ export async function saveApplicationToApi(
 /**
  * Permanently delete an application from Hostinger MySQL / local API
  */
-export async function deleteApplicationFromApi(id: string): Promise<boolean> {
+export async function deleteApplicationFromApi(id?: string): Promise<boolean> {
   try {
+    if (!id || typeof id !== 'string' || !id.trim()) {
+      return false;
+    }
     const cleanId = id.trim();
     const endpoints = getApiEndpoints(`applications.php?id=${encodeURIComponent(cleanId)}`);
 

@@ -148,17 +148,17 @@ function handleGet($pdo) {
         return;
     }
 
-    $sql = "SELECT data FROM applications";
+    $sql = "SELECT id, module_type, data FROM applications WHERE id NOT LIKE 'settings_%' AND id NOT LIKE 'draft_%' AND id NOT LIKE 'MEDIA-%'";
     $params = [];
     if ($module) {
         if ($module === 'demarcation') {
-            $sql .= " WHERE (module_type = 'demarcation' OR module_type IS NULL OR module_type = '' OR id LIKE 'SKM-DEM-%' OR id LIKE 'APP-%')";
+            $sql .= " AND (module_type = 'demarcation' OR (module_type IS NULL AND (id LIKE 'SKM-DEM-%' OR id LIKE 'APP-%')) OR id LIKE 'SKM-DEM-%' OR id LIKE 'APP-%')";
         } else if ($module === 'building') {
-            $sql .= " WHERE (module_type = 'building' OR id LIKE 'SKM-BLD-%' OR id LIKE 'SKM-BCA-%')";
+            $sql .= " AND (module_type = 'building' OR id LIKE 'SKM-BLD-%' OR id LIKE 'SKM-BCA-%')";
         } else if ($module === 'road_cutting') {
-            $sql .= " WHERE (module_type = 'road_cutting' OR id LIKE 'SKM-RC-%')";
+            $sql .= " AND (module_type = 'road_cutting' OR id LIKE 'SKM-RC-%')";
         } else {
-            $sql .= " WHERE module_type = :module";
+            $sql .= " AND module_type = :module";
             $params[':module'] = $module;
         }
     }
@@ -166,13 +166,24 @@ function handleGet($pdo) {
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $results = [];
     foreach ($rows as $row) {
-        $decoded = json_decode($row, true);
-        if ($decoded) {
-            $results[] = $decoded;
+        $decoded = json_decode($row['data'], true);
+        if ($decoded && is_array($decoded)) {
+            // Ensure ID is present from table row if not in JSON
+            if (empty($decoded['id']) && !empty($row['id'])) {
+                $decoded['id'] = $row['id'];
+            }
+            
+            // Only include actual applications, not raw settings or media
+            $hasId = !empty($decoded['id']) && (strpos((string)$decoded['id'], 'SKM-') === 0 || strpos((string)$decoded['id'], 'APP-') === 0);
+            $hasAppFields = isset($decoded['proposedConstruction']) || isset($decoded['schedule']) || isset($decoded['applicant']) || isset($decoded['roadLocation']);
+            
+            if ($hasId || $hasAppFields) {
+                $results[] = $decoded;
+            }
         }
     }
 
@@ -461,17 +472,21 @@ function handleDelete($pdo) {
         $like1 = '%' . $cleanId . '%';
         $like2 = '%' . $enId . '%';
         $stmt = $pdo->prepare("DELETE FROM applications 
-            WHERE LOWER(TRIM(id)) = :id 
-               OR LOWER(TRIM(id)) = :enId
-               OR LOWER(TRIM(tracking_id)) = :id 
-               OR LOWER(TRIM(tracking_id)) = :enId
-               OR LOWER(TRIM(form_no)) = :id
-               OR LOWER(TRIM(form_no)) = :enId
+            WHERE LOWER(TRIM(id)) = :id1 
+               OR LOWER(TRIM(id)) = :enId1
+               OR LOWER(TRIM(tracking_id)) = :id2 
+               OR LOWER(TRIM(tracking_id)) = :enId2
+               OR LOWER(TRIM(form_no)) = :id3 
+               OR LOWER(TRIM(form_no)) = :enId3
                OR (data LIKE :like1)
                OR (data LIKE :like2)");
         $stmt->execute([
-            ':id' => $cleanId,
-            ':enId' => $enId,
+            ':id1' => $cleanId,
+            ':enId1' => $enId,
+            ':id2' => $cleanId,
+            ':enId2' => $enId,
+            ':id3' => $cleanId,
+            ':enId3' => $enId,
             ':like1' => $like1,
             ':like2' => $like2,
         ]);
