@@ -59,7 +59,7 @@ export const MediaManagementPanel: React.FC<MediaManagementPanelProps> = ({ onMe
     // Initial sync from database/server
     syncMediaGalleryWithHostinger()
       .then((remote) => {
-        if (remote && Array.isArray(remote) && remote.length > 0) {
+        if (remote !== null && Array.isArray(remote)) {
           setItems(remote);
         }
       })

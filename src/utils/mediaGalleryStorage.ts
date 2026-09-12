@@ -96,23 +96,18 @@ export const DEFAULT_MEDIA_ITEMS: MediaItem[] = [
 ];
 
 export const getStoredMediaItems = (): MediaItem[] => {
-  if (memoryMediaCache && Array.isArray(memoryMediaCache) && memoryMediaCache.length > 0) {
+  if (memoryMediaCache !== null && Array.isArray(memoryMediaCache)) {
     return memoryMediaCache;
   }
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      memoryMediaCache = DEFAULT_MEDIA_ITEMS;
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_MEDIA_ITEMS));
-      } catch {}
-      return DEFAULT_MEDIA_ITEMS;
-    }
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      memoryMediaCache = parsed;
-      return parsed;
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        memoryMediaCache = parsed;
+        return parsed;
+      }
     }
   } catch {}
 
@@ -212,7 +207,7 @@ export const resetToDefaultMedia = (): MediaItem[] => {
 export async function syncMediaGalleryWithHostinger(): Promise<MediaItem[] | null> {
   try {
     const remote = await fetchPortalConfigFromApi<MediaItem[]>(MEDIA_SETTINGS_KEY);
-    if (remote && Array.isArray(remote) && remote.length > 0) {
+    if (remote !== null && Array.isArray(remote)) {
       memoryMediaCache = remote;
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
@@ -221,6 +216,11 @@ export async function syncMediaGalleryWithHostinger(): Promise<MediaItem[] | nul
         window.dispatchEvent(new CustomEvent('media-gallery-updated', { detail: remote }));
       } catch {}
       return remote;
+    } else if (remote === null) {
+      // First time database initialization: seed DEFAULT_MEDIA_ITEMS into Hostinger MySQL
+      const initial = getStoredMediaItems();
+      savePortalConfigToApi(initial, MEDIA_SETTINGS_KEY).catch(() => {});
+      return initial;
     }
   } catch (err) {
     console.warn('[Hostinger Media Gallery Sync] Error:', err);

@@ -38,7 +38,13 @@ export const MediaGalleryView: React.FC<MediaGalleryViewProps> = ({ onBackToHome
   const [activeVideo, setActiveVideo] = useState<MediaItem | null>(null);
 
   useEffect(() => {
-    syncMediaGalleryWithHostinger().catch(() => {});
+    syncMediaGalleryWithHostinger()
+      .then((remote) => {
+        if (remote !== null && Array.isArray(remote)) {
+          setItems(remote);
+        }
+      })
+      .catch(() => {});
 
     const handleUpdate = () => {
       setItems(getStoredMediaItems());
