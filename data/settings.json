@@ -1,0 +1,66 @@
+{
+  "media_gallery": [
+    {
+      "id": "MEDIA-001",
+      "type": "photo",
+      "title": "সীতাকুণ্ড পৌরসভা কার্যালয় ভবন ও প্রশাসনিক ক্যাম্পাস",
+      "category": "পৌর ভবন ও ক্যাম্পাস",
+      "date": "১২ সেপ্টেম্বর, ২০২৬",
+      "url": "/sitakunda-pourashava-bhaban.jpg",
+      "thumbnailUrl": "/sitakunda-pourashava-bhaban.jpg",
+      "description": "সীতাকুণ্ড পৌরসভার মূল প্রশাসনিক কার্যালয় ভবন ও আধুনিক চত্বর, স্থাপিত ১৯৯৮ খ্রিঃ।",
+      "isFeatured": true,
+      "createdAt": "2026-09-12T00:00:00.000Z"
+    },
+    {
+      "id": "MEDIA-002",
+      "type": "video",
+      "title": "সীতাকুণ্ড ডিজিটাল পৌরসভা ও স্মার্ট সিটি উদ্যোগ পরিচিতি",
+      "category": "নগর পরিকল্পনা",
+      "date": "০৮ সেপ্টেম্বর, ২০২৬",
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "youtubeId": "dQw4w9WgXcQ",
+      "thumbnailUrl": "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+      "description": "সীতাকুণ্ড পৌরসভার ডিজিটাল নাগরিক সেবা, ভূমি ডিমার্কেশন যাচাই ও স্মার্ট সিটি উন্নয়ন কার্যক্রম।",
+      "isFeatured": true,
+      "createdAt": "2026-09-08T10:00:00.000Z"
+    },
+    {
+      "id": "MEDIA-003",
+      "type": "photo",
+      "title": "পৌরসভা চত্বরে ডলফিন স্মৃতিস্মারক ও সবুজ উদ্যান",
+      "category": "পৌর ভবন ও ক্যাম্পাস",
+      "date": "০৫ সেপ্টেম্বর, ২০২৬",
+      "url": "/sitakunda-pourashava-bhaban.jpg",
+      "thumbnailUrl": "/sitakunda-pourashava-bhaban.jpg",
+      "description": "সীতাকুণ্ড পৌরসভা কার্যালয়ের সামনের নান্দনিক ডলফিন ফোয়ারা ও নয়নাভিরাম বৃক্ষশোভিত চত্বর।",
+      "isFeatured": false,
+      "createdAt": "2026-09-05T12:00:00.000Z"
+    },
+    {
+      "id": "MEDIA-004",
+      "type": "video",
+      "title": "সীতাকুণ্ড পৌর এলাকার ড্রোন ভিউ ও প্রাকৃতিক ভূপ্রকৃতি",
+      "category": "প্রাকৃতিক দৃশ্য",
+      "date": "০১ সেপ্টেম্বর, ২০২৬",
+      "url": "https://www.youtube.com/watch?v=ysz5S6PUM-U",
+      "youtubeId": "ysz5S6PUM-U",
+      "thumbnailUrl": "https://img.youtube.com/vi/ysz5S6PUM-U/hqdefault.jpg",
+      "description": "পাহাড় ও সমুদ্রের মিলনস্থল ঐতিহ্যবাহী সীতাকুণ্ড পৌর এলাকার পাখির চোখে নয়নাভিরাম ড্রোন চিত্র।",
+      "isFeatured": false,
+      "createdAt": "2026-09-01T09:00:00.000Z"
+    },
+    {
+      "id": "MEDIA-005",
+      "type": "photo",
+      "title": "ডিজিটাল নাগরিক সেবা কেন্দ্র ও ওয়ান-স্টপ কাউন্টার",
+      "category": "নাগরিক সেবা",
+      "date": "২৫ আগস্ট, ২০২৬",
+      "url": "/logo.png",
+      "thumbnailUrl": "/logo.png",
+      "description": "সীতাকুণ্ড পৌরসভার নাগরিকদের দ্রুত ও স্বাচ্ছন্দ্যে সনদ এবং সেবা প্রদানের ডিজিটাল হেল্পডেস্ক।",
+      "isFeatured": false,
+      "createdAt": "2026-08-25T14:30:00.000Z"
+    }
+  ]
+}

@@ -210,7 +210,7 @@ export const ApplicationPrintA4: React.FC<ApplicationPrintA4Props> = ({ applicat
               <div className="border border-slate-400 p-1 rounded-sm text-center bg-slate-50">
                 <span className="block text-[9px] text-slate-500 font-sans">FORM NO</span>
                 <span className="font-bold font-mono text-xs text-slate-900">
-                  {application.formNo || `SKM-FORM-${application.id.replace(/\D/g, '').slice(-6) || '849201'}`}
+                  {application.formNo || (application?.id ? `SKM-FORM-${String(application.id).replace(/\D/g, '').slice(-6) || '849201'}` : 'SKM-FORM-849201')}
                 </span>
               </div>
             </div>

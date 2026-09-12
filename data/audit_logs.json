@@ -1,0 +1,26 @@
+[
+  {
+    "id": "audit-1789218159380-5742",
+    "timestamp": "2026-09-12T13:02:39.380Z",
+    "officerUsername": "admin.sitakunda",
+    "officerName": "পৌর অ্যাডমিনিস্ট্রেটর",
+    "officerRole": "super_admin",
+    "officerDesignation": "প্রধান প্রশাসনিক ও আইটি সেল, সীতাকুণ্ড পৌরসভা",
+    "actionType": "login",
+    "actionTitle": "প্রশাসনিক অ্যাকাউন্টে সফল লগইন",
+    "details": "পৌর অ্যাডমিনিস্ট্রেটর (সিস্টেম ও পৌর অ্যাডমিন (Super Admin)) অ্যাকাউন্টে সফল প্রমাণীকরণ ও সেশন স্থাপন সম্পন্ন হয়েছে।",
+    "ipAddress": "103.114.98.24 (Sitakunda Municipality Intranet)"
+  },
+  {
+    "id": "audit-1789218128957-5988",
+    "timestamp": "2026-09-12T13:02:08.957Z",
+    "officerUsername": "admin.sitakunda",
+    "officerName": "পৌর অ্যাডমিনিস্ট্রেটর",
+    "officerRole": "super_admin",
+    "officerDesignation": "প্রধান প্রশাসনিক ও আইটি সেল, সীতাকুণ্ড পৌরসভা",
+    "actionType": "logout",
+    "actionTitle": "প্রশাসনিক প্যানেল হতে লগআউট",
+    "details": "পৌর অ্যাডমিনিস্ট্রেটর কর্তৃক সেশন সমাপ্ত ও নিরাপদ লগআউট সম্পন্ন হয়েছে।",
+    "ipAddress": "103.114.98.24 (Sitakunda Municipality Intranet)"
+  }
+]

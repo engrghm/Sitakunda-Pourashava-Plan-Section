@@ -703,13 +703,14 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
       app.schedule?.geoCoordinates ||
       app.siteLocation?.geoCoordinates
     );
+    const cleanIdDigits = (app?.id ? String(app.id).replace(/\D/g, '') : '').slice(-4) || '1042';
     setCertificateNo(
       app.engineerApproval?.certificateNo || 
-      `SKM/ENGG/DEM/${new Date().getFullYear()}/${app.id.replace(/\D/g, '').slice(-4) || '1042'}`
+      `SKM/ENGG/DEM/${new Date().getFullYear()}/${cleanIdDigits}`
     );
     setMemoNo(
       app.engineerApproval?.memoNo || 
-      `সীতাপৌ/প্রকৌ/নক্সা/${toBanglaNumber(new Date().getFullYear())}-${toBanglaNumber(app.id.replace(/\D/g, '').slice(-4) || '1042')}`
+      `সীতাপৌ/প্রকৌ/নক্সা/${toBanglaNumber(new Date().getFullYear())}-${toBanglaNumber(cleanIdDigits)}`
     );
     setEngineerRemarks(app.engineerApproval?.finalRemarks || 'মালিকানা ও সরজমিন সীমানা যাচাইয়ে সঠিক পাওয়া গেছে।');
     setIsFeePaid(app.feeStatus === 'paid');
@@ -2242,7 +2243,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                 filteredApps.map((app) => {
                   const isSelected = selectedAppIds.includes(app.id);
                   return (
-                    <tr key={app.id} className={`hover:bg-slate-50 transition-colors ${isSelected ? 'bg-emerald-50/40' : ''}`}>
+                    <tr key={app.id || Math.random()} className={`hover:bg-slate-50 transition-colors ${isSelected ? 'bg-emerald-50/40' : ''}`}>
                       <td className="p-3 align-top text-center">
                         <input
                           type="checkbox"
@@ -2253,9 +2254,9 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                       </td>
 
                       <td className="p-3 align-top">
-                        <div className="font-mono font-bold text-xs text-slate-900">{app.id}</div>
+                        <div className="font-mono font-bold text-xs text-slate-900">{app.id || 'N/A'}</div>
                         <div className="font-mono text-[11px] text-emerald-700 font-semibold mt-0.5">
-                          {app.formNo || `SKM-FORM-${app.id.replace(/\D/g, '').slice(-6) || '849201'}`}
+                          {app.formNo || (app.id ? `SKM-FORM-${String(app.id).replace(/\D/g, '').slice(-6) || '849201'}` : 'SKM-FORM-849201')}
                         </div>
                         <div className="text-[10px] text-slate-500 mt-1">
                           {formatBanglaDate(app.createdAt)}
@@ -2263,24 +2264,24 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                       </td>
 
                       <td className="p-3 align-top">
-                        <div className="font-bold text-slate-900">{app.siteLocation.applicantName}</div>
-                        <div className="text-slate-600">{app.siteLocation.applicantMobile}</div>
-                        <div className="text-[11px] text-slate-500 font-mono">NID: {app.siteLocation.applicantNid}</div>
+                        <div className="font-bold text-slate-900">{app.siteLocation?.applicantName || 'মোঃ আবেদনকারী'}</div>
+                        <div className="text-slate-600">{app.siteLocation?.applicantMobile || ''}</div>
+                        <div className="text-[11px] text-slate-500 font-mono">NID: {app.siteLocation?.applicantNid || 'N/A'}</div>
                       </td>
 
                       <td className="p-3 align-top bg-emerald-50/40">
-                        <div className="font-semibold text-emerald-950">{app.schedule.mouzaName}</div>
-                        <div className="text-[10px] text-emerald-800">জে.এল. {toBanglaNumber(app.schedule.jlNo)}</div>
+                        <div className="font-semibold text-emerald-950">{app.schedule?.mouzaName || 'সীতাকুণ্ড'}</div>
+                        <div className="text-[10px] text-emerald-800">জে.এল. {toBanglaNumber(app.schedule?.jlNo || '')}</div>
                       </td>
 
                       <td className="p-3 align-top bg-emerald-50/40">
-                        <div className="font-bold text-emerald-950">{app.schedule.wardNo}</div>
+                        <div className="font-bold text-emerald-950">{app.schedule?.wardNo || ''}</div>
                       </td>
 
                       <td className="p-3 align-top">
-                        <div>খতিয়ান: {toBanglaNumber(app.schedule.bsKhatianNo)}, দাগ: {toBanglaNumber(app.schedule.bsDagNo)}</div>
-                        <div className="text-[11px] text-slate-500">জমির পরিমাণ: {app.schedule.landArea}</div>
-                        <div className="text-[11px] text-slate-500">দলিল: {app.schedule.deedNo}</div>
+                        <div>খতিয়ান: {toBanglaNumber(app.schedule?.bsKhatianNo || '')}, দাগ: {toBanglaNumber(app.schedule?.bsDagNo || '')}</div>
+                        <div className="text-[11px] text-slate-500">জমির পরিমাণ: {app.schedule?.landArea || ''}</div>
+                        <div className="text-[11px] text-slate-500">দলিল: {app.schedule?.deedNo || ''}</div>
                       </td>
 
                       {/* Authorized only draftsman remarks column */}
@@ -3613,7 +3614,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                     আবেদন যাচাই ও মূল্যায়ন প্যানেল
                   </h3>
                   <span className="text-xs text-slate-300 font-mono">
-                    আইডি: {selectedApp.id} | ফরম নং: {selectedApp.formNo || `SKM-FORM-${selectedApp.id.replace(/\D/g, '').slice(-6) || '849201'}`} | দাখিল: {formatBanglaDate(selectedApp.createdAt)}
+                    আইডি: {selectedApp.id || 'N/A'} | ফরম নং: {selectedApp.formNo || (selectedApp.id ? `SKM-FORM-${String(selectedApp.id).replace(/\D/g, '').slice(-6) || '849201'}` : 'SKM-FORM-849201')} | দাখিল: {formatBanglaDate(selectedApp.createdAt)}
                   </span>
                 </div>
               </div>

@@ -53,8 +53,9 @@ export const FieldInspectionSchedulePrint: React.FC<FieldInspectionSchedulePrint
     ? formatBanglaDate(application.draftsmanReview.inspectionDate) 
     : formatBanglaDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString());
 
+  const cleanIdDigits = (application?.id ? String(application.id).replace(/\D/g, '') : '').slice(-4) || '1042';
   const memoNo = application.engineerApproval?.memoNo || 
-    `সীতাপৌ/প্রকৌ/পরিদর্শন/${toBanglaNumber(new Date().getFullYear())}/${toBanglaNumber(application.id.replace(/\D/g, '').slice(-4) || '1042')}`;
+    `সীতাপৌ/প্রকৌ/পরিদর্শন/${toBanglaNumber(new Date().getFullYear())}/${toBanglaNumber(cleanIdDigits)}`;
 
   const assignedOfficer = application.draftsmanReview?.reviewerName || 'মো. রফিকুল ইসলাম (নক্সাকার - সিভিল)';
 
