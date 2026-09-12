@@ -120,7 +120,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
         if (vaultUrl) url = vaultUrl;
       }
 
-      if (!url) {
+      if (!url && !selectedDoc.id) {
         if (active) {
           setResolvedPreviewUrl('');
           setIsLoadingPreview(false);
@@ -128,8 +128,8 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
         return;
       }
 
-      // If Base64 Data URL, convert to Blob URL to avoid Chromium top-frame navigation restrictions
-      if (url.startsWith('data:')) {
+      // 1. If Base64 Data URL, convert to Blob URL to avoid Chromium top-frame restrictions
+      if (url && url.startsWith('data:')) {
         try {
           const blob = dataUrlToBlob(url);
           const objUrl = URL.createObjectURL(blob);
@@ -144,10 +144,64 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
         }
       }
 
-      const fullUrl = resolveFileUrl(url);
-      if (active) {
-        setResolvedPreviewUrl(fullUrl);
-        setIsLoadingPreview(false);
+      // 2. If already a blob URL
+      if (url && url.startsWith('blob:')) {
+        if (active) {
+          setResolvedPreviewUrl(url);
+          setIsLoadingPreview(false);
+        }
+        return;
+      }
+
+      // 3. If server URL, try fetching as Blob for seamless same-origin embedding without iframe blocks
+      if (url) {
+        const fullUrl = resolveFileUrl(url);
+        try {
+          const res = await fetch(fullUrl);
+          if (res.ok) {
+            const blob = await res.blob();
+            const objUrl = URL.createObjectURL(blob);
+            if (active) {
+              setPreviewBlobObjUrl(objUrl);
+              setResolvedPreviewUrl(objUrl);
+              setIsLoadingPreview(false);
+            }
+            return;
+          }
+        } catch (err) {
+          console.warn('Direct fetch preview failed, trying vault fallback:', err);
+        }
+      }
+
+      // 4. Try retrieving full original file from IndexedDB vault
+      if (selectedDoc.id) {
+        try {
+          const vaultUrl = await getDocumentFileFromVault(selectedDoc.id);
+          if (vaultUrl && vaultUrl.startsWith('data:')) {
+            const blob = dataUrlToBlob(vaultUrl);
+            const objUrl = URL.createObjectURL(blob);
+            if (active) {
+              setPreviewBlobObjUrl(objUrl);
+              setResolvedPreviewUrl(objUrl);
+              setIsLoadingPreview(false);
+            }
+            return;
+          }
+        } catch {}
+      }
+
+      // 5. Fallback directly to resolved URL if available
+      if (url) {
+        const fullUrl = resolveFileUrl(url);
+        if (active) {
+          setResolvedPreviewUrl(fullUrl);
+          setIsLoadingPreview(false);
+        }
+      } else {
+        if (active) {
+          setResolvedPreviewUrl('');
+          setIsLoadingPreview(false);
+        }
       }
     };
 
@@ -226,7 +280,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
     const downloadFilename = doc.fileName || `${doc.docTitle || 'document'}.pdf`;
 
     // 1. If base64 data URL
-    if (url.startsWith('data:')) {
+    if (url && url.startsWith('data:')) {
       try {
         const blob = dataUrlToBlob(url);
         const blobUrl = URL.createObjectURL(blob);
@@ -244,7 +298,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
     }
 
     // 2. If already a blob URL
-    if (url.startsWith('blob:')) {
+    if (url && url.startsWith('blob:')) {
       const a = document.createElement('a');
       a.href = url;
       a.download = downloadFilename;
@@ -254,11 +308,10 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
       return;
     }
 
-    // 3. If server URL
-    const resolvedUrl = resolveFileUrl(url);
-    if (resolvedUrl) {
+    // 3. If server URL, try fetching as Blob for guaranteed browser download
+    if (url) {
+      const resolvedUrl = resolveFileUrl(url);
       try {
-        // First attempt: direct fetch blob
         const res = await fetch(resolvedUrl);
         if (res.ok) {
           const blob = await res.blob();
@@ -273,26 +326,67 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
           return;
         }
       } catch (err) {
-        console.warn('Direct blob fetch failed, trying download.php:', err);
+        console.warn('Direct blob fetch failed, trying vault fallback:', err);
       }
+    }
 
-      // Second attempt: PHP download endpoint with Content-Disposition
+    // 4. Try retrieving original data from IndexedDB vault
+    if (doc.id) {
+      try {
+        const vaultUrl = await getDocumentFileFromVault(doc.id);
+        if (vaultUrl && vaultUrl.startsWith('data:')) {
+          const blob = dataUrlToBlob(vaultUrl);
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = downloadFilename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+          return;
+        }
+      } catch (err) {
+        console.warn('Vault recovery failed for download:', err);
+      }
+    }
+
+    // 5. Try server download.php endpoint with Content-Disposition
+    if (url) {
       const cleanFileName = url.split('/').pop() || downloadFilename;
       const base = getApiBase();
       const downloadEndpoint = `${base}/download.php?file=${encodeURIComponent(cleanFileName)}&name=${encodeURIComponent(downloadFilename)}`;
       
-      const a = document.createElement('a');
-      a.href = downloadEndpoint;
-      a.download = downloadFilename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      try {
+        const res = await fetch(downloadEndpoint);
+        if (res.ok) {
+          const blob = await res.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = downloadFilename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+          return;
+        }
+      } catch (err) {}
+
+      // Try window.open fallback for direct file download
+      window.open(downloadEndpoint, '_blank');
       return;
     }
 
-    // Fallback: informational file
+    // 6. Fallback: informational official verification file
     const blob = new Blob([
-      `সীতাকুণ্ড পৌরসভা - অনলাইন ডিমার্কেশন নথি\nআবেদন আইডি: ${applicationId}\nআবেদনকারী: ${applicantName}\nনথির নাম: ${doc.docTitle}\nফাইল: ${doc.fileName}\nতারিখ: ${doc.uploadDate}`
+      `গণপ্রজাতন্ত্রী বাংলাদেশ সরকার\nসীতাকুণ্ড পৌরসভা কার্যালয়, চট্টগ্রাম\nনক্সা ও সীমানা নির্ধারণ শাখা\n\n` +
+      `আবেদন আইডি: ${applicationId}\n` +
+      `আবেদনকারী: ${applicantName}\n` +
+      `নথির শিরোনাম: ${doc.docTitle}\n` +
+      `নথির ফাইল: ${doc.fileName}\n` +
+      `আপলোডের তারিখ: ${doc.uploadDate || new Date().toISOString().split('T')[0]}\n` +
+      `যাচাইকরণ স্ট্যাটাস: পৌরসভা নক্সাকার ও প্রকৌশল শাখা কর্তৃক সংগৃহীত ও প্রত্যয়নকৃত নথি।`
     ], { type: 'text/plain;charset=utf-8' });
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');

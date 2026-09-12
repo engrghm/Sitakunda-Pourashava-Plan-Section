@@ -48,7 +48,14 @@ switch ($method) {
         handleGet($pdo);
         break;
     case 'POST':
-        if ((isset($_GET['action']) && $_GET['action'] === 'delete') || isset($_GET['clear_all'])) {
+        $rawPostCheck = @file_get_contents('php://input');
+        $jsonPostCheck = $rawPostCheck ? @json_decode($rawPostCheck, true) : [];
+        $isPostDelete = (isset($_GET['action']) && $_GET['action'] === 'delete')
+            || (isset($jsonPostCheck['action']) && $jsonPostCheck['action'] === 'delete')
+            || (isset($_POST['action']) && $_POST['action'] === 'delete')
+            || isset($_GET['clear_all'])
+            || isset($jsonPostCheck['clear_all']);
+        if ($isPostDelete) {
             handleDelete($pdo);
         } else {
             handlePost($pdo);
@@ -450,8 +457,24 @@ function handleDelete($pdo) {
 
     try {
         $cleanId = strtolower(trim($id));
-        $stmt = $pdo->prepare("DELETE FROM applications WHERE LOWER(TRIM(id)) = :id OR LOWER(TRIM(tracking_id)) = :id OR LOWER(TRIM(form_no)) = :id");
-        $stmt->execute([':id' => $cleanId]);
+        $enId = toEnglishDigitsPhp($cleanId);
+        $like1 = '%' . $cleanId . '%';
+        $like2 = '%' . $enId . '%';
+        $stmt = $pdo->prepare("DELETE FROM applications 
+            WHERE LOWER(TRIM(id)) = :id 
+               OR LOWER(TRIM(id)) = :enId
+               OR LOWER(TRIM(tracking_id)) = :id 
+               OR LOWER(TRIM(tracking_id)) = :enId
+               OR LOWER(TRIM(form_no)) = :id
+               OR LOWER(TRIM(form_no)) = :enId
+               OR (data LIKE :like1)
+               OR (data LIKE :like2)");
+        $stmt->execute([
+            ':id' => $cleanId,
+            ':enId' => $enId,
+            ':like1' => $like1,
+            ':like2' => $like2,
+        ]);
         echo json_encode(['success' => true, 'deletedId' => $id]);
     } catch (Exception $e) {
         http_response_code(500);

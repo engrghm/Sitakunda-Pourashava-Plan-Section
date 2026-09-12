@@ -102,6 +102,7 @@ import {
   deleteBuildingApplication,
   deleteRoadCuttingApplication,
   purgeModuleApplications,
+  recordDeletedAppId,
   isAppDeleted,
   toBanglaNumber, 
   formatBanglaDate, 
@@ -118,6 +119,10 @@ import {
   BUILDING_APPS_STORAGE_KEY,
   ROAD_CUTTING_APPS_STORAGE_KEY
 } from '../utils/storage';
+import { 
+  hydrateApplicationFromVault, 
+  deleteApplicationFromVault 
+} from '../utils/indexedDbStorage';
 import { 
   sendAutomatedStatusAlert, 
   generateOfficialEmailTemplate, 
@@ -581,41 +586,202 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
   };
 
   // Delete a single demarcation application
-  const handleDeleteDemarcationApp = async (id: string, applicantName: string) => {
-    if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${applicantName}"-এর সীমানা নির্ধারণ আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+  const handleDeleteDemarcationApp = async (
+    id: string, 
+    applicantName?: string, 
+    trackingId?: string, 
+    formNo?: string
+  ) => {
+    const target = applications.find(
+      (a) => a.id === id || (trackingId && a.trackingId === trackingId) || (formNo && a.formNo === formNo)
+    );
+    const effTrackingId = trackingId || target?.trackingId;
+    const effFormNo = formNo || target?.formNo;
+    const effName = applicantName || target?.siteLocation?.applicantName || 'আবেদন';
+
+    if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${effName}"-এর সীমানা নির্ধারণ আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
       return;
     }
-    const updated = deleteDemarcationApplication(id);
-    setApplications(updated);
-    setSelectedAppIds((prev) => prev.filter((i) => i !== id));
-    if (selectedApp?.id === id) {
+
+    // 1. Permanently register as deleted
+    recordDeletedAppId(id, effTrackingId, effFormNo);
+
+    // 2. Remove from IndexedDB vault
+    deleteApplicationFromVault(id).catch(() => {});
+    if (effTrackingId && effTrackingId !== id) {
+      deleteApplicationFromVault(effTrackingId).catch(() => {});
+    }
+
+    // 3. Remove from storage utilities
+    deleteDemarcationApplication(id);
+    if (effTrackingId && effTrackingId !== id) {
+      deleteDemarcationApplication(effTrackingId);
+    }
+
+    // 4. Update React state immediately and keep storage synchronized
+    setApplications((prev) => {
+      const matchId = id.trim().toLowerCase();
+      const matchTrack = (effTrackingId || '').trim().toLowerCase();
+      const matchForm = (effFormNo || '').trim().toLowerCase();
+
+      const filtered = prev.filter((item) => {
+        const iId = (item.id || '').trim().toLowerCase();
+        const tId = (item.trackingId || '').trim().toLowerCase();
+        const fNo = (item.formNo || '').trim().toLowerCase();
+        return (
+          iId !== matchId &&
+          tId !== matchId &&
+          fNo !== matchId &&
+          (!matchTrack || (iId !== matchTrack && tId !== matchTrack)) &&
+          (!matchForm || (iId !== matchForm && fNo !== matchForm))
+        );
+      });
+      try {
+        localStorage.setItem(DEMARCATION_STORAGE_KEY, JSON.stringify(filtered));
+      } catch {}
+      return filtered;
+    });
+
+    setSelectedAppIds((prev) => prev.filter((i) => i !== id && i !== effTrackingId && i !== effFormNo));
+    if (selectedApp?.id === id || (effTrackingId && selectedApp?.trackingId === effTrackingId)) {
       setSelectedApp(null);
     }
-    await deleteApplicationFromApi(id).catch(() => {});
+
+    // 5. Delete on backend API across all identifying keys
+    await Promise.allSettled([
+      deleteApplicationFromApi(id),
+      effTrackingId && effTrackingId !== id ? deleteApplicationFromApi(effTrackingId) : Promise.resolve(true),
+      effFormNo && effFormNo !== id ? deleteApplicationFromApi(effFormNo) : Promise.resolve(true),
+    ]);
+
     alert('সীমানা নির্ধারণ আবেদনটি সফলভাবে মুছে ফেলা হয়েছে।');
   };
 
   // Delete a single building application
-  const handleDeleteBuildingApp = async (id: string, applicantName: string) => {
-    if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${applicantName}"-এর তফসিল-১ আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+  const handleDeleteBuildingApp = async (
+    id: string, 
+    applicantName?: string, 
+    trackingId?: string, 
+    formNo?: string
+  ) => {
+    const target = buildingApplications.find(
+      (a) => a.id === id || (trackingId && (a as any).trackingId === trackingId) || (formNo && a.formNo === formNo)
+    );
+    const effTrackingId = trackingId || (target as any)?.trackingId;
+    const effFormNo = formNo || target?.formNo;
+    const effName = applicantName || target?.applicant?.nameBangla || (target as any)?.applicantName || 'আবেদন';
+
+    if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${effName}"-এর তফসিল-১ আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
       return;
     }
-    const updated = deleteBuildingApplication(id);
-    setBuildingApplications(updated);
-    setSelectedBuildingAppIds((prev) => prev.filter((i) => i !== id));
-    await deleteApplicationFromApi(id).catch(() => {});
+
+    recordDeletedAppId(id, effTrackingId, effFormNo);
+
+    deleteApplicationFromVault(id).catch(() => {});
+    if (effTrackingId && effTrackingId !== id) {
+      deleteApplicationFromVault(effTrackingId).catch(() => {});
+    }
+
+    deleteBuildingApplication(id);
+    if (effTrackingId && effTrackingId !== id) {
+      deleteBuildingApplication(effTrackingId);
+    }
+
+    setBuildingApplications((prev) => {
+      const matchId = id.trim().toLowerCase();
+      const matchTrack = (effTrackingId || '').trim().toLowerCase();
+      const matchForm = (effFormNo || '').trim().toLowerCase();
+
+      const filtered = prev.filter((item) => {
+        const iId = (item.id || '').trim().toLowerCase();
+        const tId = ((item as any).trackingId || '').trim().toLowerCase();
+        const fNo = (item.formNo || '').trim().toLowerCase();
+        return (
+          iId !== matchId &&
+          tId !== matchId &&
+          fNo !== matchId &&
+          (!matchTrack || (iId !== matchTrack && tId !== matchTrack)) &&
+          (!matchForm || (iId !== matchForm && fNo !== matchForm))
+        );
+      });
+      try {
+        localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(filtered));
+      } catch {}
+      return filtered;
+    });
+
+    setSelectedBuildingAppIds((prev) => prev.filter((i) => i !== id && i !== effTrackingId && i !== effFormNo));
+
+    await Promise.allSettled([
+      deleteApplicationFromApi(id),
+      effTrackingId && effTrackingId !== id ? deleteApplicationFromApi(effTrackingId) : Promise.resolve(true),
+      effFormNo && effFormNo !== id ? deleteApplicationFromApi(effFormNo) : Promise.resolve(true),
+    ]);
+
     alert('তফসিল-১ আবেদনটি সফলভাবে মুছে ফেলা হয়েছে।');
   };
 
   // Delete a single road cutting application
-  const handleDeleteRoadCuttingApp = async (id: string, applicantName: string) => {
-    if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${applicantName}"-এর রাস্তা কর্তন আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+  const handleDeleteRoadCuttingApp = async (
+    id: string, 
+    applicantName?: string, 
+    trackingId?: string, 
+    formNo?: string
+  ) => {
+    const target = roadCuttingApplications.find(
+      (a) => a.id === id || (trackingId && (a as any).trackingId === trackingId) || (formNo && (a as any).formNo === formNo)
+    );
+    const effTrackingId = trackingId || (target as any)?.trackingId;
+    const effFormNo = formNo || (target as any)?.formNo;
+    const effName = applicantName || target?.applicantName || 'আবেদন';
+
+    if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${effName}"-এর রাস্তা কর্তন আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
       return;
     }
-    const updated = deleteRoadCuttingApplication(id);
-    setRoadCuttingApplications(updated);
-    setSelectedRoadCuttingAppIds((prev) => prev.filter((i) => i !== id));
-    await deleteApplicationFromApi(id).catch(() => {});
+
+    recordDeletedAppId(id, effTrackingId, effFormNo);
+
+    deleteApplicationFromVault(id).catch(() => {});
+    if (effTrackingId && effTrackingId !== id) {
+      deleteApplicationFromVault(effTrackingId).catch(() => {});
+    }
+
+    deleteRoadCuttingApplication(id);
+    if (effTrackingId && effTrackingId !== id) {
+      deleteRoadCuttingApplication(effTrackingId);
+    }
+
+    setRoadCuttingApplications((prev) => {
+      const matchId = id.trim().toLowerCase();
+      const matchTrack = (effTrackingId || '').trim().toLowerCase();
+      const matchForm = (effFormNo || '').trim().toLowerCase();
+
+      const filtered = prev.filter((item) => {
+        const iId = (item.id || '').trim().toLowerCase();
+        const tId = ((item as any).trackingId || '').trim().toLowerCase();
+        const fNo = ((item as any).formNo || '').trim().toLowerCase();
+        return (
+          iId !== matchId &&
+          tId !== matchId &&
+          fNo !== matchId &&
+          (!matchTrack || (iId !== matchTrack && tId !== matchTrack)) &&
+          (!matchForm || (iId !== matchForm && fNo !== matchForm))
+        );
+      });
+      try {
+        localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(filtered));
+      } catch {}
+      return filtered;
+    });
+
+    setSelectedRoadCuttingAppIds((prev) => prev.filter((i) => i !== id && i !== effTrackingId && i !== effFormNo));
+
+    await Promise.allSettled([
+      deleteApplicationFromApi(id),
+      effTrackingId && effTrackingId !== id ? deleteApplicationFromApi(effTrackingId) : Promise.resolve(true),
+      effFormNo && effFormNo !== id ? deleteApplicationFromApi(effFormNo) : Promise.resolve(true),
+    ]);
+
     alert('রাস্তা কর্তন আবেদনটি সফলভাবে মুছে ফেলা হয়েছে।');
   };
 
@@ -626,13 +792,29 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
       return;
     }
     const toDelete = [...selectedAppIds];
-    let current = applications;
-    for (const id of toDelete) {
-      current = deleteDemarcationApplication(id);
-      await deleteApplicationFromApi(id).catch(() => {});
-    }
-    setApplications(current);
+    const deletePromises: Promise<any>[] = [];
+
+    toDelete.forEach((delId) => {
+      const target = applications.find((a) => a.id === delId);
+      recordDeletedAppId(delId, target?.trackingId, target?.formNo);
+      deleteApplicationFromVault(delId).catch(() => {});
+      if (target?.trackingId) deleteApplicationFromVault(target.trackingId).catch(() => {});
+      deleteDemarcationApplication(delId);
+      deletePromises.push(deleteApplicationFromApi(delId).catch(() => {}));
+      if (target?.trackingId) deletePromises.push(deleteApplicationFromApi(target.trackingId).catch(() => {}));
+    });
+
+    setApplications((prev) => {
+      const deleteSet = new Set(toDelete.map((s) => s.trim().toLowerCase()));
+      const filtered = prev.filter((a) => !deleteSet.has((a.id || '').trim().toLowerCase()) && !deleteSet.has((a.trackingId || '').trim().toLowerCase()));
+      try {
+        localStorage.setItem(DEMARCATION_STORAGE_KEY, JSON.stringify(filtered));
+      } catch {}
+      return filtered;
+    });
+
     setSelectedAppIds([]);
+    await Promise.allSettled(deletePromises);
     alert('নির্বাচিত আবেদনসমূহ সফলভাবে মুছে ফেলা হয়েছে।');
   };
 
@@ -643,14 +825,63 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
       return;
     }
     const toDelete = [...selectedBuildingAppIds];
-    let current = buildingApplications;
-    for (const id of toDelete) {
-      current = deleteBuildingApplication(id);
-      await deleteApplicationFromApi(id).catch(() => {});
-    }
-    setBuildingApplications(current);
+    const deletePromises: Promise<any>[] = [];
+
+    toDelete.forEach((delId) => {
+      const target = buildingApplications.find((a) => a.id === delId);
+      recordDeletedAppId(delId, (target as any)?.trackingId, target?.formNo);
+      deleteApplicationFromVault(delId).catch(() => {});
+      if ((target as any)?.trackingId) deleteApplicationFromVault((target as any).trackingId).catch(() => {});
+      deleteBuildingApplication(delId);
+      deletePromises.push(deleteApplicationFromApi(delId).catch(() => {}));
+      if ((target as any)?.trackingId) deletePromises.push(deleteApplicationFromApi((target as any).trackingId).catch(() => {}));
+    });
+
+    setBuildingApplications((prev) => {
+      const deleteSet = new Set(toDelete.map((s) => s.trim().toLowerCase()));
+      const filtered = prev.filter((a) => !deleteSet.has((a.id || '').trim().toLowerCase()) && !deleteSet.has(((a as any).trackingId || '').trim().toLowerCase()));
+      try {
+        localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(filtered));
+      } catch {}
+      return filtered;
+    });
+
     setSelectedBuildingAppIds([]);
+    await Promise.allSettled(deletePromises);
     alert('নির্বাচিত তফসিল-১ আবেদনসমূহ সফলভাবে মুছে ফেলা হয়েছে।');
+  };
+
+  // Bulk delete selected road cutting applications
+  const handleBulkDeleteRoadCutting = async () => {
+    if (selectedRoadCuttingAppIds.length === 0) return;
+    if (!window.confirm(`আপনি কি নিশ্চিত যে নির্বাচিত ${toBanglaNumber(selectedRoadCuttingAppIds.length)} টি রাস্তা কর্তন আবেদন স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+      return;
+    }
+    const toDelete = [...selectedRoadCuttingAppIds];
+    const deletePromises: Promise<any>[] = [];
+
+    toDelete.forEach((delId) => {
+      const target = roadCuttingApplications.find((a) => a.id === delId);
+      recordDeletedAppId(delId, (target as any)?.trackingId, (target as any)?.formNo);
+      deleteApplicationFromVault(delId).catch(() => {});
+      if ((target as any)?.trackingId) deleteApplicationFromVault((target as any).trackingId).catch(() => {});
+      deleteRoadCuttingApplication(delId);
+      deletePromises.push(deleteApplicationFromApi(delId).catch(() => {}));
+      if ((target as any)?.trackingId) deletePromises.push(deleteApplicationFromApi((target as any).trackingId).catch(() => {}));
+    });
+
+    setRoadCuttingApplications((prev) => {
+      const deleteSet = new Set(toDelete.map((s) => s.trim().toLowerCase()));
+      const filtered = prev.filter((a) => !deleteSet.has((a.id || '').trim().toLowerCase()) && !deleteSet.has(((a as any).trackingId || '').trim().toLowerCase()));
+      try {
+        localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(filtered));
+      } catch {}
+      return filtered;
+    });
+
+    setSelectedRoadCuttingAppIds([]);
+    await Promise.allSettled(deletePromises);
+    alert('নির্বাচিত রাস্তা কর্তন আবেদনসমূহ সফলভাবে মুছে ফেলা হয়েছে।');
   };
 
   // Purge demo applications across modules
@@ -694,6 +925,12 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
   // Open Application Details Modal
   const handleOpenDetailModal = (app: DemarcationApplication) => {
     setSelectedApp(app);
+    // Asynchronously hydrate documents and attachments from vault if present
+    hydrateApplicationFromVault(app).then((hydrated) => {
+      if (hydrated && hydrated.documents) {
+        setSelectedApp((curr) => (curr && curr.id === app.id ? hydrated : curr));
+      }
+    }).catch(() => {});
     setReviewStatus(app.status);
     setDraftsmanRemarks(app.draftsmanReview?.remarks || '');
     setIsSiteInspected(app.draftsmanReview?.isSiteInspected || false);
@@ -2164,16 +2401,6 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => handlePurgeDemoData('demarcation')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition-all border border-rose-200 cursor-pointer shadow-2xs"
-              title="ডিমার্কেশন প্রত্যয়ন ফরমের সকল ডেমো / পরীক্ষামূলক আবেদন মুছে ফেলুন"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-              <span>সকল ডেমো মুছুন</span>
-            </button>
-
-            <button
-              type="button"
               onClick={() => setCsvExportModalModule('demarcation')}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer border border-emerald-600"
               title="ডিমার্কেশন ফরমের কাস্টম CSV এক্সপোর্ট ও ফিল্টারিং"
@@ -2349,7 +2576,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
 
                         <button
                           type="button"
-                          onClick={() => handleDeleteDemarcationApp(app.id, app.siteLocation?.applicantName || 'আবেদন')}
+                          onClick={() => handleDeleteDemarcationApp(app.id, app.siteLocation?.applicantName || 'আবেদন', app.trackingId, app.formNo)}
                           className="w-full px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 rounded text-xs font-semibold border border-rose-200 transition-colors cursor-pointer flex items-center justify-center gap-1"
                           title="এই আবেদনটি স্থায়ীভাবে মুছে ফেলুন"
                         >
@@ -2737,16 +2964,6 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                   <span>তফসিল-১ CSV ডাউনলোড</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => handlePurgeDemoData('building')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition-all border border-rose-200 cursor-pointer shadow-2xs"
-                  title="তফসিল-১ ফরমের সকল ডেমো / পরীক্ষামূলক আবেদন মুছে ফেলুন"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                  <span>সকল ডেমো মুছুন</span>
-                </button>
-
                 {selectedBuildingAppIds.length > 0 && (
                   <button
                     type="button"
@@ -2992,7 +3209,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleDeleteBuildingApp(bApp.id, applicantName)}
+                                onClick={() => handleDeleteBuildingApp(bApp.id, applicantName, (bApp as any).trackingId, bApp.formNo)}
                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 rounded-lg text-xs font-bold transition-all cursor-pointer border border-rose-200 shadow-xs whitespace-nowrap"
                                 title="এই তফসিল-১ আবেদনটি স্থায়ীভাবে মুছে ফেলুন"
                               >
@@ -3254,16 +3471,6 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => handlePurgeDemoData('road_cutting')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition-all border border-rose-200 cursor-pointer shadow-2xs"
-                  title="রাস্তা কর্তন ফরমের সকল ডেমো / পরীক্ষামূলক আবেদন মুছে ফেলুন"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                  <span>সকল ডেমো মুছুন</span>
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => setCsvExportModalModule('roadcutting')}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer border border-amber-600"
                   title="রাস্তা কর্তন অনুমোদন ফরমের কাস্টম CSV এক্সপোর্ট ও ফিল্টারিং"
@@ -3408,7 +3615,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
 
                               <button
                                 type="button"
-                                onClick={() => handleDeleteRoadCuttingApp(rcApp.id, rcApp.applicantName || 'আবেদন')}
+                                onClick={() => handleDeleteRoadCuttingApp(rcApp.id, rcApp.applicantName || 'আবেদন', (rcApp as any).trackingId, (rcApp as any).formNo)}
                                 className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-xs border border-rose-200 flex items-center justify-center gap-1"
                                 title="এই রাস্তা কর্তন আবেদনটি স্থায়ীভাবে মুছে ফেলুন"
                               >
@@ -4816,7 +5023,9 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                     if (selectedApp) {
                       handleDeleteDemarcationApp(
                         selectedApp.id,
-                        selectedApp.applicantName || selectedApp.siteLocation?.applicantName || 'আবেদন'
+                        selectedApp.applicantName || selectedApp.siteLocation?.applicantName || 'আবেদন',
+                        selectedApp.trackingId,
+                        selectedApp.formNo
                       );
                     }
                   }}
