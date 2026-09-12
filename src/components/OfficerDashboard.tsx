@@ -1581,6 +1581,67 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
               প্রশাসনিক প্যানেলে প্রবেশ করুন
             </button>
 
+            {/* Quick Fill Credentials Helper for Officers */}
+            <div className="pt-3 border-t border-slate-100">
+              <p className="text-[11px] font-bold text-slate-600 mb-2 flex items-center justify-between">
+                <span>অনুমোদিত কর্মকর্তা অ্যাকাউন্ট নির্বাচন (দ্রুত পূরণ):</span>
+                <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-medium">এক-ক্লিক লগইন</span>
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsername('admin.sitakunda');
+                    setPassword('Admin@Sitakunda2026');
+                    setLoginError(null);
+                  }}
+                  className="px-2 py-1.5 text-left bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-[11px] transition-all cursor-pointer"
+                >
+                  <span className="font-bold text-slate-800 block truncate">১. পৌর অ্যাডমিন</span>
+                  <span className="text-[10px] text-slate-500 font-mono block truncate">admin.sitakunda</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsername('draftsman.sitakunda');
+                    setPassword('Sitakunda@2026');
+                    setLoginError(null);
+                  }}
+                  className="px-2 py-1.5 text-left bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-[11px] transition-all cursor-pointer"
+                >
+                  <span className="font-bold text-slate-800 block truncate">২. নক্সাকার (সিভিল)</span>
+                  <span className="text-[10px] text-slate-500 font-mono block truncate">draftsman.sitakunda</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsername('xen.sitakunda');
+                    setPassword('Sitakunda@2026');
+                    setLoginError(null);
+                  }}
+                  className="px-2 py-1.5 text-left bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-[11px] transition-all cursor-pointer"
+                >
+                  <span className="font-bold text-slate-800 block truncate">৩. নির্বাহী প্রকৌশলী</span>
+                  <span className="text-[10px] text-slate-500 font-mono block truncate">xen.sitakunda</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsername('mayor.sitakunda');
+                    setPassword('Sitakunda@2026');
+                    setLoginError(null);
+                  }}
+                  className="px-2 py-1.5 text-left bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-[11px] transition-all cursor-pointer"
+                >
+                  <span className="font-bold text-slate-800 block truncate">৪. মেয়র / প্রশাসক</span>
+                  <span className="text-[10px] text-slate-500 font-mono block truncate">mayor.sitakunda</span>
+                </button>
+              </div>
+            </div>
+
             <div className="text-center pt-2">
               <span className="text-[11px] text-slate-500">
                 শুধুমাত্র সীতাকুণ্ড পৌরসভার অনুমোদিত কর্মকর্তা ও প্রকৌশলীদের জন্য সংরক্ষিত

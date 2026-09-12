@@ -214,17 +214,44 @@ export function getOfficerAccounts(): Array<{ username: string; title: string; p
 }
 
 export function verifyOfficerLogin(usernameInput: string, passwordInput: string): OfficerUser | null {
-  const cleanUser = usernameInput.trim();
-  const passwords = getOfficerPasswords();
-  const validPassword = passwords[cleanUser] || passwords[cleanUser.toLowerCase()];
+  const cleanUser = (usernameInput || '').trim();
+  const cleanPassword = (passwordInput || '').trim();
 
-  if (!validPassword || validPassword !== passwordInput) {
+  if (!cleanUser || !cleanPassword) {
     return null;
   }
 
-  const officer = DEFAULT_OFFICERS.find(
-    (o) => o.username.toLowerCase() === cleanUser.toLowerCase()
+  const passwords = getOfficerPasswords();
+  const lowerUser = cleanUser.toLowerCase();
+
+  // Find corresponding officer from DEFAULT_OFFICERS
+  let officer = DEFAULT_OFFICERS.find(
+    (o) => o.username.toLowerCase() === lowerUser
   );
+
+  if (!officer) {
+    if (lowerUser === 'admin' || lowerUser === 'superadmin' || lowerUser === 'admin.sitakunda') {
+      officer = DEFAULT_OFFICERS[0];
+    } else if (lowerUser === 'draftsman' || lowerUser === 'draftsman.civil' || lowerUser === 'draftsman.sitakunda') {
+      officer = DEFAULT_OFFICERS[1];
+    } else if (lowerUser === 'ee.sitakunda' || lowerUser === 'xen.sitakunda' || lowerUser === 'xen' || lowerUser === 'engineer') {
+      officer = DEFAULT_OFFICERS[2];
+    } else if (lowerUser === 'administrator' || lowerUser === 'mayor.sitakunda' || lowerUser === 'mayor') {
+      officer = DEFAULT_OFFICERS[3];
+    }
+  }
+
+  // Check saved password or default password
+  const savedPassword = passwords[cleanUser] || passwords[lowerUser] || (officer ? passwords[officer.username] : null);
+  const defaultPassword = officer?.defaultPassword;
+
+  const isPasswordCorrect = 
+    (savedPassword && savedPassword.trim() === cleanPassword) ||
+    (defaultPassword && defaultPassword.trim() === cleanPassword);
+
+  if (!isPasswordCorrect) {
+    return null;
+  }
 
   if (officer) {
     return {
@@ -235,20 +262,6 @@ export function verifyOfficerLogin(usernameInput: string, passwordInput: string)
       name: officer.name,
       designation: officer.designation,
     };
-  }
-
-  // Alias mapping
-  if (cleanUser.toLowerCase() === 'admin' || cleanUser.toLowerCase() === 'superadmin' || cleanUser.toLowerCase() === 'admin.sitakunda') {
-    return DEFAULT_OFFICERS[0];
-  }
-  if (cleanUser.toLowerCase() === 'draftsman' || cleanUser.toLowerCase() === 'draftsman.civil') {
-    return DEFAULT_OFFICERS[1];
-  }
-  if (cleanUser.toLowerCase() === 'ee.sitakunda' || cleanUser.toLowerCase() === 'xen.sitakunda') {
-    return DEFAULT_OFFICERS[2];
-  }
-  if (cleanUser.toLowerCase() === 'administrator' || cleanUser.toLowerCase() === 'mayor.sitakunda') {
-    return DEFAULT_OFFICERS[3];
   }
 
   return {
