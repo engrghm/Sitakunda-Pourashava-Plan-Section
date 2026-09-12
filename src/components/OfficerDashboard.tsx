@@ -1613,13 +1613,9 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
             <p className="text-xs text-slate-600 mt-0.5">
               লগইনকৃত কর্মকর্তা:{' '}
               <strong className="text-emerald-950">
-                {currentOfficer.title && currentOfficer.designation && (currentOfficer.title === currentOfficer.designation || currentOfficer.designation.includes(currentOfficer.title) || currentOfficer.title.includes(currentOfficer.designation))
-                  ? currentOfficer.designation
-                  : currentOfficer.designation
-                  ? `${currentOfficer.title} (${currentOfficer.designation})`
-                  : currentOfficer.title}
+                {currentOfficer?.designation || currentOfficer?.title || currentOfficer?.name || 'পৌর কর্মকর্তা'}
               </strong>{' '}
-              | <span className="font-mono text-slate-500">ID: {currentOfficer.username}</span>
+              | <span className="font-mono text-slate-500">ID: {currentOfficer?.username || 'officer'}</span>
             </p>
           </div>
         </div>
@@ -1637,7 +1633,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
               <ShieldAlert className="w-4 h-4 text-amber-400" />
               <span>সিস্টেম অডিট লগ</span>
               <span className="bg-amber-400 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
-                {toBanglaNumber(auditLogsCount)}
+                {toBanglaNumber(auditLogsCount || 0)}
               </span>
             </button>
           )}

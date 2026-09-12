@@ -25,6 +25,43 @@ import { PortalConfig, getPortalConfig, CouncilCategory, NoticeCategory, syncPor
 import { syncLegalDocumentsWithHostinger } from './utils/legalDocuments';
 import { syncMediaGalleryWithHostinger } from './utils/mediaGalleryStorage';
 
+class DashboardErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('[Dashboard Error Boundary Caught]:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="max-w-xl mx-auto my-12 p-6 bg-white rounded-2xl border border-red-200 shadow-md text-center space-y-4">
+          <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold">!</div>
+          <h3 className="text-lg font-bold text-slate-900">ড্যাশবোর্ড লোড করতে সাময়িক সমস্যা হয়েছে</h3>
+          <p className="text-xs text-slate-600">
+            {this.state.error?.message || 'একটি অপ্রত্যাশিত ত্রুটি ঘটেছে। অনুগ্রহ করে পৃষ্ঠাটি রিফ্রেশ করুন অথবা পুনরায় চেষ্টা করুন।'}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-lg cursor-pointer transition-all"
+          >
+            পৃষ্ঠা রিফ্রেশ করুন
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'apply' | 'track' | 'schedule1' | 'roadcutting' | 'admin' | 'media'>('home');
   const [portalConfig, setPortalConfig] = useState<PortalConfig>(getPortalConfig);
@@ -278,12 +315,14 @@ export default function App() {
 
         {/* Tab 5: Officer / Admin Dashboard */}
         {activeTab === 'admin' && (
-          <OfficerDashboard
-            onViewPrintA4={handleViewPrintA4}
-            onViewCertificate={handleViewCertificate}
-            onAuthChange={setIsAdminLoggedIn}
-            onOpenCustomizer={handleOpenCustomizer}
-          />
+          <DashboardErrorBoundary>
+            <OfficerDashboard
+              onViewPrintA4={handleViewPrintA4}
+              onViewCertificate={handleViewCertificate}
+              onAuthChange={setIsAdminLoggedIn}
+              onOpenCustomizer={handleOpenCustomizer}
+            />
+          </DashboardErrorBoundary>
         )}
 
         {/* Tab 6: Photo & Video Gallery */}
