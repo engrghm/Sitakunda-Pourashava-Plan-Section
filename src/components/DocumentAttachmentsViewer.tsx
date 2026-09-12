@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { UploadedDocument } from '../types';
 import { toBanglaNumber, formatBanglaDate } from '../utils/storage';
-import { uploadDocumentToServer } from '../utils/apiStorage';
+import { uploadDocumentToServer, resolveFileUrl } from '../utils/apiStorage';
 
 const DRAFTSMAN_DOC_TYPES = [
   { key: 'mouza_map_sketch', label: 'মৌজা ম্যাপ ও দাগ স্কেচ (Mouza Map & Plot Sketch)' },
@@ -137,8 +137,9 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
         a.click();
         document.body.removeChild(a);
       } else {
+        const targetUrl = resolveFileUrl(doc.fileUrl);
         // Fetch as blob for reliable cross-browser file download
-        fetch(doc.fileUrl)
+        fetch(targetUrl)
           .then((res) => {
             if (!res.ok) throw new Error('Download failed');
             return res.blob();
@@ -155,7 +156,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
           })
           .catch(() => {
             const a = document.createElement('a');
-            a.href = doc.fileUrl;
+            a.href = targetUrl;
             a.download = doc.fileName || `${doc.docTitle}.pdf`;
             a.target = '_blank';
             document.body.appendChild(a);
@@ -720,7 +721,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                   selectedDoc.fileUrl.startsWith('data:image/') || selectedDoc.fileName.match(/\.(jpg|jpeg|png|webp)$/i) || selectedDoc.fileUrl.match(/\.(jpg|jpeg|png|webp)($|\?)/i) ? (
                     <div className="p-4 flex flex-col items-center justify-center">
                       <img
-                        src={selectedDoc.fileUrl}
+                        src={resolveFileUrl(selectedDoc.fileUrl)}
                         alt={selectedDoc.docTitle}
                         className="max-h-[420px] max-w-full object-contain rounded-lg shadow-sm"
                       />
@@ -728,13 +729,13 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                   ) : (
                     <div className="w-full h-[450px] flex flex-col">
                       <iframe
-                        src={selectedDoc.fileUrl}
+                        src={resolveFileUrl(selectedDoc.fileUrl)}
                         title={selectedDoc.docTitle}
                         className="w-full flex-1 border-0"
                       />
                       <div className="bg-slate-100 p-2 text-center text-xs border-t border-slate-200">
                         <a
-                          href={selectedDoc.fileUrl}
+                          href={resolveFileUrl(selectedDoc.fileUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-emerald-700 font-bold hover:underline inline-flex items-center gap-1"

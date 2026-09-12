@@ -5,6 +5,7 @@ import { Printer, X, ShieldCheck, CheckCircle2, FileDown, Building2 } from 'luci
 import { MunicipalityLogo } from './MunicipalityLogo';
 import { DemarcationApplication } from '../types';
 import { toBanglaNumber, formatBanglaDate } from '../utils/storage';
+import { resolveFileUrl } from '../utils/apiStorage';
 
 interface DemarcationCertificatePrintProps {
   application: DemarcationApplication;
@@ -148,7 +149,7 @@ export const DemarcationCertificatePrint: React.FC<DemarcationCertificatePrintPr
 
           {application.draftsmanReview?.demarcationPdf && (
             <a
-              href={application.draftsmanReview.demarcationPdf.dataUrl}
+              href={resolveFileUrl(application.draftsmanReview.demarcationPdf.dataUrl)}
               download={application.draftsmanReview.demarcationPdf.fileName}
               className="flex items-center gap-2 px-4 py-2.5 bg-blue-700 hover:bg-blue-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer"
             >

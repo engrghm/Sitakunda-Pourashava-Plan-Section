@@ -44,7 +44,7 @@ import {
   saveApplication,
   RecentSearchItem
 } from '../utils/storage';
-import { searchApplicationApi, fetchApplicationsFromApi } from '../utils/apiStorage';
+import { searchApplicationApi, fetchApplicationsFromApi, resolveFileUrl } from '../utils/apiStorage';
 import { ApplicationQRCodeCard } from './ApplicationQRCodeCard';
 import { DocumentAttachmentsViewer } from './DocumentAttachmentsViewer';
 import { QRCodeScannerModal } from './QRCodeScannerModal';
@@ -1029,7 +1029,7 @@ export const ApplicationTrackingView: React.FC<ApplicationTrackingViewProps> = (
                     </span>
                   </div>
                   <a
-                    href={searchedApp.draftsmanReview.demarcationPdf.dataUrl}
+                    href={resolveFileUrl(searchedApp.draftsmanReview.demarcationPdf.dataUrl)}
                     download={searchedApp.draftsmanReview.demarcationPdf.fileName || 'Demarcation_Sketch.pdf'}
                     target="_blank"
                     rel="noopener noreferrer"

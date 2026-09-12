@@ -6,7 +6,81 @@ import {
   UploadedDocument
 } from '../types';
 
-const API_BASE = '/api';
+import {
+  saveDocumentFileToVault,
+  saveApplicationToVault,
+  hydrateApplicationFromVault,
+  hydrateDocumentsFromVault
+} from './indexedDbStorage';
+
+/**
+ * Returns dynamic API base URL based on current host & subdirectory
+ */
+export function getApiBase(): string {
+  if (typeof window !== 'undefined') {
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+
+    let dir = pathname;
+    if (dir.includes('.')) {
+      dir = dir.substring(0, dir.lastIndexOf('/'));
+    }
+    dir = dir.replace(/\/+$/, '');
+
+    if (dir && dir !== '' && dir !== '/') {
+      return `${origin}${dir}/api`;
+    }
+    return `${origin}/api`;
+  }
+  return '/api';
+}
+
+/**
+ * Generate fallback URLs for an API endpoint to withstand subdirectories or rewrites
+ */
+export function getApiEndpoints(fileOrQuery: string): string[] {
+  const base = getApiBase();
+  const clean = fileOrQuery.replace(/^\/+/, '');
+  const list = [
+    `${base}/${clean}`,
+    `/api/${clean}`,
+    `./api/${clean}`,
+    `api/${clean}`
+  ];
+  return Array.from(new Set(list));
+}
+
+/**
+ * Resolve relative uploads path (e.g. /uploads/doc_... .pdf) to full URL
+ */
+export function resolveFileUrl(url?: string): string {
+  if (!url) return '';
+  if (
+    url.startsWith('data:') ||
+    url.startsWith('blob:') ||
+    url.startsWith('http://') ||
+    url.startsWith('https://')
+  ) {
+    return url;
+  }
+
+  if (typeof window !== 'undefined') {
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+    let dir = pathname;
+    if (dir.includes('.')) {
+      dir = dir.substring(0, dir.lastIndexOf('/'));
+    }
+    dir = dir.replace(/\/+$/, '');
+
+    const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+    if (dir && dir !== '' && dir !== '/') {
+      return `${origin}${dir}${cleanUrl}`;
+    }
+    return `${origin}${cleanUrl}`;
+  }
+  return url;
+}
 
 /**
  * Compresses large images client-side before upload to save bandwidth & server storage.
@@ -70,16 +144,136 @@ async function compressImageIfPossible(file: File): Promise<File> {
   }
 }
 
-import {
-  saveDocumentFileToVault,
-  saveApplicationToVault,
-  hydrateApplicationFromVault,
-  hydrateDocumentsFromVault
-} from './indexedDbStorage';
+/**
+ * Upload any supported file (PDF, JPG, PNG, WEBP) directly to Hostinger's uploads directory.
+ * Returns public file URL path (e.g. /uploads/doc_....pdf)
+ */
+export async function uploadFileToServer(file: File): Promise<{
+  success: boolean;
+  fileUrl: string;
+  fullFileUrl?: string;
+  fileName: string;
+  fileSize: number;
+  isServerStored?: boolean;
+  error?: string;
+}> {
+  const preparedFile = await compressImageIfPossible(file);
+
+  const toDataUrl = (): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve((e.target?.result as string) || '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(preparedFile);
+    });
+  };
+
+  const endpoints = getApiEndpoints('upload.php');
+  let lastError = '';
+
+  // 1. First attempt: Standard multipart form data across endpoints
+  for (const endpoint of endpoints) {
+    try {
+      const formData = new FormData();
+      formData.append('file', preparedFile, preparedFile.name);
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && data.fileUrl) {
+          return {
+            success: true,
+            isServerStored: true,
+            fileUrl: data.fileUrl,
+            fullFileUrl: data.fullFileUrl,
+            fileName: data.fileName || preparedFile.name,
+            fileSize: data.fileSize || preparedFile.size,
+          };
+        }
+      } else {
+        const errJson = await res.json().catch(() => null);
+        if (errJson && errJson.error) {
+          lastError = errJson.error;
+        }
+      }
+    } catch (err: any) {
+      lastError = err.message || 'Network error';
+    }
+  }
+
+  // 2. Second attempt: Base64 JSON payload
+  try {
+    const dataUrl = await toDataUrl();
+    if (dataUrl) {
+      for (const endpoint of endpoints) {
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileName: preparedFile.name,
+              fileData: dataUrl,
+            }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.success && data.fileUrl) {
+              return {
+                success: true,
+                isServerStored: true,
+                fileUrl: data.fileUrl,
+                fullFileUrl: data.fullFileUrl,
+                fileName: data.fileName || preparedFile.name,
+                fileSize: data.fileSize || preparedFile.size,
+              };
+            }
+          }
+        } catch (err) {}
+      }
+    }
+  } catch (err: any) {
+    lastError = err.message || lastError;
+  }
+
+  // 3. Fallback to local DataURL so user data is retained in emergency
+  const fallbackDataUrl = await toDataUrl();
+  console.warn('[Hostinger Upload] Upload to server failed, temporary local backup stored:', lastError);
+  return {
+    success: false,
+    isServerStored: false,
+    fileUrl: fallbackDataUrl,
+    fileName: preparedFile.name,
+    fileSize: preparedFile.size,
+    error: lastError || 'সার্ভারে ফাইল সংরক্ষণ করা সম্ভব হয়নি।',
+  };
+}
+
+/**
+ * Upload an image (PNG, JPG, WEBP) directly to Hostinger uploads folder.
+ * Returns the public URL path (e.g. /uploads/doc_....jpg) or a dataURL fallback.
+ */
+export async function uploadImageToServer(file: File): Promise<string> {
+  const res = await uploadFileToServer(file);
+  if (res.fileUrl) {
+    return res.fileUrl;
+  }
+
+  // Fallback to local DataURL if server unreachable
+  return new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve((e.target?.result as string) || '');
+    reader.readAsDataURL(file);
+  });
+}
 
 /**
  * Upload a document (PDF, JPG, PNG) to Hostinger's uploads directory.
- * Always guarantees local persistence in IndexedDB vault even if server upload fails.
+ * Guarantees local persistence in IndexedDB vault and server disk persistence.
  */
 export async function uploadDocumentToServer(
   file: File,
@@ -114,7 +308,7 @@ export async function uploadDocumentToServer(
   // 2. Upload file to server (/api/upload.php)
   try {
     const uploadRes = await uploadFileToServer(file);
-    if (uploadRes && uploadRes.success && uploadRes.fileUrl) {
+    if (uploadRes && uploadRes.fileUrl && !uploadRes.fileUrl.startsWith('data:')) {
       // Update vault with permanent server file URL
       saveDocumentFileToVault(docId, uploadRes.fileUrl, uploadRes.fileName || file.name, docTitle).catch(() => {});
       return {
@@ -128,7 +322,7 @@ export async function uploadDocumentToServer(
     console.warn('[Hostinger Upload] Server upload attempt failed, using local vault:', err);
   }
 
-  // 3. Resilient fallback with verified dataUrl
+  // 3. Fallback with verified dataUrl
   return {
     ...defaultDoc,
     fileUrl: dataUrl,
@@ -136,51 +330,7 @@ export async function uploadDocumentToServer(
 }
 
 /**
- * Fetch all applications for a specific module from Hostinger MySQL
- * and hydrate with IndexedDB vault so document attachments are never lost.
- */
-export async function fetchApplicationsFromApi<T>(module: 'demarcation' | 'building' | 'road_cutting'): Promise<T[] | null> {
-  try {
-    const res = await fetch(`${API_BASE}/applications.php?module=${module}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        // Hydrate each application with persistent vault attachments
-        const hydrated = await Promise.all(
-          data.map(async (app) => {
-            return await hydrateApplicationFromVault(app);
-          })
-        );
-        return hydrated as T[];
-      }
-    }
-  } catch (err) {
-    console.warn(`[Hostinger MySQL] Could not fetch ${module} applications:`, err);
-  }
-  return null;
-}
-
-/**
- * Search an application from Hostinger MySQL by Tracking ID, Mobile, NID, or Form No
- */
-export async function searchApplicationApi<T = DemarcationApplication>(query: string): Promise<T | null> {
-  try {
-    const res = await fetch(`${API_BASE}/applications.php?tracking_id=${encodeURIComponent(query.trim())}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && (data.id || data.trackingId)) {
-        const hydrated = await hydrateApplicationFromVault(data);
-        return hydrated as T;
-      }
-    }
-  } catch (err) {
-    console.warn('[Hostinger MySQL] searchApplicationApi error:', err);
-  }
-  return null;
-}
-
-/**
- * Helper to upload any inline Base64 documents to the server before sending application JSON
+ * Helper to upload any inline Base64 documents to the server disk via FormData before sending application JSON
  */
 async function uploadInlineBase64Documents(documents: UploadedDocument[]): Promise<UploadedDocument[]> {
   if (!documents || !Array.isArray(documents)) return documents;
@@ -192,32 +342,86 @@ async function uploadInlineBase64Documents(documents: UploadedDocument[]): Promi
       }
 
       try {
-        const res = await fetch(`${API_BASE}/upload.php`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fileName: doc.fileName || `${doc.docTitle || 'document'}.pdf`,
-            fileData: doc.fileUrl,
-          }),
+        // Convert data URL to blob and upload as multipart form data
+        const resBlob = await fetch(doc.fileUrl);
+        const blob = await resBlob.blob();
+        const file = new File([blob], doc.fileName || `${doc.docTitle || 'document'}.pdf`, {
+          type: blob.type || 'application/pdf',
         });
 
-        if (res.ok) {
-          const result = await res.json();
-          if (result && result.success && result.fileUrl) {
-            saveDocumentFileToVault(doc.id, result.fileUrl, doc.fileName, doc.docTitle).catch(() => {});
-            return {
-              ...doc,
-              fileUrl: result.fileUrl,
-              fileSize: result.fileSize || doc.fileSize,
-            };
-          }
+        const uploadRes = await uploadFileToServer(file);
+        if (uploadRes && uploadRes.fileUrl && !uploadRes.fileUrl.startsWith('data:')) {
+          saveDocumentFileToVault(doc.id, uploadRes.fileUrl, doc.fileName, doc.docTitle).catch(() => {});
+          return {
+            ...doc,
+            fileUrl: uploadRes.fileUrl,
+            fileSize: uploadRes.fileSize || doc.fileSize,
+          };
         }
       } catch (err) {
-        console.warn('[Hostinger Upload] Inline base64 pre-upload failed:', err);
+        console.warn('[Hostinger Upload] Inline base64 upload failed:', err);
       }
       return doc;
     })
   );
+}
+
+/**
+ * Fetch all applications for a specific module from Hostinger MySQL
+ * and hydrate with IndexedDB vault so document attachments are never lost.
+ */
+export async function fetchApplicationsFromApi<T>(module: 'demarcation' | 'building' | 'road_cutting'): Promise<T[] | null> {
+  const endpoints = getApiEndpoints(`applications.php?module=${module}`);
+
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          // Hydrate each application with persistent vault attachments
+          const hydrated = await Promise.all(
+            data.map(async (app) => {
+              try {
+                return await hydrateApplicationFromVault(app);
+              } catch {
+                return app;
+              }
+            })
+          );
+          return hydrated as T[];
+        }
+      }
+    } catch (err) {
+      console.warn(`[Hostinger MySQL] fetchApplicationsFromApi error on ${endpoint}:`, err);
+    }
+  }
+  return null;
+}
+
+/**
+ * Search single application from Hostinger MySQL by ID, tracking ID, form number, or phone
+ */
+export async function searchApplicationApi<T>(query: string): Promise<T | null> {
+  if (!query || !query.trim()) return null;
+  const encoded = encodeURIComponent(query.trim());
+  const endpoints = getApiEndpoints(`applications.php?tracking_id=${encoded}`);
+
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && (data.id || data.trackingId)) {
+          const hydrated = await hydrateApplicationFromVault(data);
+          return hydrated as T;
+        }
+      }
+    } catch (err) {
+      console.warn(`[Hostinger MySQL] searchApplicationApi error on ${endpoint}:`, err);
+    }
+  }
+  return null;
 }
 
 /**
@@ -237,25 +441,35 @@ export async function saveApplicationToApi(
       sanitizedApp.documents = await uploadInlineBase64Documents(sanitizedApp.documents);
     }
 
-    const res = await fetch(`${API_BASE}/applications.php?module=${module}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ ...sanitizedApp, moduleType: module }),
-    });
+    const endpoints = getApiEndpoints(`applications.php?module=${module}`);
+    let lastError = '';
 
-    if (res.ok) {
-      const data = await res.json().catch(() => null);
-      if (data && data.data) {
-        await saveApplicationToVault(data.data);
+    for (const endpoint of endpoints) {
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ...sanitizedApp, moduleType: module }),
+        });
+
+        if (res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && data.data) {
+            await saveApplicationToVault(data.data);
+          }
+          return { success: true, data };
+        } else {
+          const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+          lastError = errData.error || `HTTP ${res.status}`;
+        }
+      } catch (err: any) {
+        lastError = err.message || 'Network error';
       }
-      return { success: true, data };
-    } else {
-      const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-      console.warn('[Hostinger MySQL] Server rejected save:', errData);
-      return { success: false, error: errData.error || `HTTP ${res.status}` };
     }
+
+    return { success: false, error: lastError || 'Server connection failed' };
   } catch (err: any) {
     console.warn('[Hostinger MySQL] Could not save to applications.php:', err);
     return { success: false, error: err.message || 'Network error' };
@@ -268,18 +482,29 @@ export async function saveApplicationToApi(
 export async function deleteApplicationFromApi(id: string): Promise<boolean> {
   try {
     const cleanId = id.trim();
-    let res = await fetch(`${API_BASE}/applications.php?id=${encodeURIComponent(cleanId)}`, {
-      method: 'DELETE',
-    }).catch(() => null);
+    const endpoints = getApiEndpoints(`applications.php?id=${encodeURIComponent(cleanId)}`);
 
-    if (!res || !res.ok) {
-      res = await fetch(`${API_BASE}/applications.php?id=${encodeURIComponent(cleanId)}&action=delete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete', id: cleanId }),
-      }).catch(() => null);
+    for (const endpoint of endpoints) {
+      try {
+        let res = await fetch(endpoint, {
+          method: 'DELETE',
+        }).catch(() => null);
+
+        if (!res || !res.ok) {
+          const postEndpoint = endpoint.includes('?') ? `${endpoint}&action=delete` : `${endpoint}?action=delete`;
+          res = await fetch(postEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', id: cleanId }),
+          }).catch(() => null);
+        }
+
+        if (res && res.ok) {
+          return true;
+        }
+      } catch {}
     }
-    return Boolean(res && res.ok);
+    return false;
   } catch (err) {
     console.warn('[Hostinger MySQL] Could not delete application:', err);
     return false;
@@ -292,18 +517,29 @@ export async function deleteApplicationFromApi(id: string): Promise<boolean> {
 export async function clearAllApplicationsFromApi(module?: 'demarcation' | 'building' | 'road_cutting'): Promise<boolean> {
   try {
     const query = module ? `clear_all=1&module=${module}` : `clear_all=1`;
-    let res = await fetch(`${API_BASE}/applications.php?${query}`, {
-      method: 'DELETE',
-    }).catch(() => null);
+    const endpoints = getApiEndpoints(`applications.php?${query}`);
 
-    if (!res || !res.ok) {
-      res = await fetch(`${API_BASE}/applications.php?${query}&action=delete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete', clear_all: true, module }),
-      }).catch(() => null);
+    for (const endpoint of endpoints) {
+      try {
+        let res = await fetch(endpoint, {
+          method: 'DELETE',
+        }).catch(() => null);
+
+        if (!res || !res.ok) {
+          const postEndpoint = endpoint.includes('?') ? `${endpoint}&action=delete` : `${endpoint}?action=delete`;
+          res = await fetch(postEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', clear_all: true, module }),
+          }).catch(() => null);
+        }
+
+        if (res && res.ok) {
+          return true;
+        }
+      } catch {}
     }
-    return Boolean(res && res.ok);
+    return false;
   } catch (err) {
     console.warn('[Hostinger MySQL] Could not clear applications:', err);
     return false;
@@ -314,164 +550,58 @@ export async function clearAllApplicationsFromApi(module?: 'demarcation' | 'buil
  * Save an audit log to Hostinger MySQL
  */
 export async function saveAuditLogToApi(log: SystemAuditLogItem): Promise<boolean> {
-  try {
-    const res = await fetch(`${API_BASE}/audit.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(log),
-    });
-    return res.ok;
-  } catch {
-    return false;
+  const endpoints = getApiEndpoints('audit.php');
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(log),
+      });
+      if (res.ok) return true;
+    } catch {}
   }
+  return false;
 }
 
 /**
  * Fetch audit logs from Hostinger MySQL
  */
 export async function fetchAuditLogsFromApi(): Promise<SystemAuditLogItem[] | null> {
-  try {
-    const res = await fetch(`${API_BASE}/audit.php?limit=200`);
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        return data as SystemAuditLogItem[];
-      }
-    }
-  } catch {
-    // fallback
-  }
-  return null;
-}
-
-/**
- * Upload an image (PNG, JPG, WEBP) directly to Hostinger uploads folder.
- * Returns the public URL path (e.g. /uploads/doc_....jpg) or a dataURL fallback.
- */
-export async function uploadImageToServer(file: File): Promise<string> {
-  const res = await uploadFileToServer(file);
-  if (res.success && res.fileUrl) {
-    return res.fileUrl;
-  }
-
-  // Fallback to local DataURL if server unreachable
-  return new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => resolve((e.target?.result as string) || '');
-    reader.readAsDataURL(file);
-  });
-}
-
-/**
- * Upload any supported file (PDF, JPG, PNG, WEBP) directly to Hostinger's uploads directory.
- * Returns public file URL path (e.g. /uploads/doc_....pdf)
- */
-export async function uploadFileToServer(file: File): Promise<{
-  success: boolean;
-  fileUrl: string;
-  fileName: string;
-  fileSize: number;
-  error?: string;
-}> {
-  const preparedFile = await compressImageIfPossible(file);
-
-  const toDataUrl = (): Promise<string> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve((e.target?.result as string) || '');
-      reader.onerror = () => resolve('');
-      reader.readAsDataURL(preparedFile);
-    });
-  };
-
-  // 1. First attempt: Standard multipart form data
-  try {
-    const formData = new FormData();
-    formData.append('file', preparedFile);
-
-    const res = await fetch(`${API_BASE}/upload.php`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.fileUrl) {
-        return {
-          success: true,
-          fileUrl: data.fileUrl,
-          fileName: data.fileName || preparedFile.name,
-          fileSize: data.fileSize || preparedFile.size,
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('[Hostinger Upload] Multipart upload error, trying base64 fallback:', err);
-  }
-
-  // 2. Second attempt: Base64 JSON payload
-  try {
-    const dataUrl = await toDataUrl();
-    if (dataUrl) {
-      const res = await fetch(`${API_BASE}/upload.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: preparedFile.name,
-          fileData: dataUrl,
-        }),
-      });
-
+  const endpoints = getApiEndpoints('audit.php?limit=200');
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint);
       if (res.ok) {
         const data = await res.json();
-        if (data.success && data.fileUrl) {
-          return {
-            success: true,
-            fileUrl: data.fileUrl,
-            fileName: data.fileName || preparedFile.name,
-            fileSize: data.fileSize || preparedFile.size,
-          };
+        if (Array.isArray(data)) {
+          return data as SystemAuditLogItem[];
         }
       }
-
-      // 3. Resilient fallback: Return the local DataURL so user is never blocked
-      return {
-        success: true,
-        fileUrl: dataUrl,
-        fileName: preparedFile.name,
-        fileSize: preparedFile.size,
-      };
-    }
-  } catch (err: any) {
-    console.warn('[Hostinger Upload] Base64 upload fallback error:', err);
+    } catch {}
   }
-
-  // Final fallback
-  const fallbackDataUrl = await toDataUrl();
-  return {
-    success: !!fallbackDataUrl,
-    fileUrl: fallbackDataUrl,
-    fileName: preparedFile.name,
-    fileSize: preparedFile.size,
-  };
+  return null;
 }
 
 /**
  * Fetch portal and council configuration from Hostinger MySQL
  */
 export async function fetchPortalConfigFromApi<T = any>(customKey: string = 'portal_config'): Promise<T | null> {
-  try {
-    const res = await fetch(`${API_BASE}/settings.php?key=${encodeURIComponent(customKey)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && typeof data === 'object') {
-        return data as T;
+  const endpoints = getApiEndpoints(`settings.php?key=${encodeURIComponent(customKey)}`);
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data === 'object') {
+          return data as T;
+        }
       }
+    } catch (err) {
+      console.warn(`[Hostinger MySQL] Could not fetch settings (${customKey}) on ${endpoint}:`, err);
     }
-  } catch (err) {
-    console.warn(`[Hostinger MySQL] Could not fetch settings (${customKey}):`, err);
   }
   return null;
 }
@@ -480,22 +610,25 @@ export async function fetchPortalConfigFromApi<T = any>(customKey: string = 'por
  * Save portal configuration to Hostinger MySQL
  */
 export async function savePortalConfigToApi<T = any>(config: T, customKey: string = 'portal_config'): Promise<boolean> {
-  try {
-    const res = await fetch(`${API_BASE}/settings.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        key: customKey,
-        data: config,
-      }),
-    });
-    return res.ok;
-  } catch (err) {
-    console.warn(`[Hostinger MySQL] Could not save settings (${customKey}):`, err);
-    return false;
+  const endpoints = getApiEndpoints('settings.php');
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          key: customKey,
+          data: config,
+        }),
+      });
+      if (res.ok) return true;
+    } catch (err) {
+      console.warn(`[Hostinger MySQL] Could not save settings (${customKey}) on ${endpoint}:`, err);
+    }
   }
+  return false;
 }
 
 /**

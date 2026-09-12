@@ -86,7 +86,7 @@ function localBackendPlugin(): Plugin {
         const pathname = urlObj.pathname;
 
         // 1. Upload Handler
-        if (req.method === 'POST' && (pathname === '/api/upload.php' || pathname === '/api/upload')) {
+        if (req.method === 'POST' && (pathname === '/api/upload.php' || pathname === '/api/upload' || pathname.endsWith('/api/upload.php') || pathname.endsWith('/api/upload'))) {
           const chunks: Buffer[] = [];
           req.on('data', chunk => chunks.push(chunk));
           req.on('end', () => {
@@ -171,7 +171,7 @@ function localBackendPlugin(): Plugin {
         }
 
         // 2. Applications GET / POST / PUT
-        if (pathname === '/api/applications.php' || pathname === '/api/applications') {
+        if (pathname === '/api/applications.php' || pathname === '/api/applications' || pathname.endsWith('/api/applications.php') || pathname.endsWith('/api/applications')) {
           if (req.method === 'GET') {
             const id = urlObj.searchParams.get('id') || urlObj.searchParams.get('tracking_id') || urlObj.searchParams.get('q') || urlObj.searchParams.get('search');
             const moduleType = urlObj.searchParams.get('module');
@@ -295,7 +295,7 @@ function localBackendPlugin(): Plugin {
         }
 
         // 3. Settings GET / POST
-        if (pathname === '/api/settings.php' || pathname === '/api/settings') {
+        if (pathname === '/api/settings.php' || pathname === '/api/settings' || pathname.endsWith('/api/settings.php') || pathname.endsWith('/api/settings')) {
           if (req.method === 'GET') {
             const key = urlObj.searchParams.get('key') || 'portal_config';
             try {
@@ -340,7 +340,7 @@ function localBackendPlugin(): Plugin {
         }
 
         // 4. Audit Logs GET / POST
-        if (pathname === '/api/audit.php' || pathname === '/api/audit') {
+        if (pathname === '/api/audit.php' || pathname === '/api/audit' || pathname.endsWith('/api/audit.php') || pathname.endsWith('/api/audit')) {
           if (req.method === 'GET') {
             try {
               if (fs.existsSync(AUDIT_FILE)) {

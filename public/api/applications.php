@@ -199,11 +199,16 @@ function extractSingleBase64File($fileData, $origName, $uploadDir, $basePath) {
     }
 
     $cleanPrefix = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($origName, PATHINFO_FILENAME));
-    $cleanPrefix = substr($cleanPrefix ?: 'doc', 0, 30);
+    $cleanPrefix = trim(preg_replace('/_+/', '_', $cleanPrefix), '_');
+    if (empty($cleanPrefix)) {
+        $cleanPrefix = 'doc';
+    }
+    $cleanPrefix = substr($cleanPrefix, 0, 30);
     $uniqueName = 'doc_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '_' . $cleanPrefix . '.' . $ext;
     $targetPath = $uploadDir . '/' . $uniqueName;
 
     if (file_put_contents($targetPath, $binary) !== false) {
+        @chmod($targetPath, 0644);
         return [
             'fileUrl' => $basePath . '/uploads/' . $uniqueName,
             'fileSize' => strlen($binary),
@@ -245,11 +250,35 @@ function recursiveExtractBase64(&$data, $uploadDir, $basePath) {
 function processAndExtractBase64Documents(&$payload) {
     if (!is_array($payload)) return;
 
-    $uploadDir = dirname(__DIR__) . '/uploads';
-    if (!is_dir($uploadDir)) {
-        @mkdir($uploadDir, 0777, true);
+    $possibleDirs = [
+        dirname(__DIR__) . '/uploads',
+        __DIR__ . '/../uploads',
+        ($_SERVER['DOCUMENT_ROOT'] ?? '') . '/uploads',
+        dirname(__DIR__) . '/public/uploads',
+    ];
+
+    $uploadDir = null;
+    foreach ($possibleDirs as $dir) {
+        if (!$dir) continue;
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+        if (is_dir($dir)) {
+            @chmod($dir, 0777);
+            if (is_writable($dir)) {
+                $uploadDir = realpath($dir) ?: $dir;
+                break;
+            }
+        }
     }
-    @chmod($uploadDir, 0777);
+
+    if (!$uploadDir) {
+        $uploadDir = dirname(__DIR__) . '/uploads';
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0777, true);
+        }
+        @chmod($uploadDir, 0777);
+    }
 
     $scriptDir = dirname(dirname($_SERVER['SCRIPT_NAME'] ?? ''));
     $basePath = ($scriptDir === '/' || $scriptDir === '\\' || $scriptDir === '.' || empty($scriptDir)) ? '' : rtrim(str_replace('\\', '/', $scriptDir), '/');

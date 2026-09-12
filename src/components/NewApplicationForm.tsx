@@ -55,7 +55,7 @@ import {
   hasSavedDraft,
   formatBanglaDate
 } from '../utils/storage';
-import { uploadDocumentToServer, saveApplicationToApi } from '../utils/apiStorage';
+import { uploadDocumentToServer, saveApplicationToApi, resolveFileUrl } from '../utils/apiStorage';
 import { sendAutomatedStatusAlert } from '../utils/notificationService';
 
 interface NewApplicationFormProps {
@@ -2009,7 +2009,7 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
                       <div className="flex items-center gap-1.5 shrink-0">
                         {uploaded.fileUrl && (
                           <a
-                            href={uploaded.fileUrl}
+                            href={resolveFileUrl(uploaded.fileUrl)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 px-2 py-1 bg-white hover:bg-emerald-100 text-emerald-800 rounded border border-emerald-300 font-semibold transition-colors"

@@ -16,7 +16,15 @@
   RewriteRule ^ index.html [L]
 </IfModule>
 
-# Hostinger / Apache PHP upload and post size limits
+# Hostinger / Apache / LiteSpeed PHP upload and post size limits
+<IfModule mod_php.c>
+  php_value upload_max_filesize 64M
+  php_value post_max_size 64M
+  php_value memory_limit 256M
+  php_value max_execution_time 300
+  php_value max_input_time 300
+</IfModule>
+
 <IfModule mod_php7.c>
   php_value upload_max_filesize 64M
   php_value post_max_size 64M
@@ -25,7 +33,15 @@
   php_value max_input_time 300
 </IfModule>
 
-<IfModule mod_php.c>
+<IfModule mod_php8.c>
+  php_value upload_max_filesize 64M
+  php_value post_max_size 64M
+  php_value memory_limit 256M
+  php_value max_execution_time 300
+  php_value max_input_time 300
+</IfModule>
+
+<IfModule litespeed>
   php_value upload_max_filesize 64M
   php_value post_max_size 64M
   php_value memory_limit 256M
