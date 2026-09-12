@@ -497,6 +497,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
       onAuthChange?.(true);
       loadApplications();
 
+      // Log Login Event to System Audit Trail
       addAuditLog({
         officerUsername: officer.username,
         officerName: officer.name || officer.title,
@@ -508,32 +509,6 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
       });
     } else {
       setLoginError('ইউজারনেম বা পাসওয়ার্ড সঠিক নয়। অনুগ্রহ করে পুনরায় সঠিক তথ্য প্রদান করুন।');
-    }
-  };
-
-  // Direct 1-click login handler for authorized officer cards
-  const performDirectLogin = (user: string, pass: string) => {
-    setLoginError(null);
-    setUsername(user);
-    setPassword(pass);
-    const officer = authenticateOfficer(user, pass);
-    if (officer) {
-      setCurrentOfficer(officer);
-      setOfficerSession(officer);
-      onAuthChange?.(true);
-      loadApplications();
-
-      addAuditLog({
-        officerUsername: officer.username,
-        officerName: officer.name || officer.title,
-        officerRole: officer.role,
-        officerDesignation: officer.designation,
-        actionType: 'login',
-        actionTitle: 'প্রশাসনিক অ্যাকাউন্টে সফল লগইন',
-        details: `${officer.name || officer.title} (${officer.roleTitleBangla}) অ্যাকাউন্টে ১-ক্লিকে সফল প্রমাণীকরণ ও সেশন স্থাপন সম্পন্ন হয়েছে।`,
-      });
-    } else {
-      setLoginError('ইউজারনেম বা পাসওয়ার্ড সঠিক নয়।');
     }
   };
 
@@ -1605,51 +1580,6 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
             >
               প্রশাসনিক প্যানেলে প্রবেশ করুন
             </button>
-
-            {/* Quick Fill Credentials Helper for Officers */}
-            <div className="pt-3 border-t border-slate-100">
-              <p className="text-[11px] font-bold text-slate-600 mb-2 flex items-center justify-between">
-                <span>অনুমোদিত কর্মকর্তা অ্যাকাউন্ট নির্বাচন (সরাসরি প্রবেশ):</span>
-                <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-medium">১-ক্লিকে সরাসরি লগইন</span>
-              </p>
-              <div className="grid grid-cols-2 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => performDirectLogin('admin.sitakunda', 'Admin@Sitakunda2026')}
-                  className="px-2.5 py-2 text-left bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-[11px] transition-all cursor-pointer group"
-                >
-                  <span className="font-bold text-slate-800 group-hover:text-emerald-900 block truncate">১. পৌর অ্যাডমিন</span>
-                  <span className="text-[10px] text-slate-500 font-mono block truncate">admin.sitakunda</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => performDirectLogin('draftsman.sitakunda', 'Sitakunda@2026')}
-                  className="px-2.5 py-2 text-left bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-[11px] transition-all cursor-pointer group"
-                >
-                  <span className="font-bold text-slate-800 group-hover:text-emerald-900 block truncate">২. নক্সাকার (সিভিল)</span>
-                  <span className="text-[10px] text-slate-500 font-mono block truncate">draftsman.sitakunda</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => performDirectLogin('xen.sitakunda', 'Sitakunda@2026')}
-                  className="px-2.5 py-2 text-left bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-[11px] transition-all cursor-pointer group"
-                >
-                  <span className="font-bold text-slate-800 group-hover:text-emerald-900 block truncate">৩. নির্বাহী প্রকৌশলী</span>
-                  <span className="text-[10px] text-slate-500 font-mono block truncate">xen.sitakunda</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => performDirectLogin('mayor.sitakunda', 'Sitakunda@2026')}
-                  className="px-2.5 py-2 text-left bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-[11px] transition-all cursor-pointer group"
-                >
-                  <span className="font-bold text-slate-800 group-hover:text-emerald-900 block truncate">৪. মেয়র / প্রশাসক</span>
-                  <span className="text-[10px] text-slate-500 font-mono block truncate">mayor.sitakunda</span>
-                </button>
-              </div>
-            </div>
 
             <div className="text-center pt-2">
               <span className="text-[11px] text-slate-500">
