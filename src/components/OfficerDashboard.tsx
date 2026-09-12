@@ -362,7 +362,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
         fetchApplicationsFromApi<RoadCuttingApplication>('road_cutting'),
       ]);
 
-      if (remoteDemarcation && Array.isArray(remoteDemarcation) && remoteDemarcation.length > 0) {
+      if (remoteDemarcation && Array.isArray(remoteDemarcation)) {
         // Purge any remote records that were marked as permanently deleted
         const validRemoteDemarcation = remoteDemarcation.filter((app) => {
           if (isAppDeleted(app.id, app.trackingId, app.formNo)) {
@@ -407,9 +407,17 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
         try {
           localStorage.setItem(DEMARCATION_STORAGE_KEY, JSON.stringify(merged));
         } catch {}
+
+        // Push any local application that is missing on remote
+        const remoteIds = new Set(validRemoteDemarcation.map((a) => a.id));
+        data.forEach((app) => {
+          if (!remoteIds.has(app.id) && !isAppDeleted(app.id, app.trackingId, app.formNo)) {
+            saveApplicationToApi(app, 'demarcation').catch(() => {});
+          }
+        });
       }
 
-      if (remoteBuilding && Array.isArray(remoteBuilding) && remoteBuilding.length > 0) {
+      if (remoteBuilding && Array.isArray(remoteBuilding)) {
         const validRemoteBuilding = remoteBuilding.filter((app) => {
           if (isAppDeleted(app.id, (app as any).trackingId, app.formNo)) {
             deleteApplicationFromApi(app.id).catch(() => {});
@@ -432,9 +440,16 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
         try {
           localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(mergedB));
         } catch {}
+
+        const remoteBIds = new Set(validRemoteBuilding.map((a) => a.id));
+        bData.forEach((app) => {
+          if (!remoteBIds.has(app.id) && !isAppDeleted(app.id, (app as any).trackingId, app.formNo)) {
+            saveApplicationToApi(app, 'building').catch(() => {});
+          }
+        });
       }
 
-      if (remoteRoadCutting && Array.isArray(remoteRoadCutting) && remoteRoadCutting.length > 0) {
+      if (remoteRoadCutting && Array.isArray(remoteRoadCutting)) {
         const validRemoteRoadCutting = remoteRoadCutting.filter((app) => {
           if (isAppDeleted(app.id, (app as any).trackingId, (app as any).formNo)) {
             deleteApplicationFromApi(app.id).catch(() => {});
@@ -457,6 +472,13 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
         try {
           localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(mergedRC));
         } catch {}
+
+        const remoteRCIds = new Set(validRemoteRoadCutting.map((a) => a.id));
+        rcData.forEach((app) => {
+          if (!remoteRCIds.has(app.id) && !isAppDeleted(app.id, (app as any).trackingId, (app as any).formNo)) {
+            saveApplicationToApi(app, 'road_cutting').catch(() => {});
+          }
+        });
       }
     } catch (err) {
       console.warn('[OfficerDashboard] Background sync error:', err);
@@ -1331,18 +1353,20 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
 
   // Filtered applications
   const filteredApps = applications.filter((app) => {
+    if (!app) return false;
+    const q = searchQuery.toLowerCase();
     const matchesSearch =
       searchQuery === '' ||
-      app.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (app.formNo && app.formNo.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      app.siteLocation.applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.siteLocation.applicantMobile.includes(searchQuery) ||
-      app.schedule.bsDagNo.includes(searchQuery) ||
-      app.schedule.deedNo.includes(searchQuery) ||
-      app.landOwners.some((o) => o.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      (app.id || '').toLowerCase().includes(q) ||
+      (app.formNo && app.formNo.toLowerCase().includes(q)) ||
+      (app.siteLocation?.applicantName || '').toLowerCase().includes(q) ||
+      (app.siteLocation?.applicantMobile || '').includes(searchQuery) ||
+      (app.schedule?.bsDagNo || '').includes(searchQuery) ||
+      (app.schedule?.deedNo || '').includes(searchQuery) ||
+      (app.landOwners && Array.isArray(app.landOwners) && app.landOwners.some((o) => (o.name || '').toLowerCase().includes(q)));
 
-    const matchesMouza = selectedMouza === 'all' || app.schedule.mouzaName === selectedMouza;
-    const matchesWard = selectedWard === 'all' || app.schedule.wardNo === selectedWard;
+    const matchesMouza = selectedMouza === 'all' || app.schedule?.mouzaName === selectedMouza;
+    const matchesWard = selectedWard === 'all' || app.schedule?.wardNo === selectedWard;
     const matchesStatus =
       selectedStatus === 'all' ||
       (selectedStatus === 'in_progress' && (app.status === 'investigating' || app.status === 'under_review')) ||
@@ -1354,6 +1378,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
 
   // Filtered building construction applications (Schedule-1)
   const filteredBuildingApps = buildingApplications.filter((bApp: any) => {
+    if (!bApp) return false;
     if (buildingSearchQuery.trim()) {
       const q = buildingSearchQuery.toLowerCase();
       const id = (bApp.id || '').toLowerCase();
@@ -1410,14 +1435,15 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
 
   // Filtered Road Cutting applications
   const filteredRoadCuttingApps = roadCuttingApplications.filter((app) => {
+    if (!app) return false;
     if (roadCuttingSearchQuery.trim()) {
       const q = roadCuttingSearchQuery.toLowerCase();
       const match =
-        app.id.toLowerCase().includes(q) ||
+        (app.id || '').toLowerCase().includes(q) ||
         (app.formNo || '').toLowerCase().includes(q) ||
-        app.applicantName.toLowerCase().includes(q) ||
-        app.applicantPhone.includes(q) ||
-        app.roadName.toLowerCase().includes(q);
+        (app.applicantName || '').toLowerCase().includes(q) ||
+        (app.applicantPhone || '').includes(q) ||
+        (app.roadName || '').toLowerCase().includes(q);
       if (!match) return false;
     }
     if (roadCuttingSelectedStatus !== 'all' && app.status !== roadCuttingSelectedStatus) return false;

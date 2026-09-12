@@ -18,6 +18,7 @@ import { RoadCuttingApplication, VALID_WARDS } from '../types';
 import { 
   toBanglaNumber, 
   saveRoadCuttingApplication, 
+  saveRoadCuttingApplicationAsync,
   generateRoadCuttingId, 
   generateRoadCuttingFormNo,
   formatBanglaDate 
@@ -63,6 +64,7 @@ export const RoadCuttingApplicationForm: React.FC<RoadCuttingApplicationFormProp
 
   // Fixed Application Form Price: ৳ 300/-
   const formFee = 300;
+  const [isSubmittingRoadCutting, setIsSubmittingRoadCutting] = useState<boolean>(false);
 
   // Convert string (Bengali or English digits) to number
   const parseBanglaOrEngNumber = (str: string): number => {
@@ -105,7 +107,7 @@ export const RoadCuttingApplicationForm: React.FC<RoadCuttingApplicationFormProp
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -169,7 +171,15 @@ export const RoadCuttingApplicationForm: React.FC<RoadCuttingApplicationFormProp
       declarationAccepted: true,
     };
 
-    saveRoadCuttingApplication(newApp);
+    setIsSubmittingRoadCutting(true);
+    try {
+      await saveRoadCuttingApplicationAsync(newApp);
+    } catch (err) {
+      console.warn('[RoadCutting Submit] Async server sync deferred, fallback to local save:', err);
+      saveRoadCuttingApplication(newApp);
+    } finally {
+      setIsSubmittingRoadCutting(false);
+    }
     onSubmitted(newApp);
   };
 
@@ -586,11 +596,21 @@ export const RoadCuttingApplicationForm: React.FC<RoadCuttingApplicationFormProp
 
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer"
+              disabled={isSubmittingRoadCutting}
+              className="flex items-center gap-2 px-6 py-3 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>রাস্তা কর্তনের আবেদন দাখিল করুন (ফি: ৳ {toBanglaNumber(formFee)}/-)</span>
-              <ArrowRight className="w-4 h-4" />
+              {isSubmittingRoadCutting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>আবেদন জমা হচ্ছে... অপেক্ষা করুন</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>রাস্তা কর্তনের আবেদন দাখিল করুন (ফি: ৳ {toBanglaNumber(formFee)}/-)</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </div>
         </div>

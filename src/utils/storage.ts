@@ -50,38 +50,61 @@ export function getDeletedAppIds(): Set<string> {
 export function recordDeletedAppId(id?: string, trackingId?: string, formNo?: string): void {
   try {
     const current = getDeletedAppIds();
-    if (id && id.trim()) current.add(id.trim().toLowerCase());
-    if (trackingId && trackingId.trim()) current.add(trackingId.trim().toLowerCase());
-    if (formNo && formNo.trim()) current.add(formNo.trim().toLowerCase());
-    localStorage.setItem(DELETED_APP_IDS_KEY, JSON.stringify(Array.from(current)));
+    let changed = false;
+    [id, trackingId, formNo].forEach((v) => {
+      if (v && typeof v === 'string' && v.trim().length > 3) {
+        const cleanVal = v.trim().toLowerCase();
+        if (cleanVal !== 'undefined' && cleanVal !== 'null' && cleanVal !== '[object object]') {
+          current.add(cleanVal);
+          changed = true;
+        }
+      }
+    });
+    if (changed) {
+      localStorage.setItem(DELETED_APP_IDS_KEY, JSON.stringify(Array.from(current)));
+    }
+  } catch {}
+}
+
+export function unmarkDeletedAppId(id?: string, trackingId?: string, formNo?: string): void {
+  try {
+    const current = getDeletedAppIds();
+    let changed = false;
+    [id, trackingId, formNo].forEach((v) => {
+      if (v && typeof v === 'string' && v.trim()) {
+        const cleanVal = v.trim().toLowerCase();
+        if (current.has(cleanVal)) {
+          current.delete(cleanVal);
+          changed = true;
+        }
+      }
+    });
+    if (changed) {
+      localStorage.setItem(DELETED_APP_IDS_KEY, JSON.stringify(Array.from(current)));
+    }
   } catch {}
 }
 
 export function isAppDeleted(id?: string, trackingId?: string, formNo?: string): boolean {
   const deleted = getDeletedAppIds();
-  if (id && deleted.has(id.trim().toLowerCase())) return true;
-  if (trackingId && deleted.has(trackingId.trim().toLowerCase())) return true;
-  if (formNo && deleted.has(formNo.trim().toLowerCase())) return true;
-  return false;
+  if (!deleted || deleted.size === 0) return false;
+
+  const check = (val?: string) => {
+    if (!val || typeof val !== 'string') return false;
+    const cleanVal = val.trim().toLowerCase();
+    if (!cleanVal || cleanVal === 'undefined' || cleanVal === 'null' || cleanVal === '[object object]') {
+      return false;
+    }
+    return deleted.has(cleanVal);
+  };
+
+  return check(id) || check(trackingId) || check(formNo);
 }
 
-// Auto-purge any cached mock/demo data and previous applications (clean v3 migration)
+// Clean up any legacy mock storage keys safely without touching remote database
 try {
   if (typeof localStorage !== 'undefined') {
-    const ONE_TIME_PURGE_KEY = 'sitakunda_demo_purge_v3_complete';
-    if (localStorage.getItem(ONE_TIME_PURGE_KEY) !== 'done') {
-      localStorage.setItem(DEMARCATION_STORAGE_KEY, JSON.stringify([]));
-      localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify([]));
-      localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify([]));
-      clearApplicationsFromVault().catch(() => {});
-      clearAllApplicationsFromApi('demarcation').catch(() => {});
-      clearAllApplicationsFromApi('building').catch(() => {});
-      clearAllApplicationsFromApi().catch(() => {});
-      localStorage.setItem(ONE_TIME_PURGE_KEY, 'done');
-    }
-
     [
-      'sitakunda_demarcation_applications',
       'sitakunda_demarcation_applications_clean_v1',
       'sitakunda_demarcation_applications_clean_v2',
       'sitakunda_demarcation_applications_v1',
@@ -89,20 +112,17 @@ try {
       'sitakunda_demarcation_applications_v3',
       'sitakunda_demarcation_applications_v4',
       'sitakunda_demarcation_applications_v5',
-      'sitakunda_building_applications',
       'sitakunda_building_applications_clean_v1',
       'sitakunda_building_applications_clean_v2',
       'sitakunda_building_applications_v1',
       'sitakunda_building_applications_v2',
       'sitakunda_building_applications_v3',
       'sitakunda_building_applications_v4',
-      'sitakunda_road_cutting_applications',
       'sitakunda_road_cutting_applications_clean_v1',
       'sitakunda_road_cutting_applications_clean_v2',
       'sitakunda_road_cutting_applications_v1',
       'sitakunda_road_cutting_applications_v2',
       'sitakunda_road_cutting_applications_v3',
-      'sitakunda_demarcation_draft_v1',
       'sitakunda_recent_tracking_searches_v1',
     ].forEach((k) => {
       try { localStorage.removeItem(k); } catch {}
@@ -344,7 +364,7 @@ function safeSetLocalStorage(key: string, data: any[]) {
 }
 
 export function saveApplication(app: DemarcationApplication): DemarcationApplication[] {
-  // 1. Permanently preserve full application & attachments in IndexedDB vault
+  unmarkDeletedAppId(app.id, app.trackingId, app.formNo);
   saveApplicationToVault(app).catch(() => {});
 
   const current = getStoredApplications();
@@ -357,7 +377,20 @@ export function saveApplication(app: DemarcationApplication): DemarcationApplica
   return updated;
 }
 
+export async function saveApplicationAsync(app: DemarcationApplication): Promise<{ success: boolean; data?: any; error?: string }> {
+  unmarkDeletedAppId(app.id, app.trackingId, app.formNo);
+  await saveApplicationToVault(app).catch(() => {});
+
+  const current = getStoredApplications();
+  const updated = [app, ...current.filter((item) => item.id !== app.id)];
+  safeSetLocalStorage(STORAGE_KEY, updated);
+
+  const apiRes = await saveApplicationToApi(app, 'demarcation');
+  return apiRes;
+}
+
 export function updateApplication(id: string, updates: Partial<DemarcationApplication>): DemarcationApplication[] {
+  unmarkDeletedAppId(id, updates.trackingId, updates.formNo);
   const current = getStoredApplications();
   let updatedItem: DemarcationApplication | null = null;
   const updated = current.map((item) => {
@@ -678,6 +711,7 @@ export function getBuildingApplications(): BuildingConstructionApplication[] {
 
 export function saveBuildingApplication(app: BuildingConstructionApplication): BuildingConstructionApplication[] {
   try {
+    unmarkDeletedAppId(app.id, (app as any).trackingId, app.formNo);
     saveApplicationToVault(app).catch(() => {});
     const current = getBuildingApplications();
     const updated = [app, ...current.filter((item) => item.id !== app.id)];
@@ -692,8 +726,20 @@ export function saveBuildingApplication(app: BuildingConstructionApplication): B
   }
 }
 
+export async function saveBuildingApplicationAsync(app: BuildingConstructionApplication): Promise<{ success: boolean; data?: any; error?: string }> {
+  unmarkDeletedAppId(app.id, (app as any).trackingId, app.formNo);
+  await saveApplicationToVault(app).catch(() => {});
+  const current = getBuildingApplications();
+  const updated = [app, ...current.filter((item) => item.id !== app.id)];
+  safeSetLocalStorage(BUILDING_APPS_STORAGE_KEY, updated);
+
+  const apiRes = await saveApplicationToApi(app, 'building');
+  return apiRes;
+}
+
 export function updateBuildingApplication(updatedApp: BuildingConstructionApplication): BuildingConstructionApplication[] {
   try {
+    unmarkDeletedAppId(updatedApp.id, (updatedApp as any).trackingId, updatedApp.formNo);
     saveApplicationToVault(updatedApp).catch(() => {});
     const current = getBuildingApplications();
     const index = current.findIndex((item) => item.id === updatedApp.id);
@@ -740,6 +786,7 @@ export function getRoadCuttingApplications(): RoadCuttingApplication[] {
 
 export function saveRoadCuttingApplication(app: RoadCuttingApplication): RoadCuttingApplication[] {
   try {
+    unmarkDeletedAppId(app.id, (app as any).trackingId, app.formNo);
     saveApplicationToVault(app).catch(() => {});
     const current = getRoadCuttingApplications();
     const updated = [app, ...current.filter((item) => item.id !== app.id)];
@@ -752,6 +799,17 @@ export function saveRoadCuttingApplication(app: RoadCuttingApplication): RoadCut
     console.error('Error saving road cutting application:', err);
     return getRoadCuttingApplications();
   }
+}
+
+export async function saveRoadCuttingApplicationAsync(app: RoadCuttingApplication): Promise<{ success: boolean; data?: any; error?: string }> {
+  unmarkDeletedAppId(app.id, (app as any).trackingId, app.formNo);
+  await saveApplicationToVault(app).catch(() => {});
+  const current = getRoadCuttingApplications();
+  const updated = [app, ...current.filter((item) => item.id !== app.id)];
+  safeSetLocalStorage(ROAD_CUTTING_APPS_STORAGE_KEY, updated);
+
+  const apiRes = await saveApplicationToApi(app, 'road_cutting');
+  return apiRes;
 }
 
 export function updateRoadCuttingApplication(updatedApp: RoadCuttingApplication): RoadCuttingApplication[] {
@@ -857,7 +915,7 @@ export async function syncStorageWithHostinger(): Promise<void> {
       fetchAuditLogsFromApi(),
     ]);
 
-    if (demarcation && demarcation.length > 0) {
+    if (demarcation !== null && Array.isArray(demarcation)) {
       const mergedDemarcation = mergeApplicationsPreservingAttachments(localDemarcation, demarcation);
       safeSetLocalStorage(STORAGE_KEY, mergedDemarcation);
       // Ensure all merged apps are saved into vault
@@ -872,7 +930,7 @@ export async function syncStorageWithHostinger(): Promise<void> {
       });
     }
 
-    if (building && building.length > 0) {
+    if (building !== null && Array.isArray(building)) {
       const mergedBuilding = mergeApplicationsPreservingAttachments(localBuilding, building);
       safeSetLocalStorage(BUILDING_APPS_STORAGE_KEY, mergedBuilding);
       mergedBuilding.forEach((app) => saveApplicationToVault(app).catch(() => {}));
@@ -885,7 +943,7 @@ export async function syncStorageWithHostinger(): Promise<void> {
       });
     }
 
-    if (roadCutting && roadCutting.length > 0) {
+    if (roadCutting !== null && Array.isArray(roadCutting)) {
       const mergedRoadCutting = mergeApplicationsPreservingAttachments(localRoadCutting, roadCutting);
       safeSetLocalStorage(ROAD_CUTTING_APPS_STORAGE_KEY, mergedRoadCutting);
       mergedRoadCutting.forEach((app) => saveApplicationToVault(app).catch(() => {}));

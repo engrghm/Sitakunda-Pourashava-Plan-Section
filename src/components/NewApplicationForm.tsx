@@ -47,6 +47,7 @@ import {
   generateTrackingId, 
   generateFormNumber, 
   saveApplication, 
+  saveApplicationAsync,
   toBanglaNumber,
   saveDraft,
   getSavedDraft,
@@ -739,7 +740,7 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
     return true;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
@@ -857,15 +858,18 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
       },
     };
 
-    // Save to localStorage
-    saveApplication(newApp);
+    // Save to localStorage, IndexedDB vault, and MySQL server
+    try {
+      await saveApplicationAsync(newApp);
+    } catch (err) {
+      console.warn('[Demarcation Submit] Async server sync deferred, fallback to local save:', err);
+      saveApplication(newApp);
+    }
+
     // Clear draft after successful submission
     clearSavedDraft();
-
-    setTimeout(() => {
-      setIsSubmitting(false);
-      onApplicationSubmitted(newApp);
-    }, 600);
+    setIsSubmitting(false);
+    onApplicationSubmitted(newApp);
   };
 
   return (
@@ -2149,8 +2153,8 @@ export const NewApplicationForm: React.FC<NewApplicationFormProps> = ({ onApplic
               >
                 {isSubmitting ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>আবেদনপত্র সংরক্ষিত হচ্ছে...</span>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>আবেদনপত্র সার্ভারে জমা হচ্ছে... অপেক্ষা করুন</span>
                   </>
                 ) : (
                   <>

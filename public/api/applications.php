@@ -144,8 +144,16 @@ function handleGet($pdo) {
     $sql = "SELECT data FROM applications";
     $params = [];
     if ($module) {
-        $sql .= " WHERE module_type = :module";
-        $params[':module'] = $module;
+        if ($module === 'demarcation') {
+            $sql .= " WHERE (module_type = 'demarcation' OR module_type IS NULL OR module_type = '' OR id LIKE 'SKM-DEM-%' OR id LIKE 'APP-%')";
+        } else if ($module === 'building') {
+            $sql .= " WHERE (module_type = 'building' OR id LIKE 'SKM-BLD-%' OR id LIKE 'SKM-BCA-%')";
+        } else if ($module === 'road_cutting') {
+            $sql .= " WHERE (module_type = 'road_cutting' OR id LIKE 'SKM-RC-%')";
+        } else {
+            $sql .= " WHERE module_type = :module";
+            $params[':module'] = $module;
+        }
     }
     $sql .= " ORDER BY created_at DESC";
 
@@ -256,12 +264,17 @@ function handlePost($pdo) {
 
         if (!$payload || !isset($payload['id'])) {
             http_response_code(400);
-            echo json_encode(['error' => 'Invalid application payload', 'receivedLength' => strlen($rawInput)]);
+            echo json_encode([
+                'error' => 'Invalid application payload: ' . json_last_error_msg(),
+                'receivedLength' => strlen($rawInput)
+            ]);
             return;
         }
 
         // Automatically convert any heavy inline Base64 documents to real files in /uploads/
-        processAndExtractBase64Documents($payload);
+        try {
+            processAndExtractBase64Documents($payload);
+        } catch (Exception $e) {}
 
         $id = $payload['id'];
         $moduleType = isset($payload['moduleType']) ? $payload['moduleType'] : (isset($_GET['module']) ? $_GET['module'] : 'demarcation');

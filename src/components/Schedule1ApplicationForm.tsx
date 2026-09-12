@@ -8,6 +8,7 @@ import {
 import {
   getStoredApplications,
   saveBuildingApplication,
+  saveBuildingApplicationAsync,
   toBanglaNumber,
   formatBanglaDate,
   addAuditLog,
@@ -63,6 +64,7 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
   const [verifiedDemarcationApp, setVerifiedDemarcationApp] =
     useState<DemarcationApplication | null>(initialDemarcationApp || null);
   const [verificationError, setVerificationError] = useState<string>('');
+  const [isSubmittingBuilding, setIsSubmittingBuilding] = useState<boolean>(false);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
   const [selectedLegalDoc, setSelectedLegalDoc] = useState<LegalDocId>('rules1996');
   const [legalDocs, setLegalDocs] = useState(() => getEnrichedLegalDocuments());
@@ -300,7 +302,7 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
   };
 
   // Handle Submit Form
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setHasAttemptedSubmit(true);
 
@@ -512,8 +514,17 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
       status: 'submitted',
     };
 
-    // Save to storage
-    saveBuildingApplication(newBuildingApp);
+    setIsSubmittingBuilding(true);
+
+    // Save to storage and Hostinger MySQL server
+    try {
+      await saveBuildingApplicationAsync(newBuildingApp);
+    } catch (err) {
+      console.warn('[Schedule1 Submit] Async server sync deferred, fallback to local save:', err);
+      saveBuildingApplication(newBuildingApp);
+    } finally {
+      setIsSubmittingBuilding(false);
+    }
 
     // Audit log
     addAuditLog({
@@ -1988,10 +1999,20 @@ export const Schedule1ApplicationForm: React.FC<Schedule1ApplicationFormProps> =
 
             <button
               type="submit"
-              className="w-full sm:w-auto px-8 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-sm cursor-pointer transition-all"
+              disabled={isSubmittingBuilding}
+              className="w-full sm:w-auto px-8 py-3 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-sm cursor-pointer transition-all"
             >
-              <span>তফসিল-১ আবেদন দাখিল ও ফি পরিশোধ করুন</span>
-              <ArrowRight className="w-4 h-4" />
+              {isSubmittingBuilding ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>তফসিল-১ আবেদন সার্ভারে জমা হচ্ছে... অপেক্ষা করুন</span>
+                </>
+              ) : (
+                <>
+                  <span>তফসিল-১ আবেদন দাখিল ও ফি পরিশোধ করুন</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </div>
         </form>
