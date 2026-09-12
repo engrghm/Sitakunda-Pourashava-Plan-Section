@@ -98,6 +98,10 @@ import {
   updateRoadCuttingApplication,
   updateApplication, 
   updateBuildingApplication,
+  deleteDemarcationApplication,
+  deleteBuildingApplication,
+  deleteRoadCuttingApplication,
+  purgeModuleApplications,
   toBanglaNumber, 
   formatBanglaDate, 
   authenticateOfficer, 
@@ -511,6 +515,92 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
     } else {
       setPwdChangeError(result.message || 'পাসওয়ার্ড পরিবর্তনে ত্রুটি হয়েছে।');
     }
+  };
+
+  // Delete a single demarcation application
+  const handleDeleteDemarcationApp = (id: string, applicantName: string) => {
+    if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${applicantName}"-এর সীমানা নির্ধারণ আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+      return;
+    }
+    const updated = deleteDemarcationApplication(id);
+    setApplications(updated);
+    setSelectedAppIds((prev) => prev.filter((i) => i !== id));
+    if (selectedApp?.id === id) {
+      setSelectedApp(null);
+    }
+    alert('সীমানা নির্ধারণ আবেদনটি সফলভাবে মুছে ফেলা হয়েছে।');
+  };
+
+  // Delete a single building application
+  const handleDeleteBuildingApp = (id: string, applicantName: string) => {
+    if (!window.confirm(`আপনি কি নিশ্চিত যে আবেদনকারী "${applicantName}"-এর তফসিল-১ আবেদনটি (ID: ${id}) স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+      return;
+    }
+    const updated = deleteBuildingApplication(id);
+    setBuildingApplications(updated);
+    setSelectedBuildingAppIds((prev) => prev.filter((i) => i !== id));
+    alert('তফসিল-১ আবেদনটি সফলভাবে মুছে ফেলা হয়েছে।');
+  };
+
+  // Bulk delete selected demarcation applications
+  const handleBulkDeleteDemarcation = () => {
+    if (selectedAppIds.length === 0) return;
+    if (!window.confirm(`আপনি কি নিশ্চিত যে নির্বাচিত ${toBanglaNumber(selectedAppIds.length)} টি সীমানা নির্ধারণ আবেদন স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+      return;
+    }
+    let current = applications;
+    selectedAppIds.forEach((id) => {
+      current = deleteDemarcationApplication(id);
+    });
+    setApplications(current);
+    setSelectedAppIds([]);
+    alert('নির্বাচিত আবেদনসমূহ সফলভাবে মুছে ফেলা হয়েছে।');
+  };
+
+  // Bulk delete selected building applications
+  const handleBulkDeleteBuilding = () => {
+    if (selectedBuildingAppIds.length === 0) return;
+    if (!window.confirm(`আপনি কি নিশ্চিত যে নির্বাচিত ${toBanglaNumber(selectedBuildingAppIds.length)} টি তফসিল-১ আবেদন স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+      return;
+    }
+    let current = buildingApplications;
+    selectedBuildingAppIds.forEach((id) => {
+      current = deleteBuildingApplication(id);
+    });
+    setBuildingApplications(current);
+    setSelectedBuildingAppIds([]);
+    alert('নির্বাচিত তফসিল-১ আবেদনসমূহ সফলভাবে মুছে ফেলা হয়েছে।');
+  };
+
+  // Purge demo applications across modules
+  const handlePurgeDemoData = (module: 'demarcation' | 'building' | 'all') => {
+    const title = module === 'demarcation' 
+      ? 'সীমানা নির্ধারণ ও ডিমার্কেশন ফরমের সকল ডেমো / পরীক্ষামূলক আবেদন' 
+      : module === 'building'
+      ? 'ইমারত নির্মাণ অনুমোদন ফরম তফসিল-১ এর সকল ডেমো / পরীক্ষামূলক আবেদন'
+      : 'সকল মডিউলের পরীক্ষামূলক ও ডেমো আবেদন';
+
+    if (!window.confirm(`আপনি কি নিশ্চিত যে ${title} স্থায়ীভাবে মুছে সম্পূর্ণ খালি করতে চান?`)) {
+      return;
+    }
+
+    if (module === 'demarcation') {
+      purgeModuleApplications('demarcation');
+      setApplications([]);
+      setSelectedAppIds([]);
+    } else if (module === 'building') {
+      purgeModuleApplications('building');
+      setBuildingApplications([]);
+      setSelectedBuildingAppIds([]);
+    } else {
+      resetToDemoApplications();
+      setApplications([]);
+      setBuildingApplications([]);
+      setRoadCuttingApplications([]);
+      setSelectedAppIds([]);
+      setSelectedBuildingAppIds([]);
+    }
+    alert(`${title} সফলভাবে মুছে ফেলা হয়েছে।`);
   };
 
   // Open Application Details Modal
@@ -1985,6 +2075,16 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => handlePurgeDemoData('demarcation')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition-all border border-rose-200 cursor-pointer shadow-2xs"
+              title="ডিমার্কেশন প্রত্যয়ন ফরমের সকল ডেমো / পরীক্ষামূলক আবেদন মুছে ফেলুন"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+              <span>সকল ডেমো মুছুন</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setCsvExportModalModule('demarcation')}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer border border-emerald-600"
               title="ডিমার্কেশন ফরমের কাস্টম CSV এক্সপোর্ট ও ফিল্টারিং"
@@ -2157,6 +2257,16 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                             <span>প্রত্যয়নপত্র</span>
                           </button>
                         )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDemarcationApp(app.id, app.siteLocation?.applicantName || 'আবেদন')}
+                          className="w-full px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 rounded text-xs font-semibold border border-rose-200 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                          title="এই আবেদনটি স্থায়ীভাবে মুছে ফেলুন"
+                        >
+                          <Trash2 className="w-3 h-3 text-rose-600" />
+                          <span>আবেদন মুছুন</span>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -2177,6 +2287,15 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleBulkDeleteDemarcation}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shadow-sm transition-colors cursor-pointer"
+              title="নির্বাচিত আবেদনসমূহ স্থায়ীভাবে মুছে ফেলুন"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>নির্বাচিত {toBanglaNumber(selectedAppIds.length)}টি মুছুন</span>
+            </button>
             <button
               type="button"
               onClick={() => setIsBulkPrintOpen(true)}
@@ -2529,6 +2648,28 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                   <span>তফসিল-১ CSV ডাউনলোড</span>
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => handlePurgeDemoData('building')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition-all border border-rose-200 cursor-pointer shadow-2xs"
+                  title="তফসিল-১ ফরমের সকল ডেমো / পরীক্ষামূলক আবেদন মুছে ফেলুন"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>সকল ডেমো মুছুন</span>
+                </button>
+
+                {selectedBuildingAppIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleBulkDeleteBuilding}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
+                    title="নির্বাচিত তফসিল-১ আবেদনসমূহ স্থায়ীভাবে মুছে ফেলুন"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>নির্বাচিত {toBanglaNumber(selectedBuildingAppIds.length)}টি মুছুন</span>
+                  </button>
+                )}
+
                 <label className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 hover:border-amber-600 rounded-lg cursor-pointer text-xs font-bold text-slate-700 hover:bg-amber-50/50 transition-all shadow-2xs select-none">
                   <input
                     type="checkbox"
@@ -2759,6 +2900,15 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                               >
                                 <Printer className="w-3.5 h-3.5 text-amber-400" />
                                 <span>তফসিল-১ ফরম</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteBuildingApp(bApp.id, applicantName)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 rounded-lg text-xs font-bold transition-all cursor-pointer border border-rose-200 shadow-xs whitespace-nowrap"
+                                title="এই তফসিল-১ আবেদনটি স্থায়ীভাবে মুছে ফেলুন"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                                <span>মুছুন</span>
                               </button>
                             </div>
                           </td>

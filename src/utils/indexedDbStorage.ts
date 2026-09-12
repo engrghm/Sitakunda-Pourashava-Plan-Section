@@ -213,3 +213,40 @@ export async function hydrateApplicationFromVault<T extends { id: string; docume
 
   return hydratedApp;
 }
+
+/**
+ * Delete an application from the IndexedDB vault
+ */
+export async function deleteApplicationFromVault(id: string): Promise<void> {
+  if (!id) return;
+  try {
+    const db = await openVaultDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_APPLICATIONS, 'readwrite');
+      const store = tx.objectStore(STORE_APPLICATIONS);
+      const req = store.delete(id);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) {
+    console.warn('[IndexedDB Vault] Could not delete application from vault:', err);
+  }
+}
+
+/**
+ * Clear all applications from IndexedDB vault
+ */
+export async function clearApplicationsFromVault(): Promise<void> {
+  try {
+    const db = await openVaultDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_APPLICATIONS, 'readwrite');
+      const store = tx.objectStore(STORE_APPLICATIONS);
+      const req = store.clear();
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) {
+    console.warn('[IndexedDB Vault] Could not clear applications vault:', err);
+  }
+}

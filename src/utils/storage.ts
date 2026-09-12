@@ -6,6 +6,8 @@ import {
 } from '../data/initialApplications';
 import {
   saveApplicationToApi,
+  deleteApplicationFromApi,
+  clearAllApplicationsFromApi,
   saveAuditLogToApi,
   fetchApplicationsFromApi,
   fetchAuditLogsFromApi
@@ -14,15 +16,17 @@ import { syncPortalConfigWithHostinger } from './portalConfig';
 import {
   saveDocumentFileToVault,
   saveApplicationToVault,
+  deleteApplicationFromVault,
+  clearApplicationsFromVault,
   hydrateApplicationFromVault,
   hydrateDocumentsFromVault,
   getApplicationFromVault
 } from './indexedDbStorage';
 
 
-const STORAGE_KEY = 'sitakunda_demarcation_applications_clean_v1';
-const BUILDING_APPS_STORAGE_KEY = 'sitakunda_building_applications_clean_v1';
-const ROAD_CUTTING_APPS_STORAGE_KEY = 'sitakunda_road_cutting_applications_clean_v1';
+const STORAGE_KEY = 'sitakunda_demarcation_applications_clean_v2';
+const BUILDING_APPS_STORAGE_KEY = 'sitakunda_building_applications_clean_v2';
+const ROAD_CUTTING_APPS_STORAGE_KEY = 'sitakunda_road_cutting_applications_clean_v2';
 const AUTH_KEY = 'sitakunda_admin_session_auth';
 const PASSWORDS_STORAGE_KEY = 'sitakunda_officer_passwords_v1';
 const DRAFT_STORAGE_KEY = 'sitakunda_demarcation_draft_v1';
@@ -31,15 +35,21 @@ const AUDIT_LOG_STORAGE_KEY = 'sitakunda_system_audit_logs_v1';
 // Auto-purge any cached mock/demo data and previous applications
 try {
   if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('sitakunda_demarcation_applications');
+    localStorage.removeItem('sitakunda_demarcation_applications_clean_v1');
     localStorage.removeItem('sitakunda_demarcation_applications_v1');
     localStorage.removeItem('sitakunda_demarcation_applications_v2');
     localStorage.removeItem('sitakunda_demarcation_applications_v3');
     localStorage.removeItem('sitakunda_demarcation_applications_v4');
     localStorage.removeItem('sitakunda_demarcation_applications_v5');
+    localStorage.removeItem('sitakunda_building_applications');
+    localStorage.removeItem('sitakunda_building_applications_clean_v1');
     localStorage.removeItem('sitakunda_building_applications_v1');
     localStorage.removeItem('sitakunda_building_applications_v2');
     localStorage.removeItem('sitakunda_building_applications_v3');
     localStorage.removeItem('sitakunda_building_applications_v4');
+    localStorage.removeItem('sitakunda_road_cutting_applications');
+    localStorage.removeItem('sitakunda_road_cutting_applications_clean_v1');
     localStorage.removeItem('sitakunda_road_cutting_applications_v1');
     localStorage.removeItem('sitakunda_road_cutting_applications_v2');
     localStorage.removeItem('sitakunda_road_cutting_applications_v3');
@@ -820,7 +830,84 @@ export function generateRoadCuttingFormNo(): string {
 }
 
 /**
- * Resets all applications across all 3 modules to empty
+ * Permanently delete a demarcation application across all layers (LocalStorage, IndexedDB, MySQL API)
+ */
+export function deleteDemarcationApplication(id: string): DemarcationApplication[] {
+  // 1. Permanently delete from IndexedDB vault
+  deleteApplicationFromVault(id).catch(() => {});
+
+  // 2. Permanently delete from MySQL server / API
+  deleteApplicationFromApi(id).catch((err) => {
+    console.warn('[Hostinger MySQL] Application delete deferred:', err);
+  });
+
+  // 3. Delete from LocalStorage
+  const current = getStoredApplications();
+  const updated = current.filter((item) => item.id !== id);
+  safeSetLocalStorage(STORAGE_KEY, updated);
+  try {
+    localStorage.setItem('sitakunda_demarcation_applications', JSON.stringify(updated));
+    localStorage.setItem('sitakunda_demarcation_applications_clean_v1', JSON.stringify([]));
+  } catch {}
+
+  return updated;
+}
+export const deleteApplication = deleteDemarcationApplication;
+
+/**
+ * Permanently delete a building construction application across all layers
+ */
+export function deleteBuildingApplication(id: string): BuildingConstructionApplication[] {
+  // 1. Permanently delete from IndexedDB vault
+  deleteApplicationFromVault(id).catch(() => {});
+
+  // 2. Permanently delete from MySQL server / API
+  deleteApplicationFromApi(id).catch((err) => {
+    console.warn('[Hostinger MySQL] Building application delete deferred:', err);
+  });
+
+  // 3. Delete from LocalStorage
+  const current = getBuildingApplications();
+  const updated = current.filter((item) => item.id !== id);
+  try {
+    localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem('sitakunda_building_applications', JSON.stringify(updated));
+    localStorage.setItem('sitakunda_building_applications_clean_v1', JSON.stringify([]));
+  } catch (err) {
+    console.error('Error deleting building application:', err);
+  }
+
+  return updated;
+}
+
+/**
+ * Permanently delete a road cutting application across all layers
+ */
+export function deleteRoadCuttingApplication(id: string): RoadCuttingApplication[] {
+  // 1. Permanently delete from IndexedDB vault
+  deleteApplicationFromVault(id).catch(() => {});
+
+  // 2. Permanently delete from MySQL server / API
+  deleteApplicationFromApi(id).catch((err) => {
+    console.warn('[Hostinger MySQL] Road cutting delete deferred:', err);
+  });
+
+  // 3. Delete from LocalStorage
+  const current = getRoadCuttingApplications();
+  const updated = current.filter((item) => item.id !== id);
+  try {
+    localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem('sitakunda_road_cutting_applications', JSON.stringify(updated));
+    localStorage.setItem('sitakunda_road_cutting_applications_clean_v1', JSON.stringify([]));
+  } catch (err) {
+    console.error('Error deleting road cutting application:', err);
+  }
+
+  return updated;
+}
+
+/**
+ * Resets all applications across all 3 modules to empty (purges all demo/mock data)
  */
 export function resetToDemoApplications(): {
   demarcation: DemarcationApplication[];
@@ -828,9 +915,22 @@ export function resetToDemoApplications(): {
   roadCutting: RoadCuttingApplication[];
 } {
   try {
+    // Clear all LocalStorage application keys
     localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
     localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify([]));
     localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify([]));
+    localStorage.removeItem('sitakunda_demarcation_applications');
+    localStorage.removeItem('sitakunda_demarcation_applications_clean_v1');
+    localStorage.removeItem('sitakunda_building_applications');
+    localStorage.removeItem('sitakunda_building_applications_clean_v1');
+    localStorage.removeItem('sitakunda_road_cutting_applications');
+    localStorage.removeItem('sitakunda_road_cutting_applications_clean_v1');
+
+    // Clear IndexedDB vault
+    clearApplicationsFromVault().catch(() => {});
+
+    // Clear backend / MySQL server
+    clearAllApplicationsFromApi().catch(() => {});
   } catch (err) {
     console.error('Error clearing applications:', err);
   }
@@ -840,3 +940,30 @@ export function resetToDemoApplications(): {
     roadCutting: [],
   };
 }
+
+/**
+ * Purge specific module demo applications
+ */
+export function purgeModuleApplications(module: 'demarcation' | 'building' | 'road_cutting'): void {
+  try {
+    if (module === 'demarcation') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+      localStorage.removeItem('sitakunda_demarcation_applications');
+      localStorage.removeItem('sitakunda_demarcation_applications_clean_v1');
+      clearAllApplicationsFromApi('demarcation').catch(() => {});
+    } else if (module === 'building') {
+      localStorage.setItem(BUILDING_APPS_STORAGE_KEY, JSON.stringify([]));
+      localStorage.removeItem('sitakunda_building_applications');
+      localStorage.removeItem('sitakunda_building_applications_clean_v1');
+      clearAllApplicationsFromApi('building').catch(() => {});
+    } else if (module === 'road_cutting') {
+      localStorage.setItem(ROAD_CUTTING_APPS_STORAGE_KEY, JSON.stringify([]));
+      localStorage.removeItem('sitakunda_road_cutting_applications');
+      localStorage.removeItem('sitakunda_road_cutting_applications_clean_v1');
+      clearAllApplicationsFromApi('road_cutting').catch(() => {});
+    }
+  } catch (err) {
+    console.error(`Error purging ${module} applications:`, err);
+  }
+}
+

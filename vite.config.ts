@@ -236,6 +236,27 @@ function localBackendPlugin(): Plugin {
             });
             return;
           }
+
+          if (req.method === 'DELETE') {
+            const id = urlObj.searchParams.get('id');
+            const clearAll = urlObj.searchParams.get('clear_all');
+            const moduleType = urlObj.searchParams.get('module');
+            let list = getApplications();
+
+            if (clearAll === 'true' || clearAll === '1') {
+              if (moduleType) {
+                list = list.filter((item: any) => (item.moduleType || 'demarcation') !== moduleType);
+              } else {
+                list = [];
+              }
+            } else if (id) {
+              list = list.filter((item: any) => item.id !== id && item.trackingId !== id);
+            }
+
+            saveApplications(list);
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ success: true, deletedId: id, totalRemaining: list.length }));
+          }
         }
 
         // 3. Settings GET / POST

@@ -521,6 +521,30 @@ app.put(['/api/applications.php', '/api/applications'], (req, res) => {
   }
 });
 
+app.delete(['/api/applications.php', '/api/applications'], (req, res) => {
+  try {
+    const id = req.query.id as string;
+    const clearAll = req.query.clear_all as string;
+    const moduleType = req.query.module as string;
+    let list = getApplicationsList();
+
+    if (clearAll === 'true' || clearAll === '1') {
+      if (moduleType) {
+        list = list.filter((item: any) => (item.moduleType || 'demarcation') !== moduleType);
+      } else {
+        list = [];
+      }
+    } else if (id) {
+      list = list.filter((item: any) => item.id !== id && item.trackingId !== id);
+    }
+
+    saveApplicationsList(list);
+    return res.json({ success: true, deletedId: id, totalRemaining: list.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to delete application' });
+  }
+});
+
 
 // Configure Vite integration as middleware in development or direct static in production
 async function startServer() {

@@ -368,13 +368,27 @@ function handlePut($pdo) {
 
 function handleDelete($pdo) {
     $id = isset($_GET['id']) ? trim($_GET['id']) : null;
+    $clearAll = isset($_GET['clear_all']) ? trim($_GET['clear_all']) : null;
+    $module = isset($_GET['module']) ? trim($_GET['module']) : null;
+
+    if ($clearAll === 'true' || $clearAll === '1') {
+        if ($module) {
+            $stmt = $pdo->prepare("DELETE FROM applications WHERE module_type = :module");
+            $stmt->execute([':module' => $module]);
+        } else {
+            $pdo->exec("DELETE FROM applications");
+        }
+        echo json_encode(['success' => true, 'cleared' => true]);
+        return;
+    }
+
     if (!$id) {
         http_response_code(400);
         echo json_encode(['error' => 'Missing id']);
         return;
     }
 
-    $stmt = $pdo->prepare("DELETE FROM applications WHERE id = :id");
+    $stmt = $pdo->prepare("DELETE FROM applications WHERE id = :id OR tracking_id = :id");
     $stmt->execute([':id' => $id]);
 
     echo json_encode(['success' => true, 'deletedId' => $id]);

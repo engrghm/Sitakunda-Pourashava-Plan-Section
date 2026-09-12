@@ -263,6 +263,37 @@ export async function saveApplicationToApi(
 }
 
 /**
+ * Permanently delete an application from Hostinger MySQL / local API
+ */
+export async function deleteApplicationFromApi(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/applications.php?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('[Hostinger MySQL] Could not delete application:', err);
+    return false;
+  }
+}
+
+/**
+ * Permanently clear applications from Hostinger MySQL / local API
+ */
+export async function clearAllApplicationsFromApi(module?: 'demarcation' | 'building' | 'road_cutting'): Promise<boolean> {
+  try {
+    const query = module ? `clear_all=1&module=${module}` : `clear_all=1`;
+    const res = await fetch(`${API_BASE}/applications.php?${query}`, {
+      method: 'DELETE',
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('[Hostinger MySQL] Could not clear applications:', err);
+    return false;
+  }
+}
+
+/**
  * Save an audit log to Hostinger MySQL
  */
 export async function saveAuditLogToApi(log: SystemAuditLogItem): Promise<boolean> {
