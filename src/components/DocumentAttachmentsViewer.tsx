@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Map, 
@@ -16,11 +16,13 @@ import {
   Loader2,
   Upload,
   AlertCircle,
-  Lock
+  Lock,
+  FileDown
 } from 'lucide-react';
 import { UploadedDocument } from '../types';
 import { toBanglaNumber, formatBanglaDate } from '../utils/storage';
-import { uploadDocumentToServer, resolveFileUrl } from '../utils/apiStorage';
+import { uploadDocumentToServer, resolveFileUrl, getApiBase } from '../utils/apiStorage';
+import { getDocumentFileFromVault } from '../utils/indexedDbStorage';
 
 const DRAFTSMAN_DOC_TYPES = [
   { key: 'mouza_map_sketch', label: 'মৌজা ম্যাপ ও দাগ স্কেচ (Mouza Map & Plot Sketch)' },
@@ -33,6 +35,30 @@ const DRAFTSMAN_DOC_TYPES = [
   { key: 'others', label: 'অন্যান্য অফিসিয়াল কাগজপত্র (Others)' },
   { key: 'custom', label: 'অন্যান্য / কাস্টম শিরোনাম...' },
 ];
+
+/**
+ * Safely converts Base64 DataURL to Blob for cross-browser preview and downloads
+ */
+function dataUrlToBlob(dataUrl: string): Blob {
+  try {
+    const parts = dataUrl.split(';base64,');
+    const contentType = parts[0].replace('data:', '') || 'application/pdf';
+    const byteCharacters = atob(parts[1]);
+    const byteArrays: Uint8Array[] = [];
+    const sliceSize = 512;
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      const slice = byteCharacters.slice(offset, offset + sliceSize);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      byteArrays.push(new Uint8Array(byteNumbers));
+    }
+    return new Blob(byteArrays, { type: contentType });
+  } catch {
+    return new Blob([dataUrl], { type: 'application/octet-stream' });
+  }
+}
 
 interface DocumentAttachmentsViewerProps {
   documents: UploadedDocument[];
@@ -52,6 +78,9 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
   onUpdateDocuments,
 }) => {
   const [selectedDoc, setSelectedDoc] = useState<UploadedDocument | null>(null);
+  const [resolvedPreviewUrl, setResolvedPreviewUrl] = useState<string>('');
+  const [previewBlobObjUrl, setPreviewBlobObjUrl] = useState<string | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(false);
 
   // Add Document Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
@@ -68,6 +97,66 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
   const [editReplacementFile, setEditReplacementFile] = useState<File | null>(null);
   const [isEditUploading, setIsEditUploading] = useState<boolean>(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  // Load and sanitize preview URL whenever selectedDoc changes
+  useEffect(() => {
+    if (!selectedDoc) {
+      if (previewBlobObjUrl) {
+        URL.revokeObjectURL(previewBlobObjUrl);
+        setPreviewBlobObjUrl(null);
+      }
+      setResolvedPreviewUrl('');
+      setIsLoadingPreview(false);
+      return;
+    }
+
+    let active = true;
+    setIsLoadingPreview(true);
+
+    const initPreview = async () => {
+      let url = selectedDoc.fileUrl || '';
+      if (!url && selectedDoc.id) {
+        const vaultUrl = await getDocumentFileFromVault(selectedDoc.id);
+        if (vaultUrl) url = vaultUrl;
+      }
+
+      if (!url) {
+        if (active) {
+          setResolvedPreviewUrl('');
+          setIsLoadingPreview(false);
+        }
+        return;
+      }
+
+      // If Base64 Data URL, convert to Blob URL to avoid Chromium top-frame navigation restrictions
+      if (url.startsWith('data:')) {
+        try {
+          const blob = dataUrlToBlob(url);
+          const objUrl = URL.createObjectURL(blob);
+          if (active) {
+            setPreviewBlobObjUrl(objUrl);
+            setResolvedPreviewUrl(objUrl);
+            setIsLoadingPreview(false);
+          }
+          return;
+        } catch (err) {
+          console.warn('DataURL conversion to blob failed:', err);
+        }
+      }
+
+      const fullUrl = resolveFileUrl(url);
+      if (active) {
+        setResolvedPreviewUrl(fullUrl);
+        setIsLoadingPreview(false);
+      }
+    };
+
+    initPreview();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedDoc]);
 
   const getDocTypeBadge = (type: string, title: string) => {
     if (type.includes('map') || title.includes('ম্যাপ') || title.includes('নক্সা')) {
@@ -127,56 +216,92 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
     return `${toBanglaNumber((bytes / (1024 * 1024)).toFixed(2))} MB`;
   };
 
-  const handleDownload = (doc: UploadedDocument) => {
-    if (doc.fileUrl) {
-      if (doc.fileUrl.startsWith('data:')) {
+  const handleDownload = async (doc: UploadedDocument) => {
+    let url = doc.fileUrl || '';
+    if (!url && doc.id) {
+      const vaultUrl = await getDocumentFileFromVault(doc.id);
+      if (vaultUrl) url = vaultUrl;
+    }
+
+    const downloadFilename = doc.fileName || `${doc.docTitle || 'document'}.pdf`;
+
+    // 1. If base64 data URL
+    if (url.startsWith('data:')) {
+      try {
+        const blob = dataUrlToBlob(url);
+        const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = doc.fileUrl;
-        a.download = doc.fileName || `${doc.docTitle}.pdf`;
+        a.href = blobUrl;
+        a.download = downloadFilename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-      } else {
-        const targetUrl = resolveFileUrl(doc.fileUrl);
-        // Fetch as blob for reliable cross-browser file download
-        fetch(targetUrl)
-          .then((res) => {
-            if (!res.ok) throw new Error('Download failed');
-            return res.blob();
-          })
-          .then((blob) => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = doc.fileName || `${doc.docTitle}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-          })
-          .catch(() => {
-            const a = document.createElement('a');
-            a.href = targetUrl;
-            a.download = doc.fileName || `${doc.docTitle}.pdf`;
-            a.target = '_blank';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          });
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+        return;
+      } catch (err) {
+        console.warn('Base64 blob download failed:', err);
       }
-    } else {
-      const blob = new Blob([
-        `সীতাকুণ্ড পৌরসভা - অনলাইন ডিমার্কেশন নথি\nআবেদন আইডি: ${applicationId}\nআবেদনকারী: ${applicantName}\nনথির নাম: ${doc.docTitle}\nফাইল: ${doc.fileName}\nতারিখ: ${doc.uploadDate}`
-      ], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
+    }
+
+    // 2. If already a blob URL
+    if (url.startsWith('blob:')) {
       const a = document.createElement('a');
       a.href = url;
-      a.download = doc.fileName.endsWith('.txt') ? doc.fileName : `${doc.fileName}.txt`;
+      a.download = downloadFilename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      return;
     }
+
+    // 3. If server URL
+    const resolvedUrl = resolveFileUrl(url);
+    if (resolvedUrl) {
+      try {
+        // First attempt: direct fetch blob
+        const res = await fetch(resolvedUrl);
+        if (res.ok) {
+          const blob = await res.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = downloadFilename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+          return;
+        }
+      } catch (err) {
+        console.warn('Direct blob fetch failed, trying download.php:', err);
+      }
+
+      // Second attempt: PHP download endpoint with Content-Disposition
+      const cleanFileName = url.split('/').pop() || downloadFilename;
+      const base = getApiBase();
+      const downloadEndpoint = `${base}/download.php?file=${encodeURIComponent(cleanFileName)}&name=${encodeURIComponent(downloadFilename)}`;
+      
+      const a = document.createElement('a');
+      a.href = downloadEndpoint;
+      a.download = downloadFilename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+
+    // Fallback: informational file
+    const blob = new Blob([
+      `সীতাকুণ্ড পৌরসভা - অনলাইন ডিমার্কেশন নথি\nআবেদন আইডি: ${applicationId}\nআবেদনকারী: ${applicantName}\nনথির নাম: ${doc.docTitle}\nফাইল: ${doc.fileName}\nতারিখ: ${doc.uploadDate}`
+    ], { type: 'text/plain;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = downloadFilename.endsWith('.txt') ? downloadFilename : `${downloadFilename}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
   };
 
   // Add new document handler
@@ -189,8 +314,8 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
       return;
     }
 
-    if (newFile.size > 15 * 1024 * 1024) {
-      setUploadError('ফাইলের সাইজ ১৫ MB-এর বেশি হতে পারবে না।');
+    if (newFile.size > 25 * 1024 * 1024) {
+      setUploadError('ফাইলের সাইজ ২৫ MB-এর বেশি হতে পারবে না।');
       return;
     }
 
@@ -220,13 +345,13 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
       setCustomTitle('');
       setSelectedDocType('mouza_map_sketch');
     } catch (err: any) {
-      setUploadError('ফাইল আপলোড করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
+      setUploadError('নথি আপলোড করতে সমস্যা হয়েছে: ' + (err.message || 'নেটওয়ার্ক এরর'));
     } finally {
       setIsUploading(false);
     }
   };
 
-  // Start edit handler
+  // Start editing document
   const handleStartEdit = (doc: UploadedDocument) => {
     setEditingDoc(doc);
     setEditTitle(doc.docTitle);
@@ -235,26 +360,22 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
     setEditError(null);
   };
 
-  // Save edit handler
+  // Save edited document
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingDoc) return;
-    setEditError(null);
-
-    if (!editTitle.trim()) {
-      setEditError('নথির শিরোনাম আবশ্যক।');
-      return;
-    }
 
     setIsEditUploading(true);
+    setEditError(null);
+
     try {
       let updatedFileUrl = editingDoc.fileUrl;
       let updatedFileName = editingDoc.fileName;
       let updatedFileSize = editingDoc.fileSize;
 
       if (editReplacementFile) {
-        if (editReplacementFile.size > 15 * 1024 * 1024) {
-          setEditError('ফাইলের সাইজ ১৫ MB-এর বেশি হতে পারবে না।');
+        if (editReplacementFile.size > 25 * 1024 * 1024) {
+          setEditError('ফাইলের সাইজ ২৫ MB-এর বেশি হতে পারবে না।');
           setIsEditUploading(false);
           return;
         }
@@ -324,30 +445,12 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
           <span className="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold flex items-center gap-1">
             {allowManage ? (
               <span>নক্সাকার সম্পাদনাসক্ষম</span>
-            ) : hideViewAndDownload ? (
-              <>
-                <Lock className="w-3 h-3 text-emerald-600" />
-                <span>দাপ্তরিকভাবে সুরক্ষাপ্রাপ্ত</span>
-              </>
             ) : (
-              <span>অফিসিয়াল যাচাইযোগ্য</span>
+              <span>অফিসিয়াল যাচাইযোগ্য ও ডাউনলোডযোগ্য</span>
             )}
           </span>
         </div>
       </div>
-
-      {/* Confidentiality Notice for Citizens / Tracking View */}
-      {hideViewAndDownload && (
-        <div className="p-3 bg-amber-50/90 border border-amber-200 text-amber-950 rounded-xl text-xs flex items-start gap-2.5 shadow-2xs">
-          <Lock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-          <div className="text-[11px] leading-relaxed">
-            <span className="font-bold text-xs text-amber-950 block mb-0.5">
-              সংযুক্ত নথিপত্র ও ম্যাপসমূহ দাপ্তরিকভাবে সুরক্ষাপ্রাপ্ত
-            </span>
-            নাগরিকের ব্যক্তিগত নথিপত্র ও জমির মালিকানার তথ্যের গোপনীয়তা ও সুরক্ষার্থে ট্র্যাকিং পোর্টালে সংযুক্ত ফাইলসমূহ সরাসরি প্রদর্শন (প্রিভিউ) বা ডাউনলোড উন্মুক্ত নয়। শুধুমাত্র দায়িত্বপ্রাপ্ত পৌর কর্মকর্তা যাচাই প্যানেল থেকে এগুলি পর্যালোচনা করতে পারবেন।
-          </div>
-        </div>
-      )}
 
       {documents.length === 0 ? (
         <div className="p-5 bg-white border border-dashed border-slate-300 rounded-xl text-center text-xs text-slate-500 space-y-2">
@@ -399,32 +502,26 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                   </span>
 
                   <div className="flex items-center gap-1.5">
-                    {hideViewAndDownload ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200" title="দাপ্তরিক গোপনীয়তা রক্ষার্থে ট্র্যাকিং পেজে ফাইল প্রিভিউ বা ডাউনলোড উন্মুক্ত নয়">
-                        <Lock className="w-3 h-3 text-slate-400" />
-                        <span>সংরক্ষিত ও সুরক্ষিত</span>
-                      </span>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedDoc(doc)}
-                          className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold rounded-md border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer"
-                        >
-                          <Eye className="w-3 h-3" />
-                          <span>প্রিভিউ</span>
-                        </button>
+                    {/* Always allow Preview and Download */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDoc(doc)}
+                      className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold rounded-md border border-emerald-200 flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                      title="ফাইল প্রিভিউ করুন"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>প্রিভিউ</span>
+                    </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleDownload(doc)}
-                          className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md border border-slate-200 transition-colors cursor-pointer"
-                          title="ডাউনলোড করুন"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </button>
-                      </>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(doc)}
+                      className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold rounded-md border border-slate-200 flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                      title="ডাউনলোড করুন"
+                    >
+                      <Download className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>ডাউনলোড</span>
+                    </button>
 
                     {allowManage && (
                       <>
@@ -526,7 +623,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                   className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-700 hover:file:bg-emerald-800 file:text-white cursor-pointer border border-slate-300 rounded-lg p-1.5"
                 />
                 <span className="text-[10px] text-slate-500 mt-1 block">
-                  প্রতিটি ফাইলের সর্বোচ্চ সাইজ ১৫ MB পর্যন্ত সমর্থিত
+                  প্রতিটি ফাইলের সর্বোচ্চ সাইজ ২৫ MB পর্যন্ত সমর্থিত
                 </span>
               </div>
 
@@ -553,7 +650,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                   ) : (
                     <>
                       <Upload className="w-4 h-4" />
-                      <span>সংযুক্ত ও সংরক্ষণ করুন</span>
+                      <span>সংযোজন করুন</span>
                     </>
                   )}
                 </button>
@@ -563,19 +660,19 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
         </div>
       )}
 
-      {/* Modal 2: Edit Existing Document / Replace File */}
+      {/* Modal 2: Edit Existing Document */}
       {editingDoc && (
         <div className="fixed inset-0 z-60 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-300 animate-in fade-in zoom-in duration-150">
-            <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+            <div className="bg-blue-800 text-white px-5 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Pencil className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-sm font-bold text-white">নথিপত্র বা ম্যাপ সম্পাদনা</h3>
+                <Pencil className="w-5 h-5 text-blue-300" />
+                <h3 className="text-sm font-bold text-white">নথি ও ম্যাপের তথ্য সম্পাদনা</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setEditingDoc(null)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-1 text-slate-300 hover:text-white rounded-lg hover:bg-blue-900 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -604,12 +701,12 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
 
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
-                  নথির ধরন নির্বাচন
+                  নথিপত্র বা ম্যাপের ধরন <span className="text-red-600">*</span>
                 </label>
                 <select
                   value={editDocType}
                   onChange={(e) => setEditDocType(e.target.value)}
-                  className="w-full px-3 py-2 bg-white rounded-lg border border-slate-300 text-xs"
+                  className="w-full px-3 py-2 bg-white rounded-lg border border-slate-300 text-xs font-medium"
                 >
                   {DRAFTSMAN_DOC_TYPES.map((dt) => (
                     <option key={dt.key} value={dt.key}>
@@ -619,24 +716,18 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                 </select>
               </div>
 
-              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
-                <span className="text-[11px] text-slate-500 block">বর্তমান ফাইল:</span>
-                <span className="font-mono text-slate-800 font-bold block truncate">{editingDoc.fileName}</span>
-                <span className="text-[10px] text-slate-400 font-mono">সাইজ: {formatFileSize(editingDoc.fileSize)}</span>
-              </div>
-
-              <div>
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
                 <label className="block text-slate-700 font-bold mb-1">
-                  ফাইল প্রতিস্থাপন করুন (ঐচ্ছিক)
+                  প্রতিস্থাপন ফাইল আপলোড করুন (ঐচ্ছিক)
                 </label>
                 <input
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png,.webp"
                   onChange={(e) => setEditReplacementFile(e.target.files?.[0] || null)}
-                  className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-700 hover:file:bg-slate-800 file:text-white cursor-pointer border border-slate-300 rounded-lg p-1.5"
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-700 hover:file:bg-blue-800 file:text-white cursor-pointer border border-slate-300 rounded-lg p-1 bg-white"
                 />
                 <span className="text-[10px] text-slate-500 mt-1 block">
-                  নতুন ফাইল দিলে পূর্ববর্তী ফাইলটি প্রতিস্থাপিত হবে
+                  ফাইল পরিবর্তন করতে না চাইলে এটি ফাঁকা রাখুন। বর্তমান ফাইল: {editingDoc.fileName}
                 </span>
               </div>
 
@@ -653,7 +744,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                 <button
                   type="submit"
                   disabled={isEditUploading}
-                  className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-70 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  className="px-5 py-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-70 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
                 >
                   {isEditUploading ? (
                     <>
@@ -671,11 +762,11 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
       )}
 
       {/* Document Quick Preview Modal */}
-      {selectedDoc && !hideViewAndDownload && (
+      {selectedDoc && (
         <div className="fixed inset-0 z-70 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-150 flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+            <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-emerald-400" />
                 <div>
@@ -683,22 +774,36 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                   <span className="text-[11px] text-slate-300 font-mono">{selectedDoc.fileName}</span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedDoc(null)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {resolvedPreviewUrl && (
+                  <a
+                    href={resolvedPreviewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 text-emerald-300 hover:text-white rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-1 text-xs"
+                    title="নতুন ট্যাবে ফুলস্ক্রিন দেখুন"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span className="hidden sm:inline">নতুন উইন্ডো</span>
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedDoc(null)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body Preview */}
-            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
-                <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+              <div className="p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2 shrink-0">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   <div>
                     <span className="text-slate-500 block">আবেদন আইডি:</span>
-                    <span className="font-bold text-slate-800">{applicationId}</span>
+                    <span className="font-bold text-slate-800 font-mono">{applicationId}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 block">আবেদনকারীর নাম:</span>
@@ -716,26 +821,51 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
               </div>
 
               {/* Visual Document Content / Real Preview */}
-              <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-900/5 min-h-[260px] flex items-center justify-center">
-                {selectedDoc.fileUrl ? (
-                  selectedDoc.fileUrl.startsWith('data:image/') || selectedDoc.fileName.match(/\.(jpg|jpeg|png|webp)$/i) || selectedDoc.fileUrl.match(/\.(jpg|jpeg|png|webp)($|\?)/i) ? (
-                    <div className="p-4 flex flex-col items-center justify-center">
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-900/5 min-h-[300px] flex items-center justify-center relative">
+                {isLoadingPreview ? (
+                  <div className="p-12 flex flex-col items-center justify-center gap-3">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+                    <span className="text-xs font-semibold text-slate-600">নথি লোড করা হচ্ছে...</span>
+                  </div>
+                ) : resolvedPreviewUrl ? (
+                  resolvedPreviewUrl.startsWith('data:image/') || selectedDoc.fileName.match(/\.(jpg|jpeg|png|webp)$/i) || resolvedPreviewUrl.match(/\.(jpg|jpeg|png|webp)($|\?)/i) ? (
+                    <div className="p-4 flex flex-col items-center justify-center w-full">
                       <img
-                        src={resolveFileUrl(selectedDoc.fileUrl)}
+                        src={resolvedPreviewUrl}
                         alt={selectedDoc.docTitle}
-                        className="max-h-[420px] max-w-full object-contain rounded-lg shadow-sm"
+                        className="max-h-[460px] max-w-full object-contain rounded-lg shadow-sm"
                       />
                     </div>
                   ) : (
-                    <div className="w-full h-[450px] flex flex-col">
-                      <iframe
-                        src={resolveFileUrl(selectedDoc.fileUrl)}
-                        title={selectedDoc.docTitle}
+                    <div className="w-full h-[500px] flex flex-col">
+                      <object
+                        data={resolvedPreviewUrl}
+                        type="application/pdf"
                         className="w-full flex-1 border-0"
-                      />
-                      <div className="bg-slate-100 p-2 text-center text-xs border-t border-slate-200">
+                      >
+                        <iframe
+                          src={resolvedPreviewUrl}
+                          title={selectedDoc.docTitle}
+                          className="w-full h-full border-0"
+                        >
+                          <div className="p-8 text-center space-y-3 bg-white h-full flex flex-col items-center justify-center">
+                            <FileText className="w-12 h-12 text-emerald-600 mx-auto" />
+                            <p className="text-xs text-slate-700 font-bold">ব্রাউজারে সরাসরি পিডিএফ প্রদর্শিত না হলে নিচের লিংকে ক্লিক করুন</p>
+                            <a
+                              href={resolvedPreviewUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              <span>নতুন উইন্ডোতে দেখুন</span>
+                            </a>
+                          </div>
+                        </iframe>
+                      </object>
+                      <div className="bg-slate-100 p-2 text-center text-xs border-t border-slate-200 flex items-center justify-center gap-3 shrink-0">
                         <a
-                          href={resolveFileUrl(selectedDoc.fileUrl)}
+                          href={resolvedPreviewUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-emerald-700 font-bold hover:underline inline-flex items-center gap-1"
@@ -748,13 +878,13 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                   )
                 ) : selectedDoc.docTitle.includes('ম্যাপ') || selectedDoc.docTitle.includes('নক্সা') ? (
                   <div className="p-8 text-center space-y-3 w-full">
-                    <div className="w-full h-44 bg-emerald-950/5 rounded-lg border border-emerald-200 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+                    <div className="w-full h-48 bg-emerald-950/5 rounded-lg border border-emerald-200 flex flex-col items-center justify-center p-4 relative overflow-hidden">
                       <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#059669_1px,transparent_1px)] [background-size:16px_16px]"></div>
                       <Map className="w-12 h-12 text-emerald-700 mb-2" />
                       <span className="text-xs font-bold text-slate-800">
-                        সীতাকুণ্ড পৌরসভা মৌজা ম্যাপ ও দাগ স্কেচ প্রিভিউ
+                        সীতাকুণ্ড পৌরসভা মৌজা ম্যাপ ও দাগ স্কেচ
                       </span>
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-[11px] text-slate-500 mt-1">
                         দাগ নং ও চতুর্সীমা সার্ভেয়ার কর্তৃক ডিজিটাল পরিমাপ অনুযায়ী চিহ্নিত
                       </span>
                     </div>
@@ -765,7 +895,7 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
                     <div>
                       <h4 className="text-sm font-bold text-slate-800">{selectedDoc.docTitle}</h4>
                       <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-                        নথিটি পৌরসভা সিস্টেমে সংরক্ষিত এবং নক্সাকার ও সহকারী প্রকৌশলী কর্তৃক যাচাইকৃত।
+                        নথিটি পৌরসভা সিস্টেমে সংরক্ষিত এবং নক্সাকার ও প্রকৌশল শাখা কর্তৃক যাচাইকৃত।
                       </p>
                     </div>
                   </div>
@@ -774,13 +904,25 @@ export const DocumentAttachmentsViewer: React.FC<DocumentAttachmentsViewerProps>
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-between">
+            <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
               <div className="flex items-center gap-1.5 text-xs text-emerald-800 font-semibold">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>ডিজিটাল সিস্টেমে সংগৃহীত ও সুরক্ষিত</span>
               </div>
 
               <div className="flex items-center gap-2">
+                {resolvedPreviewUrl && (
+                  <a
+                    href={resolvedPreviewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>ফুলস্ক্রিন দেখুন</span>
+                  </a>
+                )}
+
                 <button
                   type="button"
                   onClick={() => handleDownload(selectedDoc)}

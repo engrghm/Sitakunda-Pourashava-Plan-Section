@@ -376,6 +376,30 @@ function localBackendPlugin(): Plugin {
           }
         }
 
+        // 5. Download Handler GET
+        if (pathname === '/api/download.php' || pathname === '/api/download' || pathname.endsWith('/api/download.php') || pathname.endsWith('/api/download')) {
+          const fileParam = urlObj.searchParams.get('file') || '';
+          const nameParam = urlObj.searchParams.get('name') || fileParam;
+          const cleanFile = path.basename(fileParam.replace(/\\/g, '/'));
+          const targetPath = path.join(UPLOADS_DIR, cleanFile);
+
+          if (cleanFile && fs.existsSync(targetPath)) {
+            const ext = path.extname(cleanFile).toLowerCase();
+            let mimeType = 'application/octet-stream';
+            if (ext === '.pdf') mimeType = 'application/pdf';
+            else if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+            else if (ext === '.png') mimeType = 'image/png';
+            else if (ext === '.webp') mimeType = 'image/webp';
+
+            res.setHeader('Content-Type', mimeType);
+            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(nameParam || cleanFile)}"`);
+            return fs.createReadStream(targetPath).pipe(res);
+          }
+          res.statusCode = 404;
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({ error: 'File not found' }));
+        }
+
         next();
       });
     },

@@ -7,11 +7,29 @@
   Allow from all
 </IfModule>
 
+# Enable CORS for file preview and fetching
+<IfModule mod_headers.c>
+  Header set Access-Control-Allow-Origin "*"
+  Header set Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+  Header set Access-Control-Allow-Headers "*"
+</IfModule>
+
+# Set correct MIME types
+<IfModule mod_mime.c>
+  AddType application/pdf .pdf
+  AddType image/jpeg .jpg .jpeg
+  AddType image/png .png
+  AddType image/webp .webp
+</IfModule>
+
 # Disable script execution in uploads folder for security
 <IfModule mod_php7.c>
   php_flag engine off
 </IfModule>
 <IfModule mod_php.c>
+  php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
   php_flag engine off
 </IfModule>
 Options -ExecCGI
